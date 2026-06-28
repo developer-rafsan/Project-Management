@@ -23,6 +23,7 @@ export default function ProjectsPage() {
   const router = useRouter()
   const [projects, setProjects] = useState([])
   const [total, setTotal] = useState(0)
+  const [totalPrice, setTotalPrice] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
@@ -49,6 +50,7 @@ export default function ProjectsPage() {
         if (fetchId !== fetchIdRef.current) return
         setProjects(data.projects || [])
         setTotal(data.total || 0)
+        setTotalPrice(data.totalPrice || 0)
         setTotalPages(data.totalPages || 1)
       })
       .catch((err) => {
@@ -91,7 +93,7 @@ export default function ProjectsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
           <p className="text-sm text-muted-foreground">
-            {total} {total === 1 ? "project" : "projects"} total
+            {total} {total === 1 ? "project" : "projects"} &middot; ${totalPrice.toFixed(2)} total
           </p>
         </div>
         <Button onClick={() => router.push("/dashboard/projects/new")}>

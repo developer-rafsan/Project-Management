@@ -64,14 +64,21 @@ export async function GET(request) {
     const skip = (page - 1) * limit;
     const sort = { [sortBy]: sortOrder };
 
-    const [projects, total] = await Promise.all([
+    const [projects, total, priceResult] = await Promise.all([
       Project.find(filter).sort(sort).skip(skip).limit(limit).populate('assignee').lean(),
       Project.countDocuments(filter),
+      Project.aggregate([
+        { $match: filter },
+        { $group: { _id: null, totalPrice: { $sum: { $ifNull: ['$price', 0] } } } },
+      ]),
     ]);
+
+    const totalPrice = priceResult[0]?.totalPrice || 0;
 
     return NextResponse.json({
       projects,
       total,
+      totalPrice,
       page,
       totalPages: Math.ceil(total / limit),
     });
@@ -94,7 +101,6 @@ export async function POST(request) {
     const {
       orderId,
       projectName,
-      businessName,
       websiteUrl,
       websiteUsername,
       websitePassword,

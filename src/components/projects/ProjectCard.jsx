@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import {
   Card,
@@ -10,6 +11,14 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +33,8 @@ import {
   Copy,
   Archive,
   Trash2,
+  ExternalLink,
+  Check,
 } from "lucide-react"
 
 const statusVariants = {
@@ -43,6 +54,9 @@ const priorityVariants = {
 }
 
 export default function ProjectCard({ project, onAction }) {
+  const [copied, setCopied] = useState(null)
+  const [password, setPassword] = useState(null)
+  const [loadingPassword, setLoadingPassword] = useState(false)
   const handleAction = (action) => {
     onAction?.(action, project)
   }
@@ -104,9 +118,98 @@ export default function ProjectCard({ project, onAction }) {
           )}
         </div>
         <div className="flex items-center justify-between mb-2">
-          {project.businessName && (
-            <p className="text-xs text-muted-foreground truncate">{project.businessName}</p>
-          )}
+          <div>
+            {project.websiteUrl && (
+              <Dialog onOpenChange={(open) => {
+                if (open && !password && !loadingPassword) {
+                  setLoadingPassword(true)
+                  fetch(`/api/projects/${project._id}/password`)
+                    .then((res) => res.json())
+                    .then((data) => setPassword(typeof data.password === "string" ? data.password : ""))
+                    .catch(() => setPassword(""))
+                    .finally(() => setLoadingPassword(false))
+                }
+              }}>
+                <DialogTrigger render={<Button variant="ghost" size="icon-sm" className="-ml-1.5" />}>
+                  <ExternalLink className="size-3.5 text-muted-foreground" />
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Website Details</DialogTitle>
+                    <DialogDescription>{project.projectName}</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">URL</p>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={project.websiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-500 hover:underline truncate flex-1"
+                        >
+                          {project.websiteUrl}
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(project.websiteUrl)
+                            setCopied("url")
+                            setTimeout(() => setCopied(null), 1500)
+                          }}
+                        >
+                          {copied === "url" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                        </Button>
+                      </div>
+                    </div>
+                    {project.websiteUsername && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Username</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm truncate flex-1">{project.websiteUsername}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(project.websiteUsername)
+                              setCopied("username")
+                              setTimeout(() => setCopied(null), 1500)
+                            }}
+                          >
+                            {copied === "username" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Password</p>
+                      {loadingPassword ? (
+                        <div className="h-5 w-24 animate-pulse rounded bg-muted" />
+                      ) : password ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-mono truncate flex-1">{password}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(password)
+                              setCopied("password")
+                              setTimeout(() => setCopied(null), 1500)
+                            }}
+                          >
+                            {copied === "password" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
           {project.price ? (
             <p className="text-sm font-bold text-emerald-500">${project.price.toFixed(2)}</p>
           ) : null}

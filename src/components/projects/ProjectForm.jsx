@@ -27,7 +27,6 @@ import { createProject, updateProject, getUsers } from "@/actions/projectActions
 const schema = z.object({
   orderId: z.string().optional(),
   projectName: z.string().min(2, "Project name must be at least 2 characters"),
-  businessName: z.string().optional(),
   websiteUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   websiteUsername: z.string().optional(),
   websitePassword: z.string().optional(),
@@ -84,7 +83,6 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
     defaultValues: {
       orderId: initialData?.orderId || "",
       projectName: initialData?.projectName || "",
-      businessName: initialData?.businessName || "",
       websiteUrl: initialData?.websiteUrl || "",
       websiteUsername: initialData?.websiteUsername || "",
       websitePassword: initialData?.websitePassword || "",
@@ -166,11 +164,6 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
           <label className="text-sm font-medium">Project Name *</label>
           <Input {...register("projectName")} placeholder="Enter project name" />
           {errors.projectName && <p className="text-xs text-destructive">{errors.projectName.message}</p>}
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Business Name</label>
-          <Input {...register("businessName")} placeholder="Business name" />
         </div>
 
         <div className="space-y-1.5">
