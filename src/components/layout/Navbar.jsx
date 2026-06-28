@@ -1,17 +1,12 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { useState, useRef } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
+import { useSelector } from "react-redux"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
 import {
   Sheet,
   SheetContent,
@@ -19,6 +14,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useTheme } from "@/components/layout/ThemeProvider"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -32,6 +33,7 @@ import {
   FolderKanban,
   PlusCircle,
   Kanban,
+  Hash,
 } from "lucide-react"
 
 const pageTitles = {
@@ -47,9 +49,14 @@ const menuItems = [
 ]
 
 export default function Navbar() {
+  const router = useRouter()
   const pathname = usePathname()
   const { data: session } = useSession()
   const { theme, toggleTheme } = useTheme()
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const searchInputRef = useRef(null)
+  const projects = useSelector((s) => s.projects?.items || [])
 
   const title =
     Object.entries(pageTitles).find(([path]) => pathname.startsWith(path))?.[1] ||
@@ -121,6 +128,11 @@ export default function Navbar() {
           size="icon"
           className="text-muted-foreground"
           aria-label="Search"
+          onClick={() => {
+            setSearchQuery("")
+            setSearchOpen(true)
+            setTimeout(() => searchInputRef.current?.focus(), 100)
+          }}
         >
           <Search className="h-5 w-5" />
         </Button>
@@ -139,35 +151,69 @@ export default function Navbar() {
           )}
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" className="relative h-8 w-8 rounded-full p-0" />}>
-            <Avatar>
-              <AvatarImage
-                src={session?.user?.image}
-                alt={session?.user?.name || "User"}
-              />
-              <AvatarFallback>{userInitials}</AvatarFallback>
-            </Avatar>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex flex-col gap-1">
-                <p className="text-sm font-medium">
-                  {session?.user?.name || "User"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {session?.user?.email || ""}
-                </p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Avatar className="size-8 cursor-default">
+          <AvatarImage
+            src={session?.user?.image}
+            alt={session?.user?.name || "User"}
+          />
+          <AvatarFallback>{userInitials}</AvatarFallback>
+        </Avatar>
       </div>
+
+      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Search Project by Order ID</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              ref={searchInputRef}
+              placeholder="Type order ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchQuery.trim()) {
+                  const match = projects.find((p) =>
+                    p.orderId?.toLowerCase().includes(searchQuery.trim().toLowerCase())
+                  )
+                  if (match) {
+                    setSearchOpen(false)
+                    router.push(`/dashboard/projects/${match._id}`)
+                  }
+                }
+              }}
+            />
+            <div className="max-h-60 overflow-y-auto space-y-1">
+              {searchQuery.trim() &&
+                projects
+                  .filter((p) =>
+                    p.orderId?.toLowerCase().includes(searchQuery.trim().toLowerCase())
+                  )
+                  .slice(0, 10)
+                  .map((p) => (
+                    <button
+                      key={p._id}
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                      onClick={() => {
+                        setSearchOpen(false)
+                        router.push(`/dashboard/projects/${p._id}`)
+                      }}
+                    >
+                      <Hash className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="font-mono text-xs">{p.orderId || "-"}</span>
+                      <span className="text-muted-foreground truncate">{p.projectName}</span>
+                    </button>
+                  ))}
+              {searchQuery.trim() && projects.filter((p) =>
+                p.orderId?.toLowerCase().includes(searchQuery.trim().toLowerCase())
+              ).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-3">No projects found</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </header>
   )
 }

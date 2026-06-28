@@ -35,11 +35,7 @@ export default function DashboardLayout({ children }) {
         <main className="flex-1 overflow-y-auto p-6">
           {children}
           <footer className="mt-8 border-t border-border pt-4 text-center text-xs text-muted-foreground">
-            Built with{" "}
-            <span className="text-red-500" aria-label="love">
-              ❤️
-            </span>{" "}
-            by{" "}
+            Crafted by{" "}
             <a
               href="https://your-portfolio-link.com"
               target="_blank"
@@ -47,7 +43,8 @@ export default function DashboardLayout({ children }) {
               className="font-medium text-primary hover:underline"
             >
               Jahid Islam Rafsan
-            </a>
+            </a>{" "}
+            &mdash; NanoPiCode
           </footer>
         </main>
       </div>

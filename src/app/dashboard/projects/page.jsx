@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { getProjects } from "@/actions/projectActions"
+import { useSelector, useDispatch } from "react-redux"
+import { fetchProjects } from "@/lib/features/projectSlice"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -19,52 +19,70 @@ import ProjectCard from "@/components/projects/ProjectCard"
 import Pagination from "@/components/projects/Pagination"
 import { LayoutGrid, LayoutList, Plus } from "lucide-react"
 
+const PAGE_SIZE = 20
+
 export default function ProjectsPage() {
   const router = useRouter()
-  const [projects, setProjects] = useState([])
-  const [total, setTotal] = useState(0)
-  const [totalPrice, setTotalPrice] = useState(0)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [loading, setLoading] = useState(true)
+  const dispatch = useDispatch()
+  const { items: allProjects, loading, fetched } = useSelector((s) => s.projects)
+
   const [filters, setFilters] = useState({})
+  const [page, setPage] = useState(1)
   const [sortBy, setSortBy] = useState("createdAt")
   const [sortOrder, setSortOrder] = useState("desc")
   const [viewMode, setViewMode] = useState("table")
 
-  const fetchIdRef = useRef(0)
-  const isFirstLoad = useRef(true)
-  const [refreshing, setRefreshing] = useState(false)
-
   useEffect(() => {
-    const fetchId = ++fetchIdRef.current
+    if (!fetched) {
+      dispatch(fetchProjects())
+    }
+  }, [fetched, dispatch])
 
-    if (isFirstLoad.current) {
-      setLoading(true)
-    } else {
-      setRefreshing(true)
+  const filtered = useMemo(() => {
+    let list = [...allProjects]
+
+    if (filters.search) {
+      const q = filters.search.toLowerCase()
+      list = list.filter(
+        (p) =>
+          (p.orderId && p.orderId.toLowerCase().includes(q)) ||
+          (p.projectName && p.projectName.toLowerCase().includes(q)) ||
+          (p.businessName && p.businessName.toLowerCase().includes(q)) ||
+          (p.websiteUrl && p.websiteUrl.toLowerCase().includes(q))
+      )
+    }
+    if (filters.status) {
+      list = list.filter((p) => p.status === filters.status)
+    }
+    if (filters.priority) {
+      list = list.filter((p) => p.priority === filters.priority)
+    }
+    if (filters.cms) {
+      list = list.filter((p) => p.cms === filters.cms)
+    }
+    if (filters.month) {
+      list = list.filter((p) => p.currentMonth === Number(filters.month))
+    }
+    if (filters.year) {
+      list = list.filter((p) => p.currentYear === Number(filters.year))
     }
 
-    getProjects({ ...filters, page, limit: 20, sortBy, sortOrder })
-      .then((data) => {
-        if (fetchId !== fetchIdRef.current) return
-        setProjects(data.projects || [])
-        setTotal(data.total || 0)
-        setTotalPrice(data.totalPrice || 0)
-        setTotalPages(data.totalPages || 1)
-      })
-      .catch((err) => {
-        if (fetchId !== fetchIdRef.current) return
-        toast.error(err.message || "Failed to fetch projects")
-      })
-      .finally(() => {
-        if (fetchId === fetchIdRef.current) {
-          setLoading(false)
-          setRefreshing(false)
-          isFirstLoad.current = false
-        }
-      })
-  }, [filters, page, sortBy, sortOrder])
+    list.sort((a, b) => {
+      const aVal = a[sortBy]
+      const bVal = b[sortBy]
+      if (!aVal) return 1
+      if (!bVal) return -1
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      return sortOrder === "asc" ? cmp : -cmp
+    })
+
+    return list
+  }, [allProjects, filters, sortBy, sortOrder])
+
+  const total = filtered.length
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPrice = filtered.reduce((sum, p) => sum + (p.price || 0), 0)
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters)
@@ -85,6 +103,19 @@ export default function ProjectsPage() {
     setSortBy(value)
     setSortOrder("asc")
     setPage(1)
+  }
+
+  const handleAction = (action, project) => {
+    switch (action) {
+      case "favorite":
+        break
+      case "duplicate":
+        break
+      case "archive":
+        break
+      case "delete":
+        break
+    }
   }
 
   return (
@@ -151,7 +182,7 @@ export default function ProjectsPage() {
             ))}
           </div>
         )
-      ) : projects.length === 0 ? (
+      ) : paginated.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="text-muted-foreground mb-4">Project not available</p>
           <Button onClick={() => router.push("/dashboard/projects/new")}>
@@ -160,18 +191,18 @@ export default function ProjectsPage() {
           </Button>
         </div>
       ) : (
-        <div className={`transition-opacity duration-200 ${refreshing ? "opacity-50" : ""}`}>
+        <div>
           {viewMode === "table" ? (
             <ProjectTable
-              projects={projects}
+              projects={paginated}
               onSort={handleSort}
               sortBy={sortBy}
               sortOrder={sortOrder}
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {projects.map((project) => (
-                <ProjectCard key={project._id} project={project} />
+              {paginated.map((project) => (
+                <ProjectCard key={project._id} project={project} onAction={handleAction} />
               ))}
             </div>
           )}
