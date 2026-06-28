@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import dns from 'node:dns';
 
-const MONGODB_URI = project_management_MONGODB_URI;
+const MONGODB_URI = process.env.NanoPiCode_MONGODB_URI;
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
