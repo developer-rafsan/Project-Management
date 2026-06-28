@@ -20,7 +20,7 @@ export default function LoginClient() {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
           <button
             onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/20 bg-white/10 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-[0.98]"
+            className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-lg border border-white/20 bg-white/10 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-[0.98]"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -44,7 +44,7 @@ export default function LoginClient() {
           </button>
         </div>
 
-        <p className="text-center text-xs text-zinc-600">
+        <p className="text-center text-xs text-zinc-400">
           Manage your projects efficiently with NanoPiCode
         </p>
       </div>

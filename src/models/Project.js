@@ -51,6 +51,9 @@ const projectSchema = new mongoose.Schema(
     tags: {
       type: [String],
     },
+    startDate: {
+      type: Date,
+    },
     description: {
       type: String,
       default: '',

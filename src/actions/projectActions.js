@@ -60,8 +60,43 @@ export async function getUsers() {
   return handleResponse(response);
 }
 
+export async function getProjectPassword(projectId) {
+  const response = await fetch(`/api/projects/${projectId}/password`);
+  return handleResponse(response);
+}
+
 export async function getProjectUpdates(projectId) {
   const response = await fetch(`/api/projects/${projectId}/updates`);
+  return handleResponse(response);
+}
+
+export async function getProjectNotes(projectId) {
+  const response = await fetch(`/api/projects/${projectId}/notes`);
+  return handleResponse(response);
+}
+
+export async function createNote(projectId, data) {
+  const response = await fetch(`/api/projects/${projectId}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+export async function updateNote(projectId, noteId, data) {
+  const response = await fetch(`/api/projects/${projectId}/notes/${noteId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+export async function deleteNote(projectId, noteId) {
+  const response = await fetch(`/api/projects/${projectId}/notes/${noteId}`, {
+    method: 'DELETE',
+  });
   return handleResponse(response);
 }
 

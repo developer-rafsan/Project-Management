@@ -51,13 +51,19 @@ export async function PATCH(request, { params }) {
     const fields = [
       'orderId', 'projectName', 'businessName', 'websiteUrl',
       'websiteUsername', 'cms', 'priority', 'status',
-      'assignee', 'tags', 'description', 'price', 'archived', 'favorite',
+      'assignee', 'startDate', 'tags', 'description', 'price', 'archived', 'favorite',
       'currentMonth', 'currentYear',
     ];
 
     for (const field of fields) {
       if (body[field] !== undefined) {
-        updates[field] = field === 'price' ? Number(body[field]) : body[field];
+        if (field === 'price') {
+          updates[field] = Number(body[field]);
+        } else if (field === 'startDate') {
+          updates[field] = new Date(body[field]);
+        } else {
+          updates[field] = body[field];
+        }
       }
     }
 

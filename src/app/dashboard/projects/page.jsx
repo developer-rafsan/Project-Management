@@ -153,7 +153,7 @@ export default function ProjectsPage() {
         )
       ) : projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-muted-foreground mb-4">No projects found</p>
+          <p className="text-muted-foreground mb-4">Project not available</p>
           <Button onClick={() => router.push("/dashboard/projects/new")}>
             <Plus className="size-4" />
             Create Project

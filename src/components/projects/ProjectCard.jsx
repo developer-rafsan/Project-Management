@@ -216,8 +216,8 @@ export default function ProjectCard({ project, onAction }) {
         </div>
         {project.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {project.tags.map((tag) => (
-              <Badge key={tag} variant="ghost" className="text-[10px] px-1.5 py-0">
+            {project.tags.map((tag, idx) => (
+              <Badge key={`${tag}-${idx}`} variant="ghost" className="text-[10px] px-1.5 py-0">
                 {tag}
               </Badge>
             ))}

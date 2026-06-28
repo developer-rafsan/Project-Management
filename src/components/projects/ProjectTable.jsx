@@ -107,7 +107,7 @@ export default function ProjectTable({ projects = [], onSort, sortBy, sortOrder 
         {projects.length === 0 ? (
           <TableRow>
             <TableCell colSpan={columns.length} className="text-center text-muted-foreground py-8">
-              No projects found
+              Project not available
             </TableCell>
           </TableRow>
         ) : (
@@ -139,8 +139,8 @@ export default function ProjectTable({ projects = [], onSort, sortBy, sortOrder 
               <TableCell>
                 {project.tags?.length > 0 ? (
                   <div className="flex gap-1">
-                    {project.tags.slice(0, 2).map((tag) => (
-                      <Badge key={tag} variant="ghost" className="text-[10px] px-1.5">
+                    {project.tags.slice(0, 2).map((tag, idx) => (
+                      <Badge key={`${tag}-${idx}`} variant="ghost" className="text-[10px] px-1.5">
                         {tag}
                       </Badge>
                     ))}
