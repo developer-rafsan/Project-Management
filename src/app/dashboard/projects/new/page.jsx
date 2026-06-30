@@ -1,15 +1,19 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useDispatch } from "react-redux"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import ProjectForm from "@/components/projects/ProjectForm"
+import { addProject } from "@/lib/features/projectSlice"
 
 export default function NewProjectPage() {
   const router = useRouter()
+  const dispatch = useDispatch()
 
   const handleSuccess = (project) => {
-    router.push(`/dashboard/projects/${project._id}`)
+    dispatch(addProject(project))
+    router.push("/dashboard/projects")
   }
 
   return (

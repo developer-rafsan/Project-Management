@@ -28,7 +28,7 @@ export default function ProjectsPage() {
 
   const [filters, setFilters] = useState({})
   const [page, setPage] = useState(1)
-  const [sortBy, setSortBy] = useState("createdAt")
+  const [sortBy, setSortBy] = useState("startDate")
   const [sortOrder, setSortOrder] = useState("desc")
   const [viewMode, setViewMode] = useState("table")
 
@@ -145,7 +145,7 @@ export default function ProjectsPage() {
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="createdAt">Created</SelectItem>
+              <SelectItem value="startDate">Start Date</SelectItem>
               <SelectItem value="orderId">Order ID</SelectItem>
               <SelectItem value="projectName">Name</SelectItem>
               <SelectItem value="status">Status</SelectItem>

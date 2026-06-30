@@ -34,6 +34,11 @@ const projectSlice = createSlice({
       state.totalPrice = 0
       state.fetched = false
     },
+    addProject(state, action) {
+      state.items.unshift(action.payload)
+      state.total += 1
+      state.totalPrice += action.payload.price || 0
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -56,5 +61,5 @@ const projectSlice = createSlice({
   },
 })
 
-export const { clearProjects } = projectSlice.actions
+export const { clearProjects, addProject } = projectSlice.actions
 export default projectSlice.reducer

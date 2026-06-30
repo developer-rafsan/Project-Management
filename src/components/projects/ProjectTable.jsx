@@ -44,9 +44,8 @@ const columns = [
   { key: "status", label: "Status", sortable: true },
   { key: "priority", label: "Priority", sortable: true },
   { key: "cms", label: "CMS", sortable: true },
-  { key: "tags", label: "Tags", sortable: false },
   { key: "price", label: "Price", sortable: true },
-  { key: "createdAt", label: "Created", sortable: true },
+  { key: "startDate", label: "Start Date", sortable: true },
   { key: "website", label: "", sortable: false },
 ]
 
@@ -136,25 +135,11 @@ export default function ProjectTable({ projects = [], onSort, sortBy, sortOrder 
                 )}
               </TableCell>
               <TableCell>{project.cms || "-"}</TableCell>
-              <TableCell>
-                {project.tags?.length > 0 ? (
-                  <div className="flex gap-1">
-                    {project.tags.slice(0, 2).map((tag, idx) => (
-                      <Badge key={`${tag}-${idx}`} variant="ghost" className="text-[10px] px-1.5">
-                        {tag}
-                      </Badge>
-                    ))}
-                    {project.tags.length > 2 && (
-                      <span className="text-xs text-muted-foreground">+{project.tags.length - 2}</span>
-                    )}
-                  </div>
-                ) : "-"}
-              </TableCell>
               <TableCell className="font-medium">
                 {Number(project.price) ? `$${Number(project.price).toFixed(2)}` : "-"}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
-                {formatDate(project.createdAt)}
+                {formatDate(project.startDate)}
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
                 {project.websiteUrl ? (

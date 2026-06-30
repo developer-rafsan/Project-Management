@@ -47,7 +47,7 @@ export default function RecentProjects({ projects }) {
               <TableHead>Project Name</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Priority</TableHead>
-              <TableHead>Created Date</TableHead>
+              <TableHead>Start Date</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -97,7 +97,7 @@ export default function RecentProjects({ projects }) {
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {new Date(project.createdAt).toLocaleDateString()}
+                    {project.startDate ? new Date(project.startDate).toLocaleDateString() : "-"}
                   </TableCell>
                 </TableRow>
               ))

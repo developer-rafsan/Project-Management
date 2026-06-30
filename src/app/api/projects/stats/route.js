@@ -15,10 +15,14 @@ export async function GET(request) {
     await connectDB();
 
     const { searchParams } = new URL(request.url);
-    const month = parseInt(searchParams.get('month')) || new Date().getMonth() + 1;
-    const year = parseInt(searchParams.get('year')) || new Date().getFullYear();
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
+    const from = fromParam ? new Date(fromParam) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const to = toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const monthFilter = { currentMonth: month, currentYear: year };
+    const dateFilter = {
+      startDate: { $gte: from, $lte: to },
+    };
 
     const [
       totalProjects,
@@ -32,24 +36,24 @@ export async function GET(request) {
       recentUpdates,
       dailyProgress,
     ] = await Promise.all([
-      Project.countDocuments(monthFilter),
-      Project.countDocuments({ ...monthFilter, status: 'In Progress' }),
+      Project.countDocuments(dateFilter),
+      Project.countDocuments({ ...dateFilter, status: 'In Progress' }),
       Project.countDocuments({
-        ...monthFilter,
+        ...dateFilter,
         status: 'Delivered',
       }),
-      Project.countDocuments({ ...monthFilter, status: 'Pending' }),
-      Project.countDocuments({ ...monthFilter, status: 'On Hold' }),
+      Project.countDocuments({ ...dateFilter, status: 'Pending' }),
+      Project.countDocuments({ ...dateFilter, status: 'On Hold' }),
       Project.aggregate([
-        { $match: monthFilter },
+        { $match: dateFilter },
         { $group: { _id: '$status', count: { $sum: 1 } } },
       ]),
       Project.aggregate([
-        { $match: monthFilter },
+        { $match: dateFilter },
         { $group: { _id: '$status', total: { $sum: { $ifNull: ['$price', 0] } } } },
       ]),
-      Project.find(monthFilter)
-        .sort({ createdAt: -1 })
+      Project.find(dateFilter)
+        .sort({ startDate: -1 })
         .limit(10)
         .lean(),
       ProjectUpdate.find()
@@ -61,31 +65,31 @@ export async function GET(request) {
       Project.aggregate([
         {
           $match: {
-            createdAt: {
-              $gte: new Date(year, month - 1, 1),
-              $lt: new Date(year, month, 1),
-            },
+            startDate: { $gte: from, $lte: to },
           },
         },
         {
           $group: {
-            _id: { $dayOfMonth: '$createdAt' },
+            _id: {
+              year: { $year: '$startDate' },
+              month: { $month: '$startDate' },
+              day: { $dayOfMonth: '$startDate' },
+            },
             count: { $sum: 1 },
           },
         },
-        { $sort: { _id: 1 } },
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
       ]),
     ]);
-
-    const daysInMonth = new Date(year, month, 0).getDate();
 
     const chartData = {
       byStatus: statusGrouped,
       monthlyProgress: dailyProgress.map((d) => ({
-        day: d._id,
+        year: d._id.year,
+        month: d._id.month,
+        day: d._id.day,
         count: d.count,
       })),
-      daysInMonth,
     };
 
     return NextResponse.json({

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { getStats } from "@/actions/projectActions"
@@ -11,12 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 import StatsCards from "@/components/dashboard/StatsCards"
 import RevenueSummary from "@/components/dashboard/RevenueSummary"
 import RecentProjects from "@/components/dashboard/RecentProjects"
 import RecentUpdates from "@/components/dashboard/RecentUpdates"
 import StatusChart from "@/components/dashboard/StatusChart"
 import MonthlyProgressChart from "@/components/dashboard/MonthlyProgressChart"
+import { startOfMonth, endOfMonth, format, eachDayOfInterval } from "date-fns"
 
 const statusColors = {
   Pending: "#eab308",
@@ -48,15 +50,46 @@ export default function DashboardPage() {
   const now = new Date()
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
+  const [dateRange, setDateRange] = useState({
+    from: startOfMonth(now),
+    to: endOfMonth(now),
+  })
 
   const handleYearChange = (v) => {
     const y = Number(v)
     const validMonths = getAvailableMonths(y)
     setYear(y)
-    if (!validMonths.includes(month)) {
-      setMonth(validMonths[validMonths.length - 1])
-    }
+    const m = validMonths.includes(month) ? month : validMonths[validMonths.length - 1]
+    setMonth(m)
+    setDateRange({
+      from: startOfMonth(new Date(y, m - 1)),
+      to: endOfMonth(new Date(y, m - 1)),
+    })
   }
+
+  const handleMonthChange = (v) => {
+    const m = Number(v)
+    setMonth(m)
+    setDateRange({
+      from: startOfMonth(new Date(year, m - 1)),
+      to: endOfMonth(new Date(year, m - 1)),
+    })
+  }
+
+  const handleDateRangeChange = useCallback((range) => {
+    setDateRange(range)
+    if (range?.from && range?.to) {
+      const rangeFrom = new Date(range.from)
+      const rangeTo = new Date(range.to)
+      const fromStart = startOfMonth(rangeFrom)
+      const toEnd = endOfMonth(rangeTo)
+      if (+fromStart === +startOfMonth(rangeFrom) && +toEnd === +endOfMonth(rangeTo) &&
+          rangeFrom.getTime() === fromStart.getTime() && rangeTo.getTime() === toEnd.getTime()) {
+        setMonth(rangeFrom.getMonth() + 1)
+        setYear(rangeFrom.getFullYear())
+      }
+    }
+  }, [])
   const [stats, setStats] = useState(null)
   const [chartData, setChartData] = useState([])
   const [monthlyData, setMonthlyData] = useState([])
@@ -70,8 +103,16 @@ export default function DashboardPage() {
   }, [status, router])
 
   useEffect(() => {
+    if (!dateRange?.from || !dateRange?.to) return
     setLoading(true)
-    getStats({ month, year })
+    const fromStart = new Date(dateRange.from)
+    fromStart.setHours(0, 0, 0, 0)
+    const toEnd = new Date(dateRange.to)
+    toEnd.setHours(23, 59, 59, 999)
+    getStats({
+      from: fromStart.toISOString(),
+      to: toEnd.toISOString(),
+    })
       .then((data) => {
         setStats({
           totalProjects: data.total,
@@ -101,15 +142,15 @@ export default function DashboardPage() {
         const fee = delivered * 0.2
         setRevenueData({ total, delivered, inProgress, cancelled, fee, net: delivered - fee })
 
-        const daysInMonth = data.chartData?.daysInMonth || new Date(year, month, 0).getDate()
         const progressMap = {}
         ;(data.chartData?.monthlyProgress || []).forEach((d) => {
-          progressMap[d.day] = d.count
+          const key = `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`
+          progressMap[key] = d.count
         })
-        const monthly = Array.from({ length: daysInMonth }, (_, i) => {
-          const day = i + 1
-          const date = new Date(year, month - 1, day).toISOString().split("T")[0]
-          return { date, count: progressMap[day] || 0 }
+        const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
+        const monthly = days.map((day) => {
+          const key = format(day, "yyyy-MM-dd")
+          return { date: key, count: progressMap[key] || 0 }
         })
         setMonthlyData(monthly)
 
@@ -118,7 +159,7 @@ export default function DashboardPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [month, year])
+  }, [dateRange?.from, dateRange?.to])
 
   if (status === "loading") return null
 
@@ -130,11 +171,13 @@ export default function DashboardPage() {
             Welcome back, {session?.user?.name}
           </h1>
           <p className="text-muted-foreground">
-            {MONTH_NAMES[month - 1]} {year}
+            {dateRange?.from && dateRange?.to
+              ? `${format(dateRange.from, "MMM d, yyyy")} — ${format(dateRange.to, "MMM d, yyyy")}`
+              : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+          <Select value={String(month)} onValueChange={handleMonthChange}>
             <SelectTrigger className="w-[140px]">
               <SelectValue>{MONTH_NAMES[month - 1]}</SelectValue>
             </SelectTrigger>
@@ -154,6 +197,7 @@ export default function DashboardPage() {
               ))}
             </SelectContent>
           </Select>
+          <DateRangePicker value={dateRange} onChange={handleDateRangeChange} />
         </div>
       </div>
 
