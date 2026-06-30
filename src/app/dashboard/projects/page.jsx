@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSelector, useDispatch } from "react-redux"
 import { fetchProjects } from "@/lib/features/projectSlice"
+import { startOfMonth, endOfMonth } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 import ProjectFilters from "@/components/projects/ProjectFilters"
 import ProjectTable from "@/components/projects/ProjectTable"
 import ProjectCard from "@/components/projects/ProjectCard"
@@ -26,7 +28,12 @@ export default function ProjectsPage() {
   const dispatch = useDispatch()
   const { items: allProjects, loading, fetched } = useSelector((s) => s.projects)
 
+  const now = new Date()
   const [filters, setFilters] = useState({})
+  const [dateRange, setDateRange] = useState({
+    from: startOfMonth(now),
+    to: endOfMonth(now),
+  })
   const [page, setPage] = useState(1)
   const [sortBy, setSortBy] = useState("startDate")
   const [sortOrder, setSortOrder] = useState("desc")
@@ -60,11 +67,14 @@ export default function ProjectsPage() {
     if (filters.cms) {
       list = list.filter((p) => p.cms === filters.cms)
     }
-    if (filters.month) {
-      list = list.filter((p) => p.currentMonth === Number(filters.month))
-    }
-    if (filters.year) {
-      list = list.filter((p) => p.currentYear === Number(filters.year))
+    if (dateRange?.from || dateRange?.to) {
+      list = list.filter((p) => {
+        if (!p.startDate) return false
+        const d = new Date(p.startDate)
+        if (dateRange.from && d < dateRange.from) return false
+        if (dateRange.to && d > dateRange.to) return false
+        return true
+      })
     }
 
     list.sort((a, b) => {
@@ -77,7 +87,7 @@ export default function ProjectsPage() {
     })
 
     return list
-  }, [allProjects, filters, sortBy, sortOrder])
+  }, [allProjects, filters, sortBy, sortOrder, dateRange])
 
   const total = filtered.length
   const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -139,7 +149,8 @@ export default function ProjectsPage() {
           onFilterChange={handleFilterChange}
           onSearch={handleSearch}
         />
-        <div className="flex items-center gap-2 ml-auto">
+        <DateRangePicker value={dateRange} onChange={setDateRange} />
+        <div className="flex items-center gap-2">
           <Select value={sortBy} onValueChange={handleSortByChange}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Sort by" />

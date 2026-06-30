@@ -35,8 +35,20 @@ export async function GET(request) {
 
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
-    if (month) filter.currentMonth = parseInt(month);
-    if (year) filter.currentYear = parseInt(year);
+    if (month || year) {
+      const y = year ? parseInt(year) : new Date().getFullYear();
+      const m = month ? parseInt(month) : 1;
+      const startOfMonth = new Date(y, m - 1, 1);
+      const endOfMonth = new Date(y, m, 0, 23, 59, 59, 999);
+      if (month) {
+        filter.startDate = { $gte: startOfMonth, $lte: endOfMonth };
+      } else {
+        filter.startDate = {
+          $gte: new Date(y, 0, 1),
+          $lte: new Date(y, 11, 31, 23, 59, 59, 999),
+        };
+      }
+    }
     if (cms) filter.cms = cms;
     if (tags) {
       filter.tags = { $in: tags.split(',').map((t) => t.trim()) };

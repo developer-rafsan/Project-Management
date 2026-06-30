@@ -18,7 +18,7 @@ function DateRangePicker({ value, onChange, className }) {
       <PopoverTrigger
         className={cn(
           buttonVariants({ variant: "outline" }),
-          "w-[260px] justify-start text-left font-normal text-sm",
+          "w-full sm:w-[240px] justify-start text-left font-normal text-sm",
           !value?.from && "text-muted-foreground",
           className
         )}
@@ -33,6 +33,12 @@ function DateRangePicker({ value, onChange, className }) {
           onSelect={onChange}
           initialFocus
           numberOfMonths={2}
+          captionLayout="dropdown"
+          fromYear={2022}
+          toYear={new Date().getFullYear()}
+          classNames={{
+            month_caption: "flex justify-center pt-1 relative items-center w-full gap-[10px]",
+          }}
         />
       </PopoverContent>
     </Popover>

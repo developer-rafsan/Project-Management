@@ -1,16 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { getStats } from "@/actions/projectActions"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import StatsCards from "@/components/dashboard/StatsCards"
 import RevenueSummary from "@/components/dashboard/RevenueSummary"
@@ -29,67 +22,15 @@ const statusColors = {
   Cancelled: "#ef4444",
 }
 
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-]
-
-const CURRENT_YEAR = new Date().getFullYear()
-const CURRENT_MONTH = new Date().getMonth() + 1
-const YEARS = Array.from({ length: CURRENT_YEAR - 2022 + 1 }, (_, i) => 2022 + i)
-
-function getAvailableMonths(selectedYear) {
-  if (selectedYear < CURRENT_YEAR) return Array.from({ length: 12 }, (_, i) => i + 1)
-  return Array.from({ length: CURRENT_MONTH }, (_, i) => i + 1)
-}
-
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
   const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(now.getFullYear())
   const [dateRange, setDateRange] = useState({
     from: startOfMonth(now),
     to: endOfMonth(now),
   })
-
-  const handleYearChange = (v) => {
-    const y = Number(v)
-    const validMonths = getAvailableMonths(y)
-    setYear(y)
-    const m = validMonths.includes(month) ? month : validMonths[validMonths.length - 1]
-    setMonth(m)
-    setDateRange({
-      from: startOfMonth(new Date(y, m - 1)),
-      to: endOfMonth(new Date(y, m - 1)),
-    })
-  }
-
-  const handleMonthChange = (v) => {
-    const m = Number(v)
-    setMonth(m)
-    setDateRange({
-      from: startOfMonth(new Date(year, m - 1)),
-      to: endOfMonth(new Date(year, m - 1)),
-    })
-  }
-
-  const handleDateRangeChange = useCallback((range) => {
-    setDateRange(range)
-    if (range?.from && range?.to) {
-      const rangeFrom = new Date(range.from)
-      const rangeTo = new Date(range.to)
-      const fromStart = startOfMonth(rangeFrom)
-      const toEnd = endOfMonth(rangeTo)
-      if (+fromStart === +startOfMonth(rangeFrom) && +toEnd === +endOfMonth(rangeTo) &&
-          rangeFrom.getTime() === fromStart.getTime() && rangeTo.getTime() === toEnd.getTime()) {
-        setMonth(rangeFrom.getMonth() + 1)
-        setYear(rangeFrom.getFullYear())
-      }
-    }
-  }, [])
   const [stats, setStats] = useState(null)
   const [chartData, setChartData] = useState([])
   const [monthlyData, setMonthlyData] = useState([])
@@ -176,29 +117,7 @@ export default function DashboardPage() {
               : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={String(month)} onValueChange={handleMonthChange}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue>{MONTH_NAMES[month - 1]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableMonths(year).map((m) => (
-                <SelectItem key={m} value={String(m)}>{MONTH_NAMES[m - 1]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={String(year)} onValueChange={handleYearChange}>
-            <SelectTrigger className="w-[110px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {YEARS.filter((y) => y <= CURRENT_YEAR).map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <DateRangePicker value={dateRange} onChange={handleDateRangeChange} />
-        </div>
+        <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
       {loading ? (
