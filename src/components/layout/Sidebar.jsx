@@ -12,11 +12,15 @@ import {
   Kanban,
   LogOut,
   X,
+  StickyNote,
+  Settings,
 } from "lucide-react"
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
+  { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ]
 
 export default function Sidebar({ isOpen, onToggle }) {

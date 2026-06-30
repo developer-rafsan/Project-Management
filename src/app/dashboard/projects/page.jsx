@@ -7,13 +7,6 @@ import { fetchProjects } from "@/lib/features/projectSlice"
 import { startOfMonth, endOfMonth } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import ProjectFilters from "@/components/projects/ProjectFilters"
 import ProjectTable from "@/components/projects/ProjectTable"
@@ -35,8 +28,6 @@ export default function ProjectsPage() {
     to: endOfMonth(now),
   })
   const [page, setPage] = useState(1)
-  const [sortBy, setSortBy] = useState("startDate")
-  const [sortOrder, setSortOrder] = useState("desc")
   const [viewMode, setViewMode] = useState("table")
 
   useEffect(() => {
@@ -77,17 +68,8 @@ export default function ProjectsPage() {
       })
     }
 
-    list.sort((a, b) => {
-      const aVal = a[sortBy]
-      const bVal = b[sortBy]
-      if (!aVal) return 1
-      if (!bVal) return -1
-      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0
-      return sortOrder === "asc" ? cmp : -cmp
-    })
-
     return list
-  }, [allProjects, filters, sortBy, sortOrder, dateRange])
+  }, [allProjects, filters, dateRange])
 
   const total = filtered.length
   const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -101,17 +83,6 @@ export default function ProjectsPage() {
 
   const handleSearch = (search) => {
     setFilters((prev) => ({ ...prev, search: search || undefined }))
-    setPage(1)
-  }
-
-  const handleSort = (key, order) => {
-    setSortBy(key)
-    setSortOrder(order)
-  }
-
-  const handleSortByChange = (value) => {
-    setSortBy(value)
-    setSortOrder("asc")
     setPage(1)
   }
 
@@ -130,39 +101,28 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
           <p className="text-sm text-muted-foreground">
             {total} {total === 1 ? "project" : "projects"} &middot; ${totalPrice.toFixed(2)} total
           </p>
         </div>
-        <Button onClick={() => router.push("/dashboard/projects/new")}>
+        <Button onClick={() => router.push("/dashboard/projects/new")} className="w-full sm:w-auto">
           <Plus className="size-4" />
-          Create Project
+          <span className="sm:hidden">New Project</span>
+          <span className="hidden sm:inline">Create Project</span>
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <ProjectFilters
           filters={filters}
           onFilterChange={handleFilterChange}
           onSearch={handleSearch}
         />
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
         <div className="flex items-center gap-2">
-          <Select value={sortBy} onValueChange={handleSortByChange}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="startDate">Start Date</SelectItem>
-              <SelectItem value="orderId">Order ID</SelectItem>
-              <SelectItem value="projectName">Name</SelectItem>
-              <SelectItem value="status">Status</SelectItem>
-              <SelectItem value="priority">Priority</SelectItem>
-            </SelectContent>
-          </Select>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
           <Button
             variant="outline"
             size="icon"
@@ -196,7 +156,7 @@ export default function ProjectsPage() {
       ) : paginated.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="text-muted-foreground mb-4">Project not available</p>
-          <Button onClick={() => router.push("/dashboard/projects/new")}>
+          <Button onClick={() => router.push("/dashboard/projects/new")} className="w-full sm:w-auto">
             <Plus className="size-4" />
             Create Project
           </Button>
@@ -206,9 +166,6 @@ export default function ProjectsPage() {
           {viewMode === "table" ? (
             <ProjectTable
               projects={paginated}
-              onSort={handleSort}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

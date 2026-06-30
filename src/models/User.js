@@ -14,6 +14,10 @@ const userSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    monthStartDay: {
+      type: Number,
+      default: 1,
+    },
   },
   { timestamps: true }
 );

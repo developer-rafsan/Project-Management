@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, Copy, Check } from "lucide-react"
+import { ExternalLink, Copy, Check } from "lucide-react"
 
 const statusVariants = {
   "Pending": "secondary",
@@ -39,41 +39,21 @@ const priorityVariants = {
 }
 
 const columns = [
-  { key: "orderId", label: "Order ID", sortable: true },
-  { key: "projectName", label: "Project Name", sortable: true },
-  { key: "status", label: "Status", sortable: true },
-  { key: "priority", label: "Priority", sortable: true },
-  { key: "cms", label: "CMS", sortable: true },
-  { key: "price", label: "Price", sortable: true },
-  { key: "startDate", label: "Start Date", sortable: true },
-  { key: "website", label: "", sortable: false },
+  { key: "orderId", label: "Order ID" },
+  { key: "projectName", label: "Project Name" },
+  { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+  { key: "cms", label: "CMS" },
+  { key: "price", label: "Price" },
+  { key: "startDate", label: "Start Date" },
+  { key: "website", label: "" },
 ]
 
-function SortIcon({ columnKey, sortBy, sortOrder }) {
-  if (sortBy !== columnKey) {
-    return <ArrowUpDown className="size-3 ml-1 opacity-30" />
-  }
-  return sortOrder === "asc" ? (
-    <ArrowUp className="size-3 ml-1" />
-  ) : (
-    <ArrowDown className="size-3 ml-1" />
-  )
-}
-
-export default function ProjectTable({ projects = [], onSort, sortBy, sortOrder }) {
+export default function ProjectTable({ projects = [] }) {
   const router = useRouter()
   const [copied, setCopied] = useState(null)
   const [passwords, setPasswords] = useState({})
   const [loadingPasswords, setLoadingPasswords] = useState({})
-
-  const handleSort = (key) => {
-    if (!onSort) return
-    if (sortBy === key) {
-      onSort(key, sortOrder === "asc" ? "desc" : "asc")
-    } else {
-      onSort(key, "asc")
-    }
-  }
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "-"
@@ -91,13 +71,13 @@ export default function ProjectTable({ projects = [], onSort, sortBy, sortOrder 
           {columns.map((col) => (
             <TableHead
               key={col.key}
-              className={col.sortable ? "cursor-pointer select-none" : ""}
-              onClick={() => col.sortable && handleSort(col.key)}
+              className={
+                col.key === "priority" || col.key === "cms" || col.key === "startDate" || col.key === "website"
+                  ? "hidden md:table-cell"
+                  : ""
+              }
             >
-              <span className="inline-flex items-center">
-                {col.label}
-                {col.sortable && <SortIcon columnKey={col.key} sortBy={sortBy} sortOrder={sortOrder} />}
-              </span>
+              {col.label}
             </TableHead>
           ))}
         </TableRow>
@@ -127,21 +107,21 @@ export default function ProjectTable({ projects = [], onSort, sortBy, sortOrder 
                   </Badge>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 {project.priority && (
                   <Badge variant={priorityVariants[project.priority] || "default"}>
                     {project.priority}
                   </Badge>
                 )}
               </TableCell>
-              <TableCell>{project.cms || "-"}</TableCell>
+              <TableCell className="hidden md:table-cell">{project.cms || "-"}</TableCell>
               <TableCell className="font-medium">
                 {Number(project.price) ? `$${Number(project.price).toFixed(2)}` : "-"}
               </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
+              <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                 {formatDate(project.startDate)}
               </TableCell>
-              <TableCell onClick={(e) => e.stopPropagation()}>
+              <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                 {project.websiteUrl ? (
                   <Dialog onOpenChange={(open) => {
                     if (open && !passwords[project._id] && !loadingPasswords[project._id]) {
