@@ -10,15 +10,7 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +24,13 @@ import {
   Trash2,
   ExternalLink,
   Check,
+  Globe,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const statusVariants = {
   "Pending": "secondary",
@@ -49,31 +47,86 @@ const priorityVariants = {
   "Urgent": "destructive",
 }
 
-const ProjectCard = memo(function ProjectCard({ project, onAction }) {
+const ProjectCard = memo(function ProjectCard({ project, index, onAction }) {
   const [copied, setCopied] = useState(null)
   const [password, setPassword] = useState(null)
   const [loadingPassword, setLoadingPassword] = useState(false)
+  const [passwordChecked, setPasswordChecked] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
   const handleAction = (action) => {
     onAction?.(action, project)
   }
 
+  const fetchPassword = async () => {
+    if (password !== null) return
+    setLoadingPassword(true)
+    try {
+      const res = await fetch(`/api/projects/${project._id}/password`)
+      const data = await res.json()
+      setPassword(typeof data.password === "string" ? data.password : "")
+    } catch {
+      setPassword("")
+    } finally {
+      setLoadingPassword(false)
+      setPasswordChecked(true)
+    }
+  }
+
+  const handleCopy = (value, key) => {
+    navigator.clipboard.writeText(value)
+    setCopied(key)
+    setTimeout(() => setCopied(null), 1500)
+  }
+
   return (
-    <Card className="group relative overflow-hidden hover:shadow-md transition-all duration-200">
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
-      <CardHeader className="pb-2 sm:pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="truncate text-sm sm:text-base">
-              <Link href={`/dashboard/projects/${project._id}`} className="hover:text-primary transition-colors">
-                {project.projectName}
-              </Link>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              {project.orderId ? `#${project.orderId}` : "No Order ID"}
-            </CardDescription>
+    <Card className="group relative overflow-hidden transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <CardTitle className="truncate text-sm sm:text-base font-bold">
+                <Link href={`/dashboard/projects/${project._id}`} className="hover:text-primary transition-colors uppercase">
+                  {project.orderId
+                    ? `${project.orderId}_${project.projectName}`
+                    : project.projectName}
+                </Link>
+              </CardTitle>
+              <button
+                onClick={() => handleCopy(
+                  project.orderId
+                    ? `${project.orderId}_${project.projectName}`
+                    : project.projectName,
+                  "title"
+                )}
+                className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                title="Copy title"
+              >
+                {copied === "title" ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
+              </button>
+              {project.price ? (
+                <span className="text-xs font-bold text-emerald-500 bg-emerald-500/15 rounded-md px-1.5 py-0.5 ring-1 ring-emerald-500/20">
+                  ${project.price.toFixed(2)}
+                </span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+              {project.status && (
+                <Badge variant={statusVariants[project.status] || "secondary"} className="text-[11px] font-semibold px-2 py-0.5">
+                  {project.status}
+                </Badge>
+              )}
+              {project.priority && (
+                <Badge variant={priorityVariants[project.priority] || "default"} className="text-[11px] font-semibold px-2 py-0.5">
+                  {project.priority}
+                </Badge>
+              )}
+              {project.cms && (
+                <Badge variant="outline" className="text-[11px] font-semibold px-2 py-0.5">{project.cms}</Badge>
+              )}
+            </div>
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="-mr-1.5" />}>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="-mr-1.5 mt-0.5" />}>
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -90,126 +143,88 @@ const ProjectCard = memo(function ProjectCard({ project, onAction }) {
           </DropdownMenu>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-          {project.status && (
-            <Badge variant={statusVariants[project.status] || "secondary"} className="text-[10px] sm:text-xs px-1.5 sm:px-2">
-              {project.status}
-            </Badge>
-          )}
-          {project.priority && (
-            <Badge variant={priorityVariants[project.priority] || "default"} className="text-[10px] sm:text-xs px-1.5 sm:px-2">
-              {project.priority}
-            </Badge>
-          )}
-          {project.cms && (
-            <Badge variant="outline" className="text-[10px] sm:text-xs">{project.cms}</Badge>
-          )}
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            {project.websiteUrl && (
-              <Dialog onOpenChange={(open) => {
-                if (open && !password && !loadingPassword) {
-                  setLoadingPassword(true)
-                  fetch(`/api/projects/${project._id}/password`)
-                    .then((res) => res.json())
-                    .then((data) => setPassword(typeof data.password === "string" ? data.password : ""))
-                    .catch(() => setPassword(""))
-                    .finally(() => setLoadingPassword(false))
-                }
-              }}>
-                <DialogTrigger render={<Button variant="ghost" size="icon-sm" className="-ml-1.5" />}>
-                  <ExternalLink className="size-3.5 text-muted-foreground" />
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Website Details</DialogTitle>
-                    <DialogDescription>{project.projectName}</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">URL</p>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={project.websiteUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-500 hover:underline truncate flex-1"
-                        >
-                          {project.websiteUrl}
-                        </a>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => {
-                            navigator.clipboard.writeText(project.websiteUrl)
-                            setCopied("url")
-                            setTimeout(() => setCopied(null), 1500)
-                          }}
-                        >
-                          {copied === "url" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                        </Button>
-                      </div>
-                    </div>
-                    {project.websiteUsername && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Username</p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm truncate flex-1">{project.websiteUsername}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => {
-                              navigator.clipboard.writeText(project.websiteUsername)
-                              setCopied("username")
-                              setTimeout(() => setCopied(null), 1500)
-                            }}
-                          >
-                            {copied === "username" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Password</p>
-                      {loadingPassword ? (
-                        <div className="h-5 w-24 animate-pulse rounded bg-muted" />
-                      ) : password ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-mono truncate flex-1">{password}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => {
-                              navigator.clipboard.writeText(password)
-                              setCopied("password")
-                              setTimeout(() => setCopied(null), 1500)
-                            }}
-                          >
-                            {copied === "password" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-          {project.price ? (
-            <p className="text-sm font-bold text-emerald-500">${project.price.toFixed(2)}</p>
-          ) : null}
-        </div>
+      <CardContent className="pt-0 space-y-1.5">
+        {project.businessName && (
+          <div className="text-xs text-muted-foreground truncate">{project.businessName}</div>
+        )}
         {project.tags?.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2.5 pt-2.5 border-t border-border/50">
+          <div className="flex flex-wrap gap-1 justify-end">
             {project.tags.map((tag, idx) => (
               <Badge key={`${tag}-${idx}`} variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
                 {tag}
               </Badge>
             ))}
+          </div>
+        )}
+
+        {project.websiteUrl && (
+          <div className="rounded-lg border bg-card p-2.5 space-y-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center justify-center size-6 rounded-md bg-primary/10 shrink-0">
+                <Globe className="size-3 text-primary" />
+              </div>
+              <a
+                href={project.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline truncate flex-1"
+              >
+                {project.websiteUrl}
+              </a>
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => handleCopy(project.websiteUrl, "url")}
+                  title="Copy URL"
+                  className="opacity-60 hover:opacity-100 transition-opacity"
+                >
+                  {copied === "url" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                </Button>
+                <a
+                  href={project.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(buttonVariants({ variant: "ghost", size: "icon-xs" }), "opacity-60 hover:opacity-100 transition-opacity")}
+                >
+                  <ExternalLink className="size-3" />
+                </a>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {project.websiteUsername && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1">
+                  <User className="size-3 shrink-0" />
+                  <span className="truncate max-w-20">{project.websiteUsername}</span>
+                  <button onClick={() => handleCopy(project.websiteUsername, "username")} className="hover:text-foreground transition-colors shrink-0">
+                    {copied === "username" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                  </button>
+                </div>
+              )}
+              {password && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1">
+                  <Lock className="size-3 shrink-0" />
+                  <span className="font-mono truncate max-w-16">
+                    {showPwd ? password : "\u2022\u2022\u2022\u2022\u2022\u2022"}
+                  </span>
+                  <button onClick={() => setShowPwd(!showPwd)} className="hover:text-foreground transition-colors shrink-0" title={showPwd ? "Hide" : "Show"}>
+                    {showPwd ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                  </button>
+                  <button onClick={() => handleCopy(password, "password")} className="hover:text-foreground transition-colors shrink-0" title="Copy Password">
+                    {copied === "password" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                  </button>
+                </div>
+              )}
+              {!passwordChecked && !loadingPassword && (
+                <button onClick={fetchPassword} className="text-xs text-muted-foreground hover:text-primary bg-muted/50 rounded-md px-2 py-1 transition-colors">
+                  <Lock className="size-3 inline mr-1" />
+                  Show Password
+                </button>
+              )}
+              {loadingPassword && (
+                <div className="h-6 w-24 animate-pulse rounded-md bg-muted" />
+              )}
+            </div>
           </div>
         )}
       </CardContent>

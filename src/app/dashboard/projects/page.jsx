@@ -328,8 +328,8 @@ export default function ProjectsPage() {
         </div>
       ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {paginated.map((project) => (
-            <ProjectCard key={project._id} project={project} onAction={handleCardAction} />
+          {paginated.map((project, idx) => (
+            <ProjectCard key={project._id} project={project} index={(page - 1) * PAGE_SIZE + idx + 1} onAction={handleCardAction} />
           ))}
         </div>
       ) : (

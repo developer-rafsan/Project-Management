@@ -150,6 +150,25 @@ export default function ProjectDetailPage() {
     }
   }
 
+  const handleTogglePassword = useCallback(async () => {
+    if (showPassword) {
+      setShowPassword(false)
+    } else if (decryptedPassword) {
+      setShowPassword(true)
+    } else {
+      setPasswordLoading(true)
+      try {
+        const res = await getProjectPassword(params.id)
+        setDecryptedPassword(res.password)
+        setShowPassword(true)
+      } catch {
+        setShowPassword(false)
+      } finally {
+        setPasswordLoading(false)
+      }
+    }
+  }, [params.id, showPassword, decryptedPassword])
+
   if (loading) {
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -176,25 +195,6 @@ export default function ProjectDetailPage() {
       </div>
     )
   }
-
-  const handleTogglePassword = useCallback(async () => {
-    if (showPassword) {
-      setShowPassword(false)
-    } else if (decryptedPassword) {
-      setShowPassword(true)
-    } else {
-      setPasswordLoading(true)
-      try {
-        const res = await getProjectPassword(params.id)
-        setDecryptedPassword(res.password)
-        setShowPassword(true)
-      } catch {
-        setShowPassword(false)
-      } finally {
-        setPasswordLoading(false)
-      }
-    }
-  }, [params.id, showPassword, decryptedPassword])
 
   if (!project) {
     return (

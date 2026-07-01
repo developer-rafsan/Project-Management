@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
@@ -8,6 +9,15 @@ import { clearProjects } from "@/lib/features/projectSlice"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { version } from "../../../package.json"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import {
   LayoutDashboard,
   FolderKanban,
@@ -23,9 +33,11 @@ const menuItems = [
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: null, label: "Logout", icon: LogOut, logout: true },
 ]
 
 export default function Sidebar({ isOpen, onToggle }) {
+  const [logoutOpen, setLogoutOpen] = useState(false)
   const pathname = usePathname()
   const dispatch = useDispatch()
 
@@ -57,6 +69,20 @@ export default function Sidebar({ isOpen, onToggle }) {
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
+
+            if (item.logout) {
+              return (
+                <button
+                  key="logout"
+                  onClick={() => setLogoutOpen(true)}
+                  className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </button>
+              )
+            }
+
             return (
               <Link key={item.href} href={item.href}>
                 <div
@@ -82,18 +108,34 @@ export default function Sidebar({ isOpen, onToggle }) {
         </nav>
       </div>
 
-      <div className="border-t border-border p-3">
-        <button
-          onClick={() => {
-            dispatch(clearProjects())
-            signOut({ callbackUrl: "/login" })
-          }}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          Logout
-        </button>
+      <div className="border-t border-border px-3 pb-3 pt-2">
+        <p className="text-[10px] font-medium text-primary/70 text-center uppercase">NanoPiCode V{version}</p>
       </div>
+
+      <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Logout</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to log out?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogoutOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                dispatch(clearProjects())
+                signOut({ callbackUrl: "/login" })
+              }}
+            >
+              Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 

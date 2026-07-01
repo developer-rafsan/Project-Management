@@ -20,7 +20,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog"
+import { version } from "../../../package.json"
 
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -51,6 +54,7 @@ const menuItems = [
   { href: "/dashboard/projects/new", label: "Create Project", icon: PlusCircle },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: null, label: "Logout", icon: LogOut, logout: true },
 ]
 
 export default function Navbar() {
@@ -59,6 +63,7 @@ export default function Navbar() {
   const { data: session } = useSession()
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [logoutOpen, setLogoutOpen] = useState(false)
   const searchInputRef = useRef(null)
   const dispatch = useDispatch()
   const projects = useSelector((s) => s.projects?.items || [])
@@ -103,6 +108,20 @@ export default function Navbar() {
                 {menuItems.map((item) => {
                   const Icon = item.icon
                   const isActive = pathname === item.href
+
+                  if (item.logout) {
+                    return (
+                      <button
+                        key="logout"
+                        onClick={() => setLogoutOpen(true)}
+                        className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {item.label}
+                      </button>
+                    )
+                  }
+
                   return (
                     <Link key={item.href} href={item.href}>
                       <div
@@ -127,21 +146,37 @@ export default function Navbar() {
                 })}
               </nav>
             </div>
-            <div className="border-t border-white/10 p-3">
-              <button
-                onClick={() => {
-                  dispatch(clearProjects())
-                  signOut({ callbackUrl: "/login" })
-                }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
-              >
-                <LogOut className="h-4 w-4 shrink-0" />
-                Logout
-              </button>
+            <div className="border-t border-white/10 px-3 pb-3 pt-2">
+              <p className="text-[10px] font-medium text-emerald-400/70 text-center uppercase">NanoPiCode V{version}</p>
             </div>
           </div>
         </SheetContent>
       </Sheet>
+
+      <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Logout</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to log out?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogoutOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                dispatch(clearProjects())
+                signOut({ callbackUrl: "/login" })
+              }}
+            >
+              Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <h1 className="text-lg font-semibold">{title}</h1>
 
