@@ -6,7 +6,6 @@ import { CalendarArrowUp } from "lucide-react"
 const statusColors = {
   Pending: "bg-yellow-500",
   "In Progress": "bg-indigo-500",
-  "Waiting Client": "bg-purple-500",
   Delivered: "bg-emerald-500",
   "On Hold": "bg-orange-500",
   Cancelled: "bg-red-500",

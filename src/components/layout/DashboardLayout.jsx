@@ -32,9 +32,9 @@ export default function DashboardLayout({ children }) {
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {children}
-          <footer className="mt-8 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+          <footer className="mt-8 border-t border-border pt-4 pb-2 text-center text-xs text-muted-foreground">
             Crafted by{" "}
             <a
               href="https://your-portfolio-link.com"

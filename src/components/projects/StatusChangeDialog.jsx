@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 
-const STATUSES = ["Pending", "In Progress", "Waiting Client", "Delivered", "On Hold", "Cancelled"]
+const STATUSES = ["Pending", "In Progress", "Delivered", "On Hold", "Cancelled"]
 
 export function StatusChangeDialog({
   open,

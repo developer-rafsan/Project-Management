@@ -18,19 +18,19 @@ export default function NewProjectPage() {
 
   return (
     <div className="space-y-4">
-      <nav className="flex items-center gap-1 text-sm text-muted-foreground">
-        <Link href="/dashboard" className="hover:text-foreground">Dashboard</Link>
-        <ChevronRight className="size-4" />
-        <Link href="/dashboard/projects" className="hover:text-foreground">Projects</Link>
-        <ChevronRight className="size-4" />
-        <span className="text-foreground">New</span>
+      <nav className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground truncate">
+        <Link href="/dashboard" className="hover:text-foreground shrink-0">Dashboard</Link>
+        <ChevronRight className="size-3 sm:size-4 shrink-0" />
+        <Link href="/dashboard/projects" className="hover:text-foreground shrink-0">Projects</Link>
+        <ChevronRight className="size-3 sm:size-4 shrink-0" />
+        <span className="text-foreground truncate">New</span>
       </nav>
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Create New Project</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Create New Project</h1>
       </div>
 
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <ProjectForm onSuccess={handleSuccess} />
       </div>
     </div>

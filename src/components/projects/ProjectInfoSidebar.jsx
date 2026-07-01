@@ -33,7 +33,6 @@ const priorityVariants = {
 const statusVariants = {
   Pending: "secondary",
   "In Progress": "default",
-  "Waiting Client": "outline",
   Delivered: "secondary",
   "On Hold": "destructive",
   Cancelled: "destructive",

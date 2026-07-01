@@ -5,6 +5,10 @@ import { authOptions } from '@/lib/auth';
 import Project from '@/models/Project';
 import ProjectUpdate from '@/models/ProjectUpdate';
 
+function getEffectiveMonthYear(project) {
+  return { month: project.currentMonth, year: project.currentYear }
+}
+
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,95 +20,92 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const allParam = searchParams.get('all');
+    const selectedMonth = parseInt(searchParams.get('selectedMonth'));
+    const selectedYear = parseInt(searchParams.get('selectedYear'));
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
-    const dateFilter = {
+    const ownershipFilter = {
       $or: [
         { createdBy: session.user.id },
         { assignee: session.user.id },
       ],
     };
-    if (allParam !== 'true') {
-      const fromDate = fromParam ? new Date(fromParam) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const toDate = toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
-      if (fromDate.getMonth() === toDate.getMonth() && fromDate.getFullYear() === toDate.getFullYear()) {
-        dateFilter.currentMonth = fromDate.getMonth() + 1;
-        dateFilter.currentYear = fromDate.getFullYear();
-      } else {
-        const months = [];
-        let d = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
-        while (d <= toDate) {
-          months.push({ currentMonth: d.getMonth() + 1, currentYear: d.getFullYear() });
-          d.setMonth(d.getMonth() + 1);
-        }
-        dateFilter.$or = months;
-      }
+
+    let fromDate, toDate;
+    if (allParam !== 'true' && !selectedMonth) {
+      fromDate = fromParam ? new Date(fromParam) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      toDate = toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
     }
 
-    const [
-      totalProjects,
-      runningProjects,
-      completedProjects,
-      pendingProjects,
-      onHoldProjects,
-      statusGrouped,
-      priceByStatus,
-      recentProjects,
-      recentUpdates,
-      dailyProgress,
-    ] = await Promise.all([
-      Project.countDocuments(dateFilter),
-      Project.countDocuments({ ...dateFilter, status: 'In Progress' }),
-      Project.countDocuments({
-        ...dateFilter,
-        status: 'Delivered',
-      }),
-      Project.countDocuments({ ...dateFilter, status: 'Pending' }),
-      Project.countDocuments({ ...dateFilter, status: 'On Hold' }),
-      Project.aggregate([
-        { $match: dateFilter },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-      ]),
-      Project.aggregate([
-        { $match: dateFilter },
-        { $group: { _id: '$status', total: { $sum: { $ifNull: ['$price', 0] } } } },
-      ]),
-      Project.find(dateFilter)
+    let dbFilter = { ...ownershipFilter };
+    if (selectedMonth) {
+      dbFilter.currentMonth = selectedMonth;
+      dbFilter.currentYear = selectedYear;
+    }
+
+    const allProjects = await Project.find(dbFilter)
+      .select('_id status price startDate createdAt currentMonth currentYear')
+      .lean();
+
+    let filtered = allProjects;
+    if (allParam !== 'true' && !selectedMonth) {
+      filtered = allProjects.filter(p => {
+        const eff = getEffectiveMonthYear(p)
+        const pd = new Date(eff.year, eff.month - 1, 1)
+        const monthEnd = new Date(eff.year, eff.month, 0, 23, 59, 59, 999)
+        if (fromDate && monthEnd < fromDate) return false
+        if (toDate && pd > toDate) return false
+        return true
+      })
+    }
+
+    const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, statusMap, priceMap, dayMap } = filtered.reduce((acc, p) => {
+      acc.totalProjects++
+      if (p.status === 'In Progress') acc.runningProjects++
+      if (p.status === 'Delivered') acc.completedProjects++
+      if (p.status === 'Pending') acc.pendingProjects++
+      if (p.status === 'On Hold') acc.onHoldProjects++
+      if (p.status) {
+        acc.statusMap[p.status] = (acc.statusMap[p.status] || 0) + 1
+        acc.priceMap[p.status] = (acc.priceMap[p.status] || 0) + (p.price || 0)
+      }
+      if (p.startDate) {
+        const d = new Date(p.startDate)
+        const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+        acc.dayMap[key] = (acc.dayMap[key] || 0) + 1
+      }
+      return acc
+    }, { totalProjects: 0, runningProjects: 0, completedProjects: 0, pendingProjects: 0, onHoldProjects: 0, statusMap: {}, priceMap: {}, dayMap: {} })
+
+    const statusGrouped = Object.entries(statusMap).map(([key, count]) => ({ _id: key, count }))
+    const priceByStatus = Object.entries(priceMap).map(([key, total]) => ({ _id: key, total }))
+
+    const dailyProgress = Object.entries(dayMap)
+      .map(([key, count]) => {
+        const [year, month, day] = key.split('-').map(Number)
+        return { _id: { year, month, day }, count }
+      })
+      .sort((a, b) => {
+        if (a._id.year !== b._id.year) return a._id.year - b._id.year
+        if (a._id.month !== b._id.month) return a._id.month - b._id.month
+        return a._id.day - b._id.day
+      })
+
+    const filteredIds = filtered.map(p => p._id)
+
+    const [recentProjects, recentUpdates] = await Promise.all([
+      Project.find({ _id: { $in: filteredIds } })
         .sort({ createdAt: -1 })
         .limit(10)
         .lean(),
-      ProjectUpdate.find()
+      ProjectUpdate.find({ project: { $in: filteredIds } })
         .sort({ createdAt: -1 })
         .limit(10)
         .populate('project', 'projectName')
         .populate('updatedBy', 'name')
         .lean(),
-      Project.aggregate([
-        { $match: dateFilter },
-        {
-          $group: {
-            _id: {
-              year: { $year: '$startDate' },
-              month: { $month: '$startDate' },
-              day: { $dayOfMonth: '$startDate' },
-            },
-            count: { $sum: 1 },
-          },
-        },
-        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
-      ]),
-    ]);
-
-    const chartData = {
-      byStatus: statusGrouped,
-      monthlyProgress: dailyProgress.map((d) => ({
-        year: d._id.year,
-        month: d._id.month,
-        day: d._id.day,
-        count: d.count,
-      })),
-    };
+    ])
 
     return NextResponse.json({
       total: totalProjects,
@@ -115,7 +116,15 @@ export async function GET(request) {
       priceByStatus,
       recentProjects,
       recentUpdates,
-      chartData,
+      chartData: {
+        byStatus: statusGrouped,
+        monthlyProgress: dailyProgress.map((d) => ({
+          year: d._id.year,
+          month: d._id.month,
+          day: d._id.day,
+          count: d.count,
+        })),
+      },
     });
   } catch (error) {
     console.error('GET /api/projects/stats error:', error);

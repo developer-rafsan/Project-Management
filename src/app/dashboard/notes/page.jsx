@@ -88,23 +88,23 @@ export default function NotesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Notes</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Notes</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {notes.length} {notes.length === 1 ? "note" : "notes"}
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="w-full sm:w-auto">
           <Plus className="size-4" />
           Add Note
         </Button>
       </div>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-32 rounded-xl border bg-card p-4 animate-pulse">
+            <div key={i} className="h-28 sm:h-32 rounded-xl border bg-card p-4 animate-pulse">
               <div className="h-5 w-3/4 mb-3 rounded bg-muted" />
               <div className="h-4 w-full mb-2 rounded bg-muted" />
               <div className="h-4 w-2/3 rounded bg-muted" />
@@ -112,15 +112,15 @@ export default function NotesPage() {
           ))}
         </div>
       ) : notes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
           <p className="text-muted-foreground mb-4">No notes yet</p>
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} className="w-full sm:w-auto">
             <Plus className="size-4" />
             Create your first note
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {notes.map((note) => (
             <div
               key={note._id}
@@ -163,7 +163,7 @@ export default function NotesPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editNote ? "Edit Note" : "New Note"}</DialogTitle>
           </DialogHeader>
@@ -186,11 +186,11 @@ export default function NotesPage() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={submitting}>
+            <Button onClick={handleSave} disabled={submitting} className="w-full sm:w-auto">
               {submitting && <Loader2 className="size-4 animate-spin" />}
               {editNote ? "Update" : "Create"}
             </Button>
@@ -199,16 +199,16 @@ export default function NotesPage() {
       </Dialog>
 
       <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Note</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Are you sure you want to delete this note? This action cannot be undone.
           </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setDeleteId(null)} className="w-full sm:w-auto">Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} className="w-full sm:w-auto">Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

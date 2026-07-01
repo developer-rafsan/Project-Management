@@ -1,59 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { memo } from "react"
 import { useRouter } from "next/navigation"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { ExternalLink, Copy, Check } from "lucide-react"
 
-const statusVariants = {
-  "Pending": "secondary",
-  "In Progress": "default",
-  "Waiting Client": "outline",
-  "Delivered": "secondary",
-  "On Hold": "destructive",
-  "Cancelled": "destructive",
+const statusStyles = {
+  "Pending": "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800",
+  "In Progress": "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",
+  "Delivered": "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800",
+  "On Hold": "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800",
+  "Cancelled": "bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900/20 dark:text-zinc-400 dark:border-zinc-800",
 }
 
-const priorityVariants = {
-  "Low": "secondary",
-  "Medium": "default",
-  "High": "outline",
-  "Urgent": "destructive",
+const priorityStyles = {
+  "Low": "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400 dark:border-slate-800",
+  "Medium": "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",
+  "High": "bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800",
+  "Urgent": "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800",
 }
 
-const columns = [
-  { key: "orderId", label: "Order ID" },
-  { key: "projectName", label: "Project Name" },
-  { key: "status", label: "Status" },
-  { key: "priority", label: "Priority" },
-  { key: "cms", label: "CMS" },
-  { key: "price", label: "Price" },
-  { key: "startDate", label: "Start Date" },
-  { key: "website", label: "" },
-]
-
-export default function ProjectTable({ projects = [] }) {
+const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageSize = 20 }) {
   const router = useRouter()
-  const [copied, setCopied] = useState(null)
-  const [passwords, setPasswords] = useState({})
-  const [loadingPasswords, setLoadingPasswords] = useState({})
+  const startSerial = (page - 1) * pageSize + 1
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "-"
@@ -64,161 +32,125 @@ export default function ProjectTable({ projects = [] }) {
     })
   }
 
+  if (projects.length === 0) {
+    return <div className="text-center text-muted-foreground py-12">Project not available</div>
+  }
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          {columns.map((col) => (
-            <TableHead
-              key={col.key}
-              className={
-                col.key === "priority" || col.key === "cms" || col.key === "startDate" || col.key === "website"
-                  ? "hidden md:table-cell"
-                  : ""
-              }
-            >
-              {col.label}
-            </TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {projects.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={columns.length} className="text-center text-muted-foreground py-8">
-              Project not available
-            </TableCell>
-          </TableRow>
-        ) : (
-          projects.map((project) => (
-            <TableRow
-              key={project._id}
-              className="cursor-pointer"
-              onClick={() => router.push(`/dashboard/projects/${project._id}`)}
-            >
-              <TableCell className="font-mono text-xs">
+    <div className="space-y-2 sm:space-y-1.5">
+      {/* Desktop header row */}
+      <div className="hidden sm:grid sm:grid-cols-[36px_120px_1fr_120px_100px_90px_100px_120px] gap-3 px-4 sm:px-6 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <span className="text-center">#</span>
+        <span>Order ID</span>
+        <span>Project Name</span>
+        <span>Status</span>
+        <span className="hidden md:block">Priority</span>
+        <span className="hidden lg:block">CMS</span>
+        <span>Price</span>
+        <span className="hidden lg:block text-right">Start Date</span>
+      </div>
+
+      {projects.map((project, idx) => (
+        <div
+          key={project._id}
+          className="rounded-xl border bg-card cursor-pointer transition-all hover:border-primary/30 hover:shadow-sm active:scale-[0.99]"
+          onClick={() => router.push(`/dashboard/projects/${project._id}`)}
+        >
+          {/* Mobile layout */}
+          <div className="block sm:hidden p-4">
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-gradient-to-br from-primary/10 to-primary/5 text-sm font-semibold text-primary/70">
+                  {project.projectName?.charAt(0)?.toUpperCase() || "P"}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate">{project.projectName}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {project.websiteUrl?.replace(/^https?:\/\//, "") || "-"}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                #{startSerial + idx}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+              <span className="font-mono text-muted-foreground">
                 {project.orderId || "-"}
-              </TableCell>
-              <TableCell className="font-medium">{project.projectName}</TableCell>
-              <TableCell>
-                {project.status && (
-                  <Badge variant={statusVariants[project.status] || "secondary"}>
-                    {project.status}
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell className="hidden md:table-cell">
-                {project.priority && (
-                  <Badge variant={priorityVariants[project.priority] || "default"}>
-                    {project.priority}
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell className="hidden md:table-cell">{project.cms || "-"}</TableCell>
-              <TableCell className="font-medium">
-                {Number(project.price) ? `$${Number(project.price).toFixed(2)}` : "-"}
-              </TableCell>
-              <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                {formatDate(project.startDate)}
-              </TableCell>
-              <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
-                {project.websiteUrl ? (
-                  <Dialog onOpenChange={(open) => {
-                    if (open && !passwords[project._id] && !loadingPasswords[project._id]) {
-                      setLoadingPasswords((prev) => ({ ...prev, [project._id]: true }))
-                      fetch(`/api/projects/${project._id}/password`)
-                        .then((res) => res.json())
-                        .then((data) => setPasswords((prev) => ({ ...prev, [project._id]: typeof data.password === "string" ? data.password : "" })))
-                        .catch(() => setPasswords((prev) => ({ ...prev, [project._id]: "" })))
-                        .finally(() => setLoadingPasswords((prev) => ({ ...prev, [project._id]: false })))
-                    }
-                  }}>
-                    <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-                      <ExternalLink className="size-4" />
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Website Details</DialogTitle>
-                        <DialogDescription>{project.projectName}</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-1">URL</p>
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={project.websiteUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-500 hover:underline truncate flex-1"
-                            >
-                              {project.websiteUrl}
-                            </a>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => {
-                                navigator.clipboard.writeText(project.websiteUrl)
-                                setCopied("url")
-                                setTimeout(() => setCopied(null), 1500)
-                              }}
-                            >
-                              {copied === "url" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                            </Button>
-                          </div>
-                        </div>
-                        {project.websiteUsername && (
-                          <div>
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Username</p>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm truncate flex-1">{project.websiteUsername}</span>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(project.websiteUsername)
-                                  setCopied("username")
-                                  setTimeout(() => setCopied(null), 1500)
-                                }}
-                              >
-                                {copied === "username" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-1">Password</p>
-                          {loadingPasswords[project._id] ? (
-                            <div className="h-5 w-24 animate-pulse rounded bg-muted" />
-                          ) : passwords[project._id] ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-mono truncate flex-1">{passwords[project._id]}</span>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(passwords[project._id])
-                                  setCopied("password")
-                                  setTimeout(() => setCopied(null), 1500)
-                                }}
-                              >
-                                {copied === "password" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">-</span>
-                          )}
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
+              </span>
+              {project.status && (
+                <Badge variant="outline" className={`text-[11px] font-medium px-2 py-0 ${statusStyles[project.status] || ""}`}>
+                  {project.status}
+                </Badge>
+              )}
+              {project.priority && (
+                <Badge variant="outline" className={`text-[11px] font-medium px-2 py-0 ${priorityStyles[project.priority] || ""}`}>
+                  {project.priority}
+                </Badge>
+              )}
+              <span className="text-muted-foreground">{project.cms || "-"}</span>
+              {Number(project.price) ? (
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  ${Number(project.price).toFixed(2)}
+                </span>
+              ) : null}
+              <span className="text-muted-foreground">{formatDate(project.startDate)}</span>
+            </div>
+          </div>
+
+          {/* Desktop layout */}
+          <div className="hidden sm:grid sm:grid-cols-[36px_120px_1fr_120px_100px_90px_100px_120px] items-center gap-3 px-4 sm:px-6 py-4">
+            <span className="text-sm text-muted-foreground tabular-nums text-center">
+              {startSerial + idx}
+            </span>
+            <span className="font-mono text-sm text-muted-foreground truncate">
+              {project.orderId || "-"}
+            </span>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-gradient-to-br from-primary/10 to-primary/5 text-xs font-semibold text-primary/70">
+                {project.projectName?.charAt(0)?.toUpperCase() || "P"}
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium text-sm truncate">{project.projectName}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {project.websiteUrl?.replace(/^https?:\/\//, "") || "-"}
+                </p>
+              </div>
+            </div>
+            <div>
+              {project.status && (
+                <Badge variant="outline" className={`text-xs font-medium px-2 py-0.5 ${statusStyles[project.status] || ""}`}>
+                  {project.status}
+                </Badge>
+              )}
+            </div>
+            <div className="hidden md:block">
+              {project.priority && (
+                <Badge variant="outline" className={`text-xs font-medium px-2 py-0.5 ${priorityStyles[project.priority] || ""}`}>
+                  {project.priority}
+                </Badge>
+              )}
+            </div>
+            <div className="hidden lg:block text-sm text-muted-foreground truncate">
+              {project.cms || "-"}
+            </div>
+            <div>
+              {Number(project.price) ? (
+                <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  ${Number(project.price).toFixed(2)}
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">-</span>
+              )}
+            </div>
+            <div className="hidden lg:block text-sm text-muted-foreground text-right whitespace-nowrap">
+              {formatDate(project.startDate)}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   )
-}
+})
+
+export default ProjectTable

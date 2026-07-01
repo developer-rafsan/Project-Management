@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, memo } from "react"
 import Link from "next/link"
 import {
   Card,
@@ -37,7 +37,6 @@ import {
 const statusVariants = {
   "Pending": "secondary",
   "In Progress": "default",
-  "Waiting Client": "outline",
   "Delivered": "secondary",
   "On Hold": "destructive",
   "Cancelled": "destructive",
@@ -50,7 +49,7 @@ const priorityVariants = {
   "Urgent": "destructive",
 }
 
-export default function ProjectCard({ project, onAction }) {
+const ProjectCard = memo(function ProjectCard({ project, onAction }) {
   const [copied, setCopied] = useState(null)
   const [password, setPassword] = useState(null)
   const [loadingPassword, setLoadingPassword] = useState(false)
@@ -59,21 +58,22 @@ export default function ProjectCard({ project, onAction }) {
   }
 
   return (
-    <Card className="group relative">
-      <CardHeader>
+    <Card className="group relative overflow-hidden hover:shadow-md transition-all duration-200">
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <CardHeader className="pb-2 sm:pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <CardTitle className="truncate">
-              <Link href={`/dashboard/projects/${project._id}`} className="hover:underline">
+            <CardTitle className="truncate text-sm sm:text-base">
+              <Link href={`/dashboard/projects/${project._id}`} className="hover:text-primary transition-colors">
                 {project.projectName}
               </Link>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               {project.orderId ? `#${project.orderId}` : "No Order ID"}
             </CardDescription>
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="-mr-1.5" />}>
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -90,23 +90,23 @@ export default function ProjectCard({ project, onAction }) {
           </DropdownMenu>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+      <CardContent className="pt-0">
+        <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
           {project.status && (
-            <Badge variant={statusVariants[project.status] || "secondary"}>
+            <Badge variant={statusVariants[project.status] || "secondary"} className="text-[10px] sm:text-xs px-1.5 sm:px-2">
               {project.status}
             </Badge>
           )}
           {project.priority && (
-            <Badge variant={priorityVariants[project.priority] || "default"}>
+            <Badge variant={priorityVariants[project.priority] || "default"} className="text-[10px] sm:text-xs px-1.5 sm:px-2">
               {project.priority}
             </Badge>
           )}
           {project.cms && (
-            <Badge variant="outline">{project.cms}</Badge>
+            <Badge variant="outline" className="text-[10px] sm:text-xs">{project.cms}</Badge>
           )}
         </div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between">
           <div>
             {project.websiteUrl && (
               <Dialog onOpenChange={(open) => {
@@ -204,9 +204,9 @@ export default function ProjectCard({ project, onAction }) {
           ) : null}
         </div>
         {project.tags?.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 mt-2.5 pt-2.5 border-t border-border/50">
             {project.tags.map((tag, idx) => (
-              <Badge key={`${tag}-${idx}`} variant="ghost" className="text-[10px] px-1.5 py-0">
+              <Badge key={`${tag}-${idx}`} variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
                 {tag}
               </Badge>
             ))}
@@ -215,4 +215,6 @@ export default function ProjectCard({ project, onAction }) {
       </CardContent>
     </Card>
   )
-}
+})
+
+export default ProjectCard

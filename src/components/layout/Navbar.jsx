@@ -84,45 +84,60 @@ export default function Navbar() {
         </SheetTrigger>
         <SheetContent side="left" className="w-64 p-0">
           <div className="flex h-full flex-col bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-950">
-            <SheetHeader className="flex h-16 flex-row items-center gap-2 border-b border-white/10 px-6">
-              <Kanban className="h-6 w-6 text-emerald-400" />
-              <SheetTitle className="text-lg font-bold text-white">
-                NanoPiCode
-              </SheetTitle>
+            <SheetHeader className="flex h-16 flex-row items-center gap-2.5 border-b border-white/10 px-6">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/15">
+                <Kanban className="h-5 w-5 text-emerald-400" />
+              </div>
+              <div>
+                <SheetTitle className="text-base font-bold text-white">
+                  NanoPiCode
+                </SheetTitle>
+                <p className="text-[10px] text-zinc-500 leading-tight">Project Manager</p>
+              </div>
             </SheetHeader>
-            <nav className="flex-1 space-y-1 px-3 py-4">
-              {menuItems.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href
-                return (
-                  <Link key={item.href} href={item.href}>
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        "w-full justify-start gap-3 text-sm font-medium",
-                        "text-zinc-400 hover:text-white hover:bg-white/10",
-                        isActive && "bg-white/10 text-white shadow-sm"
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </Button>
-                  </Link>
-                )
-              })}
-            </nav>
+            <div className="flex-1 flex flex-col py-3 px-3">
+              <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                Menu
+              </p>
+              <nav className="space-y-0.5">
+                {menuItems.map((item) => {
+                  const Icon = item.icon
+                  const isActive = pathname === item.href
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <div
+                        className={cn(
+                          "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                          isActive
+                            ? "bg-emerald-500/15 text-emerald-400"
+                            : "text-zinc-400 hover:text-white hover:bg-white/10"
+                        )}
+                      >
+                        {isActive && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-emerald-400" />
+                        )}
+                        <Icon className={cn(
+                          "h-4 w-4 shrink-0 transition-colors",
+                          isActive ? "text-emerald-400" : "text-zinc-500 group-hover:text-white"
+                        )} />
+                        {item.label}
+                      </div>
+                    </Link>
+                  )
+                })}
+              </nav>
+            </div>
             <div className="border-t border-white/10 p-3">
-              <Button
-                variant="ghost"
+              <button
                 onClick={() => {
                   dispatch(clearProjects())
                   signOut({ callbackUrl: "/login" })
                 }}
-                className="w-full justify-start gap-3 text-sm font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-4 w-4 shrink-0" />
                 Logout
-              </Button>
+              </button>
             </div>
           </div>
         </SheetContent>

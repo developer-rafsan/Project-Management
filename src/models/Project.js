@@ -31,7 +31,6 @@ const projectSchema = new mongoose.Schema(
     },
     cms: {
       type: String,
-      enum: ['WordPress', 'WooCommerce', 'Shopify', 'Webflow', 'Next.js', 'React', 'Laravel', 'PHP', 'Custom', 'HTML', 'Other'],
       default: 'Other',
     },
     priority: {
@@ -41,7 +40,7 @@ const projectSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'In Progress', 'Waiting Client', 'Delivered', 'On Hold', 'Cancelled'],
+      enum: ['Pending', 'In Progress', 'Delivered', 'On Hold', 'Cancelled'],
       default: 'Pending',
     },
     assignee: {

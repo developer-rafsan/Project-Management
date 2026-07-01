@@ -40,19 +40,19 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-4 sm:space-y-6 max-w-full sm:max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">Customize your experience</p>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Settings</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Customize your experience</p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Appearance</CardTitle>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Appearance</CardTitle>
           <CardDescription>Toggle between light and dark mode</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <span className="text-sm font-medium">
               {theme === "dark" ? "Dark Mode" : "Light Mode"}
             </span>
@@ -60,7 +60,7 @@ export default function SettingsPage() {
               variant="outline"
               size="sm"
               onClick={toggleTheme}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               {theme === "dark" ? (
                 <Sun className="size-4" />
@@ -74,16 +74,16 @@ export default function SettingsPage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Project View</CardTitle>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Project View</CardTitle>
           <CardDescription>Choose how projects are displayed in the list</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <span className="text-sm font-medium">
               {viewMode === "list" ? "List View" : "Grid View"}
             </span>
-            <div className="flex rounded-lg border p-0.5">
+            <div className="flex rounded-lg border p-0.5 w-fit">
               <Button
                 variant={viewMode === "list" ? "default" : "ghost"}
                 size="sm"
@@ -108,14 +108,14 @@ export default function SettingsPage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Month Start Day</CardTitle>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Month Start Day</CardTitle>
           <CardDescription>
             Set the day from which a month starts counting (e.g., 25 means Dec 25 &ndash; Jan 24 counts as January)
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
+        <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <span className="text-sm font-medium">Day of month</span>
             <Input
               type="number"
@@ -123,7 +123,7 @@ export default function SettingsPage() {
               max={28}
               value={monthStartDay}
               onChange={handleMonthStartDayChange}
-              className="w-20 text-center"
+              className="w-full sm:w-20 text-center"
             />
           </div>
         </CardContent>

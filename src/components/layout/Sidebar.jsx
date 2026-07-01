@@ -32,52 +32,67 @@ export default function Sidebar({ isOpen, onToggle }) {
   const content = (
     <>
       <div className="flex h-16 items-center justify-between border-b border-border px-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <Kanban className="h-6 w-6 text-emerald-500" />
-          <span className="text-lg font-bold text-foreground">NanoPiCode</span>
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/15">
+            <Kanban className="h-5 w-5 text-emerald-500" />
+          </div>
+          <div>
+            <span className="text-base font-bold text-foreground">NanoPiCode</span>
+            <p className="text-[10px] text-muted-foreground leading-tight">Project Manager</p>
+          </div>
         </Link>
         <button
           onClick={onToggle}
-          className="flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground lg:hidden"
+          className="flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent lg:hidden transition-colors"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {menuItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href
-          return (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start gap-3 text-sm font-medium",
-                  "text-muted-foreground hover:text-foreground hover:bg-accent",
-                  isActive && "bg-accent text-foreground shadow-sm"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Button>
-            </Link>
-          )
-        })}
-      </nav>
+      <div className="flex-1 flex flex-col py-3 px-3">
+        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          Menu
+        </p>
+        <nav className="space-y-0.5">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+            return (
+              <Link key={item.href} href={item.href}>
+                <div
+                  className={cn(
+                    "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  )}
+                >
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-primary" />
+                  )}
+                  <Icon className={cn(
+                    "h-4 w-4 shrink-0 transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                  )} />
+                  {item.label}
+                </div>
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
 
       <div className="border-t border-border p-3">
-        <Button
-          variant="ghost"
+        <button
           onClick={() => {
             dispatch(clearProjects())
             signOut({ callbackUrl: "/login" })
           }}
-          className="w-full justify-start gap-3 text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-4 w-4 shrink-0" />
           Logout
-        </Button>
+        </button>
       </div>
     </>
   )

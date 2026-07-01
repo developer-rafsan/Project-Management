@@ -45,6 +45,14 @@ const projectSlice = createSlice({
         state.items[idx] = action.payload
       }
     },
+    removeProject(state, action) {
+      const idx = state.items.findIndex((p) => p._id === action.payload)
+      if (idx !== -1) {
+        const removed = state.items.splice(idx, 1)[0]
+        state.total -= 1
+        state.totalPrice -= removed.price || 0
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -67,5 +75,5 @@ const projectSlice = createSlice({
   },
 })
 
-export const { clearProjects, addProject, updateProjectInStore } = projectSlice.actions
+export const { clearProjects, addProject, updateProjectInStore, removeProject } = projectSlice.actions
 export default projectSlice.reducer

@@ -53,6 +53,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [decryptedPassword, setDecryptedPassword] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
+  const [passwordLoading, setPasswordLoading] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
@@ -70,9 +71,6 @@ export default function ProjectDetailPage() {
       ])
       setProject(projectData)
       setUpdates(updatesData || [])
-      getProjectPassword(params.id)
-        .then((res) => setDecryptedPassword(res.password))
-        .catch(() => {})
     } catch (err) {
       toast.error(err.message || "Failed to load project")
     } finally {
@@ -139,6 +137,8 @@ export default function ProjectDetailPage() {
       })
       setProject(updated)
       dispatch(updateProjectInStore(updated))
+      const freshUpdates = await getProjectUpdates(params.id)
+      setUpdates(freshUpdates || [])
       setStatusOpen(false)
       setNewStatus("")
       setStatusNote("")
@@ -152,15 +152,16 @@ export default function ProjectDetailPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-4 w-64" />
+      <div className="space-y-4 sm:space-y-6">
+        <Skeleton className="h-4 w-48 sm:w-64" />
         <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-32" />
+          <div className="space-y-2 min-w-0 flex-1">
+            <Skeleton className="h-7 sm:h-8 w-48 sm:w-64" />
+            <Skeleton className="h-4 w-24 sm:w-32" />
           </div>
+          <Skeleton className="h-9 w-24 shrink-0 rounded-lg" />
         </div>
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-20 w-full rounded-xl" />
@@ -176,6 +177,25 @@ export default function ProjectDetailPage() {
     )
   }
 
+  const handleTogglePassword = useCallback(async () => {
+    if (showPassword) {
+      setShowPassword(false)
+    } else if (decryptedPassword) {
+      setShowPassword(true)
+    } else {
+      setPasswordLoading(true)
+      try {
+        const res = await getProjectPassword(params.id)
+        setDecryptedPassword(res.password)
+        setShowPassword(true)
+      } catch {
+        setShowPassword(false)
+      } finally {
+        setPasswordLoading(false)
+      }
+    }
+  }, [params.id, showPassword, decryptedPassword])
+
   if (!project) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
@@ -190,11 +210,13 @@ export default function ProjectDetailPage() {
   const passwordDisplay = decryptedPassword || null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <ProjectBreadcrumbs projectName={project.projectName} />
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <ProjectTitle project={project} />
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <ProjectTitle project={project} />
+        </div>
         <ProjectActions
           project={project}
           actionLoading={actionLoading}
@@ -209,30 +231,30 @@ export default function ProjectDetailPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {project.description && (
-            <div className="rounded-xl border bg-card p-5">
+            <div className="rounded-xl border bg-card p-4 sm:p-5">
               <div className="flex items-center gap-2 mb-3">
-                <FileText className="size-4 text-muted-foreground" />
+                <FileText className="size-4 text-muted-foreground shrink-0" />
                 <h2 className="text-sm font-semibold">Description</h2>
               </div>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{project.description}</p>
             </div>
           )}
 
-          <div className="rounded-xl border bg-card p-5">
+          <div className="rounded-xl border bg-card p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-4">
-              <div className="size-2 rounded-full bg-primary" />
+              <div className="size-2 rounded-full bg-primary shrink-0" />
               <h2 className="text-sm font-semibold">Timeline</h2>
             </div>
             <ProjectTimeline updates={updates} />
           </div>
 
           {project.transferHistory?.length > 0 && (
-            <div className="rounded-xl border bg-card p-5">
+            <div className="rounded-xl border bg-card p-4 sm:p-5">
               <div className="flex items-center gap-2 mb-4">
-                <CalendarArrowUp className="size-4 text-muted-foreground" />
+                <CalendarArrowUp className="size-4 text-muted-foreground shrink-0" />
                 <h2 className="text-sm font-semibold">Transfer History</h2>
               </div>
               <ProjectTransferHistory transferHistory={project.transferHistory} />
@@ -242,13 +264,13 @@ export default function ProjectDetailPage() {
           <Notes projectId={project._id} />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <ProjectDetailsCard project={project} />
           <ProjectWebsiteCard
             project={project}
             passwordDisplay={passwordDisplay}
             showPassword={showPassword}
-            onTogglePassword={() => setShowPassword(!showPassword)}
+            onTogglePassword={handleTogglePassword}
           />
           <ProjectMetaCard project={project} />
           <ProjectTagsCard tags={project.tags} />

@@ -5,24 +5,24 @@ import { Kanban } from "lucide-react"
 
 export default function LoginClient() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 p-4">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-emerald-500/20 p-3">
-              <Kanban className="h-8 w-8 text-emerald-400" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 px-4 sm:px-6">
+      <div className="w-full max-w-sm space-y-6 sm:space-y-8">
+        <div className="flex flex-col items-center gap-3 sm:gap-4 text-center">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="rounded-xl bg-emerald-500/20 p-2.5 sm:p-3">
+              <Kanban className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-400" />
             </div>
-            <h1 className="text-3xl font-bold text-white">NanoPiCode</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">NanoPiCode</h1>
           </div>
-          <p className="text-sm text-zinc-400">Project Management System</p>
+          <p className="text-xs sm:text-sm text-zinc-400">Project Management System</p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
+        <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-xl">
           <button
             onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-            className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-lg border border-white/20 bg-white/10 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-[0.98]"
+            className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-lg border border-white/20 bg-white/10 px-6 py-2.5 sm:py-3 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-[0.98]"
           >
-            <svg className="h-5 w-5" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
                 fill="#4285F4"
