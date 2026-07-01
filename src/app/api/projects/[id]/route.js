@@ -22,9 +22,10 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    const assigneeId = project.assignee?._id?.toString() || project.assignee?.toString();
     if (
       project.createdBy?.toString() !== session.user.id &&
-      project.assignee?.toString() !== session.user.id
+      assigneeId !== session.user.id
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

@@ -15,7 +15,7 @@ export async function GET(request, { params }) {
     await connectDB();
 
     const { id } = await params;
-    const project = await Project.findById(id).select('websitePassword createdBy').lean();
+    const project = await Project.findById(id).select('websitePassword createdBy assignee').lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
