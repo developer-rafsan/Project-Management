@@ -4,15 +4,23 @@ import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSelector, useDispatch } from "react-redux"
 import { fetchProjects } from "@/lib/features/projectSlice"
-import { startOfMonth, endOfMonth } from "date-fns"
+import { startOfMonth, endOfMonth, format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import ProjectFilters from "@/components/projects/ProjectFilters"
 import ProjectTable from "@/components/projects/ProjectTable"
 import ProjectCard from "@/components/projects/ProjectCard"
 import Pagination from "@/components/projects/Pagination"
-import { LayoutGrid, LayoutList, Plus } from "lucide-react"
+import { isDateInMonthRange, getMonthRange } from "@/lib/dateUtils"
+import { Plus } from "lucide-react"
 
 const PAGE_SIZE = 20
 
@@ -23,18 +31,31 @@ export default function ProjectsPage() {
 
   const now = new Date()
   const [filters, setFilters] = useState({})
+  const [filterMode, setFilterMode] = useState("month")
   const [dateRange, setDateRange] = useState({
     from: startOfMonth(now),
     to: endOfMonth(now),
   })
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
   const [page, setPage] = useState(1)
-  const [viewMode, setViewMode] = useState("table")
+  const [viewMode, setViewMode] = useState("list")
+  const [startDay] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("monthStartDay")
+      return saved ? Number(saved) : 1
+    }
+    return 1
+  })
 
   useEffect(() => {
-    if (!fetched) {
-      dispatch(fetchProjects())
-    }
+    if (!fetched) dispatch(fetchProjects())
   }, [fetched, dispatch])
+
+  useEffect(() => {
+    const saved = localStorage.getItem("projectViewMode")
+    if (saved === "list" || saved === "grid") setViewMode(saved)
+  }, [])
 
   const filtered = useMemo(() => {
     let list = [...allProjects]
@@ -58,7 +79,12 @@ export default function ProjectsPage() {
     if (filters.cms) {
       list = list.filter((p) => p.cms === filters.cms)
     }
-    if (dateRange?.from || dateRange?.to) {
+    if (filterMode === "month") {
+      list = list.filter((p) => {
+        if (!p.startDate) return false
+        return isDateInMonthRange(new Date(p.startDate), selectedYear, selectedMonth, startDay)
+      })
+    } else if (filterMode === "range" && (dateRange?.from || dateRange?.to)) {
       list = list.filter((p) => {
         if (!p.startDate) return false
         const d = new Date(p.startDate)
@@ -75,7 +101,7 @@ export default function ProjectsPage() {
     })
 
     return list
-  }, [allProjects, filters, dateRange])
+  }, [allProjects, filters, filterMode, selectedMonth, selectedYear, dateRange])
 
   const total = filtered.length
   const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -107,7 +133,7 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
           <p className="text-sm text-muted-foreground">
@@ -116,70 +142,113 @@ export default function ProjectsPage() {
         </div>
         <Button onClick={() => router.push("/dashboard/projects/new")} className="w-full sm:w-auto">
           <Plus className="size-4" />
-          Create Project
+          <span className="sm:hidden">New Project</span>
+          <span className="hidden sm:inline">Create Project</span>
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <ProjectFilters
           filters={filters}
           onFilterChange={handleFilterChange}
           onSearch={handleSearch}
         />
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <DateRangePicker value={dateRange} onChange={setDateRange} />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
-            title={viewMode === "grid" ? "Table view" : "Grid view"}
-            className="shrink-0"
-          >
-            {viewMode === "grid" ? <LayoutList className="size-4" /> : <LayoutGrid className="size-4" />}
-          </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border p-0.5">
+            <Button
+              variant={filterMode === "month" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => { setFilterMode("month"); setPage(1) }}
+              className="rounded-md px-3"
+            >
+              Month
+            </Button>
+            <Button
+              variant={filterMode === "range" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => { setFilterMode("range"); setPage(1) }}
+              className="rounded-md px-3"
+            >
+              Range
+            </Button>
+            <Button
+              variant={filterMode === "all" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => { setFilterMode("all"); setPage(1) }}
+              className="rounded-md px-3"
+            >
+              All
+            </Button>
+          </div>
+          {filterMode === "month" && (
+            <div className="flex gap-2">
+              <Select value={String(selectedMonth)} onValueChange={(v) => { setSelectedMonth(Number(v)); setPage(1) }}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Month">
+                    {format(new Date(2024, selectedMonth - 1), "MMMM")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      {format(new Date(2024, m - 1), "MMMM")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); setPage(1) }}>
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: new Date().getFullYear() - 2021 + 1 }, (_, i) => 2022 + i).map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {filterMode === "range" && (
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
+          )}
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {filterMode === "month"
+              ? (() => {
+                  const { from, to } = getMonthRange(selectedYear, selectedMonth, startDay)
+                  return `${format(from, "MMM d")} — ${format(to, "MMM d, yyyy")}`
+                })()
+              : filterMode === "range" && dateRange?.from && dateRange?.to
+                ? `${format(dateRange.from, "MMM d")} — ${format(dateRange.to, "MMM d, yyyy")}`
+                : filterMode === "all"
+                  ? "All projects"
+                  : ""}
+          </span>
         </div>
       </div>
 
       {loading ? (
-        viewMode === "table" ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-xl border bg-card p-4">
-                <Skeleton className="h-5 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2 mb-4" />
-                <Skeleton className="h-4 w-full mb-2" />
-                <Skeleton className="h-4 w-2/3" />
-              </div>
-            ))}
-          </div>
-        )
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full rounded-lg" />
+          ))}
+        </div>
       ) : paginated.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="text-muted-foreground mb-4">Project not available</p>
-          <Button onClick={() => router.push("/dashboard/projects/new")}>
+          <Button onClick={() => router.push("/dashboard/projects/new")} className="w-full sm:w-auto">
             <Plus className="size-4" />
             Create Project
           </Button>
         </div>
+      ) : viewMode === "grid" ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {paginated.map((project) => (
+            <ProjectCard key={project._id} project={project} onAction={handleAction} />
+          ))}
+        </div>
       ) : (
         <div>
-          {viewMode === "table" ? (
-            <ProjectTable
-              projects={paginated}
-            />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {paginated.map((project) => (
-                <ProjectCard key={project._id} project={project} onAction={handleAction} />
-              ))}
-            </div>
-          )}
+          <ProjectTable projects={paginated} />
         </div>
       )}
 

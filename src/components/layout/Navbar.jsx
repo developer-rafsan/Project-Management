@@ -20,39 +20,42 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useTheme } from "@/components/layout/ThemeProvider"
+
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import {
   Menu,
   Search,
-  Sun,
-  Moon,
   LogOut,
   LayoutDashboard,
   FolderKanban,
   PlusCircle,
   Kanban,
   Hash,
+  StickyNote,
+  Settings,
 } from "lucide-react"
 
 const pageTitles = {
   "/dashboard": "Dashboard",
   "/dashboard/projects": "Projects",
   "/dashboard/projects/new": "Create Project",
+  "/dashboard/notes": "Notes",
+  "/dashboard/settings": "Settings",
 }
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/projects/new", label: "Create Project", icon: PlusCircle },
+  { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ]
 
 export default function Navbar() {
   const router = useRouter()
   const pathname = usePathname()
   const { data: session } = useSession()
-  const { theme, toggleTheme } = useTheme()
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const searchInputRef = useRef(null)
@@ -135,20 +138,6 @@ export default function Navbar() {
           }}
         >
           <Search className="h-5 w-5" />
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          className="text-muted-foreground"
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
         </Button>
 
         <Avatar className="size-8 cursor-default">

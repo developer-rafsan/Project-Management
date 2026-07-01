@@ -15,14 +15,18 @@ export async function GET(request) {
     await connectDB();
 
     const { searchParams } = new URL(request.url);
+    const allParam = searchParams.get('all');
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
-    const from = fromParam ? new Date(fromParam) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const to = toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const dateFilter = {
-      startDate: { $gte: from, $lte: to },
-    };
+    const dateFilter = allParam === 'true'
+      ? {}
+      : {
+          startDate: {
+            $gte: fromParam ? new Date(fromParam) : new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+            $lte: toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999),
+          },
+        };
 
     const [
       totalProjects,
@@ -63,11 +67,7 @@ export async function GET(request) {
         .populate('updatedBy', 'name')
         .lean(),
       Project.aggregate([
-        {
-          $match: {
-            startDate: { $gte: from, $lte: to },
-          },
-        },
+        { $match: dateFilter },
         {
           $group: {
             _id: {

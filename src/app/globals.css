@@ -118,6 +118,14 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+.rdp-dropdowns {
+  gap: 8px;
+}
+.rdp-dropdown,
+.rdp-months_dropdown {
+  background: #27272a;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -43,8 +43,8 @@ export default function ProjectFilters({ filters = {}, onFilterChange, onSearch 
   const hasFilters = Object.values(filters).some(v => v !== undefined && v !== null && v !== "")
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="relative flex-1 min-w-[200px] max-w-sm">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         <Input
           placeholder="Search projects..."
@@ -54,45 +54,47 @@ export default function ProjectFilters({ filters = {}, onFilterChange, onSearch 
         />
       </div>
 
-      <Select value={filters.status || ""} onValueChange={(v) => handleFilterChange("status", v)}>
-        <SelectTrigger className="w-[130px]">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUSES.map((s) => (
-            <SelectItem key={s} value={s}>{s}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex gap-2 overflow-x-auto">
+        <Select value={filters.status || ""} onValueChange={(v) => handleFilterChange("status", v)}>
+          <SelectTrigger className="w-[130px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      <Select value={filters.priority || ""} onValueChange={(v) => handleFilterChange("priority", v)}>
-        <SelectTrigger className="w-[130px]">
-          <SelectValue placeholder="Priority" />
-        </SelectTrigger>
-        <SelectContent>
-          {PRIORITIES.map((p) => (
-            <SelectItem key={p} value={p}>{p}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        <Select value={filters.priority || ""} onValueChange={(v) => handleFilterChange("priority", v)}>
+          <SelectTrigger className="w-[130px]">
+            <SelectValue placeholder="Priority" />
+          </SelectTrigger>
+          <SelectContent>
+            {PRIORITIES.map((p) => (
+              <SelectItem key={p} value={p}>{p}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      <Select value={filters.cms || ""} onValueChange={(v) => handleFilterChange("cms", v)}>
-        <SelectTrigger className="w-[130px]">
-          <SelectValue placeholder="CMS" />
-        </SelectTrigger>
-        <SelectContent>
-          {CMS_OPTIONS.map((c) => (
-            <SelectItem key={c} value={c}>{c}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        <Select value={filters.cms || ""} onValueChange={(v) => handleFilterChange("cms", v)}>
+          <SelectTrigger className="w-[130px]">
+            <SelectValue placeholder="CMS" />
+          </SelectTrigger>
+          <SelectContent>
+            {CMS_OPTIONS.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
-          <X className="size-4" />
-          Clear
-        </Button>
-      )}
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 shrink-0">
+            <X className="size-4" />
+            <span className="hidden sm:inline">Clear</span>
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

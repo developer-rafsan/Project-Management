@@ -69,7 +69,14 @@ export default function ProjectTable({ projects = [] }) {
       <TableHeader>
         <TableRow>
           {columns.map((col) => (
-            <TableHead key={col.key}>
+            <TableHead
+              key={col.key}
+              className={
+                col.key === "priority" || col.key === "cms" || col.key === "startDate" || col.key === "website"
+                  ? "hidden md:table-cell"
+                  : ""
+              }
+            >
               {col.label}
             </TableHead>
           ))}
@@ -100,21 +107,21 @@ export default function ProjectTable({ projects = [] }) {
                   </Badge>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 {project.priority && (
                   <Badge variant={priorityVariants[project.priority] || "default"}>
                     {project.priority}
                   </Badge>
                 )}
               </TableCell>
-              <TableCell>{project.cms || "-"}</TableCell>
+              <TableCell className="hidden md:table-cell">{project.cms || "-"}</TableCell>
               <TableCell className="font-medium">
                 {Number(project.price) ? `$${Number(project.price).toFixed(2)}` : "-"}
               </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
+              <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                 {formatDate(project.startDate)}
               </TableCell>
-              <TableCell onClick={(e) => e.stopPropagation()}>
+              <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                 {project.websiteUrl ? (
                   <Dialog onOpenChange={(open) => {
                     if (open && !passwords[project._id] && !loadingPasswords[project._id]) {
