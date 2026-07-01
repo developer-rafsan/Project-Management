@@ -11,13 +11,4 @@ export function getMonthRange(year, month, startDay = 1) {
   }
 }
 
-export function isDateInMonthRange(date, year, month, startDay = 1) {
-  const { from, to } = getMonthRange(year, month, startDay)
-  return date >= from && date <= to
-}
 
-export function getMonthStartDay() {
-  if (typeof window === "undefined") return 1
-  const saved = localStorage.getItem("monthStartDay")
-  return saved ? Number(saved) : 1
-}

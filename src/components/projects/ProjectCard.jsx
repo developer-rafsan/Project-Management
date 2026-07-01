@@ -27,11 +27,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Star,
-  StarOff,
   MoreHorizontal,
   Copy,
-  Archive,
   Trash2,
   ExternalLink,
   Check,
@@ -80,17 +77,9 @@ export default function ProjectCard({ project, onAction }) {
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleAction("favorite")}>
-                {project.favorite ? <StarOff className="size-4" /> : <Star className="size-4" />}
-                {project.favorite ? "Unfavorite" : "Favorite"}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleAction("duplicate")}>
                 <Copy className="size-4" />
                 Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAction("archive")}>
-                <Archive className="size-4" />
-                {project.archived ? "Unarchive" : "Archive"}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={() => handleAction("delete")}>

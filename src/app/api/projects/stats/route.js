@@ -19,14 +19,23 @@ export async function GET(request) {
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
-    const dateFilter = allParam === 'true'
-      ? {}
-      : {
-          startDate: {
-            $gte: fromParam ? new Date(fromParam) : new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-            $lte: toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999),
-          },
-        };
+    const dateFilter = {};
+    if (allParam !== 'true') {
+      const fromDate = fromParam ? new Date(fromParam) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const toDate = toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
+      if (fromDate.getMonth() === toDate.getMonth() && fromDate.getFullYear() === toDate.getFullYear()) {
+        dateFilter.currentMonth = fromDate.getMonth() + 1;
+        dateFilter.currentYear = fromDate.getFullYear();
+      } else {
+        const months = [];
+        let d = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+        while (d <= toDate) {
+          months.push({ currentMonth: d.getMonth() + 1, currentYear: d.getFullYear() });
+          d.setMonth(d.getMonth() + 1);
+        }
+        dateFilter.$or = months;
+      }
+    }
 
     const [
       totalProjects,
@@ -57,7 +66,7 @@ export async function GET(request) {
         { $group: { _id: '$status', total: { $sum: { $ifNull: ['$price', 0] } } } },
       ]),
       Project.find(dateFilter)
-        .sort({ startDate: -1 })
+        .sort({ createdAt: -1 })
         .limit(10)
         .lean(),
       ProjectUpdate.find()

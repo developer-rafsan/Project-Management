@@ -51,7 +51,7 @@ export async function PATCH(request, { params }) {
     const fields = [
       'orderId', 'projectName', 'businessName', 'websiteUrl',
       'websiteUsername', 'cms', 'priority', 'status',
-      'assignee', 'startDate', 'tags', 'description', 'price', 'archived', 'favorite',
+      'assignee', 'startDate', 'tags', 'description', 'price',
       'currentMonth', 'currentYear',
     ];
 

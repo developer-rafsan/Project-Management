@@ -19,7 +19,7 @@ import ProjectFilters from "@/components/projects/ProjectFilters"
 import ProjectTable from "@/components/projects/ProjectTable"
 import ProjectCard from "@/components/projects/ProjectCard"
 import Pagination from "@/components/projects/Pagination"
-import { isDateInMonthRange, getMonthRange } from "@/lib/dateUtils"
+import { getMonthRange } from "@/lib/dateUtils"
 import { Plus } from "lucide-react"
 
 const PAGE_SIZE = 20
@@ -80,24 +80,22 @@ export default function ProjectsPage() {
       list = list.filter((p) => p.cms === filters.cms)
     }
     if (filterMode === "month") {
-      list = list.filter((p) => {
-        if (!p.startDate) return false
-        return isDateInMonthRange(new Date(p.startDate), selectedYear, selectedMonth, startDay)
-      })
+      list = list.filter((p) =>
+        p.currentMonth === selectedMonth && p.currentYear === selectedYear
+      )
     } else if (filterMode === "range" && (dateRange?.from || dateRange?.to)) {
       list = list.filter((p) => {
-        if (!p.startDate) return false
-        const d = new Date(p.startDate)
-        if (dateRange.from && d < dateRange.from) return false
-        if (dateRange.to && d > dateRange.to) return false
+        const pd = new Date(p.currentYear, p.currentMonth - 1, 1)
+        if (dateRange.from && pd < dateRange.from) return false
+        if (dateRange.to && pd > dateRange.to) return false
         return true
       })
     }
 
     list.sort((a, b) => {
-      if (!a.startDate) return 1
-      if (!b.startDate) return -1
-      return new Date(b.startDate) - new Date(a.startDate)
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0)
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0)
+      return dateB - dateA
     })
 
     return list
@@ -120,11 +118,7 @@ export default function ProjectsPage() {
 
   const handleAction = (action, project) => {
     switch (action) {
-      case "favorite":
-        break
       case "duplicate":
-        break
-      case "archive":
         break
       case "delete":
         break

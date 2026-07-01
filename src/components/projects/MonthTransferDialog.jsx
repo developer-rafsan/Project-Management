@@ -54,12 +54,12 @@ export default function MonthTransferDialog({ project, open, onClose, onSuccess 
 
     setSubmitting(true)
     try {
-      await updateProject(project._id, {
+      const updated = await updateProject(project._id, {
         currentMonth: Number(newMonth),
         currentYear: Number(newYear),
       })
       toast.success("Project transferred successfully")
-      onSuccess?.(project)
+      onSuccess?.(updated)
       onClose?.()
     } catch (err) {
       toast.error(err.message || "Failed to transfer project")

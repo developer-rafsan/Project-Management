@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useDispatch } from "react-redux"
+import { updateProjectInStore } from "@/lib/features/projectSlice"
 import { toast } from "sonner"
 import {
   getProject,
@@ -41,18 +43,17 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
-import { Loader2 } from "lucide-react"
 
 export default function ProjectDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const dispatch = useDispatch()
   const [project, setProject] = useState(null)
   const [updates, setUpdates] = useState([])
   const [loading, setLoading] = useState(true)
   const [decryptedPassword, setDecryptedPassword] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
-  const [archiveOpen, setArchiveOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
@@ -85,29 +86,15 @@ export default function ProjectDetailPage() {
 
   const handleEditSuccess = (updatedProject) => {
     setProject(updatedProject)
+    dispatch(updateProjectInStore(updatedProject))
     setEditOpen(false)
-  }
-
-  const handleArchive = async () => {
-    if (!project) return
-    setActionLoading(true)
-    try {
-      const updated = await updateProject(project._id, { archived: !project.archived })
-      setProject(updated)
-      setArchiveOpen(false)
-      toast.success(project.archived ? "Project unarchived" : "Project archived")
-    } catch (err) {
-      toast.error(err.message || "Failed to archive project")
-    } finally {
-      setActionLoading(false)
-    }
   }
 
   const handleDuplicate = async () => {
     if (!project) return
     setActionLoading(true)
     try {
-      const { _id, createdAt, updatedAt, orderId, archived, transferHistory, ...rest } = project
+      const { _id, createdAt, updatedAt, orderId, transferHistory, ...rest } = project
       const newProject = await createProject({
         ...rest,
         projectName: `${project.projectName} (Copy)`,
@@ -136,18 +123,9 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const handleToggleFavorite = async () => {
-    if (!project) return
-    try {
-      const updated = await updateProject(project._id, { favorite: !project.favorite })
-      setProject(updated)
-    } catch (err) {
-      toast.error(err.message || "Failed to update favorite")
-    }
-  }
-
-  const handleTransferSuccess = () => {
-    fetchData()
+  const handleTransferSuccess = (updatedProject) => {
+    setProject(updatedProject)
+    dispatch(updateProjectInStore(updatedProject))
     setTransferOpen(false)
   }
 
@@ -160,6 +138,7 @@ export default function ProjectDetailPage() {
         updateNote: statusNote || "",
       })
       setProject(updated)
+      dispatch(updateProjectInStore(updated))
       setStatusOpen(false)
       setNewStatus("")
       setStatusNote("")
@@ -219,13 +198,11 @@ export default function ProjectDetailPage() {
         <ProjectActions
           project={project}
           actionLoading={actionLoading}
-          onToggleFavorite={handleToggleFavorite}
           onStatusClick={() => {
             setNewStatus(project.status)
             setStatusOpen(true)
           }}
           onEdit={() => setEditOpen(true)}
-          onArchive={() => setArchiveOpen(true)}
           onDuplicate={handleDuplicate}
           onTransfer={() => setTransferOpen(true)}
           onDelete={() => setDeleteOpen(true)}
@@ -294,25 +271,6 @@ export default function ProjectDetailPage() {
           </div>
         </SheetContent>
       </Sheet>
-
-      <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{project.archived ? "Unarchive" : "Archive"} Project</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to {project.archived ? "unarchive" : "archive"} &ldquo;{project.projectName}&rdquo;?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setArchiveOpen(false)} disabled={actionLoading}>
-              Cancel
-            </Button>
-            <Button onClick={handleArchive} disabled={actionLoading}>
-              {project.archived ? "Unarchive" : "Archive"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>

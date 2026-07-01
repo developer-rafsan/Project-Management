@@ -5,10 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   ChevronRight,
-  Star,
-  StarOff,
   Pencil,
-  Archive,
   Copy as DuplicateIcon,
   Trash2,
   CalendarArrowUp,
@@ -83,23 +80,14 @@ export function ProjectTitle({ project }) {
 export function ProjectActions({
   project,
   actionLoading,
-  onToggleFavorite,
   onStatusClick,
   onEdit,
-  onArchive,
   onDuplicate,
   onTransfer,
   onDelete,
 }) {
   return (
     <div className="flex items-center gap-1 flex-wrap">
-      <Button variant="ghost" size="icon" onClick={onToggleFavorite} title={project.favorite ? "Unfavorite" : "Favorite"}>
-        {project.favorite ? (
-          <Star className="size-4 fill-yellow-400 text-yellow-400" />
-        ) : (
-          <StarOff className="size-4" />
-        )}
-      </Button>
       <Button variant="outline" size="sm" onClick={onStatusClick}>
         <ArrowLeftRight className="size-3.5" />
         Status
@@ -107,10 +95,6 @@ export function ProjectActions({
       <Button variant="outline" size="sm" onClick={onEdit}>
         <Pencil className="size-3.5" />
         Edit
-      </Button>
-      <Button variant="outline" size="sm" onClick={onArchive}>
-        <Archive className="size-3.5" />
-        {project.archived ? "Unarchive" : "Archive"}
       </Button>
       <Button variant="outline" size="sm" onClick={onDuplicate} disabled={actionLoading}>
         <DuplicateIcon className="size-3.5" />

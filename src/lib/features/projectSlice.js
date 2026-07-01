@@ -39,6 +39,12 @@ const projectSlice = createSlice({
       state.total += 1
       state.totalPrice += action.payload.price || 0
     },
+    updateProjectInStore(state, action) {
+      const idx = state.items.findIndex((p) => p._id === action.payload._id)
+      if (idx !== -1) {
+        state.items[idx] = action.payload
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -61,5 +67,5 @@ const projectSlice = createSlice({
   },
 })
 
-export const { clearProjects, addProject } = projectSlice.actions
+export const { clearProjects, addProject, updateProjectInStore } = projectSlice.actions
 export default projectSlice.reducer

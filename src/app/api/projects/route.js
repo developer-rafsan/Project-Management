@@ -24,8 +24,6 @@ export async function GET(request) {
     const tags = searchParams.get('tags');
     const assignee = searchParams.get('assignee');
     const search = searchParams.get('search');
-    const archived = searchParams.get('archived');
-    const favorite = searchParams.get('favorite');
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 20;
     const sortBy = searchParams.get('sortBy') || 'createdAt';
@@ -35,34 +33,13 @@ export async function GET(request) {
 
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
-    if (month || year) {
-      const y = year ? parseInt(year) : new Date().getFullYear();
-      const m = month ? parseInt(month) : 1;
-      const startOfMonth = new Date(y, m - 1, 1);
-      const endOfMonth = new Date(y, m, 0, 23, 59, 59, 999);
-      if (month) {
-        filter.startDate = { $gte: startOfMonth, $lte: endOfMonth };
-      } else {
-        filter.startDate = {
-          $gte: new Date(y, 0, 1),
-          $lte: new Date(y, 11, 31, 23, 59, 59, 999),
-        };
-      }
-    }
+    if (month) filter.currentMonth = parseInt(month);
+    if (year) filter.currentYear = parseInt(year);
     if (cms) filter.cms = cms;
     if (tags) {
       filter.tags = { $in: tags.split(',').map((t) => t.trim()) };
     }
     if (assignee) filter.assignee = assignee;
-    if (archived === 'all') {
-      // don't filter by archived — show both
-    } else if (archived !== null) {
-      filter.archived = archived === 'true';
-    } else {
-      filter.archived = false;
-    }
-    if (favorite !== null) filter.favorite = favorite === 'true';
-
     if (search) {
       const regex = { $regex: search, $options: 'i' };
       filter.$or = [

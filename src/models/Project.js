@@ -62,14 +62,6 @@ const projectSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    archived: {
-      type: Boolean,
-      default: false,
-    },
-    favorite: {
-      type: Boolean,
-      default: false,
-    },
     currentMonth: {
       type: Number,
     },
