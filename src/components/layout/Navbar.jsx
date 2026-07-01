@@ -3,7 +3,8 @@
 import { useState, useRef } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
-import { useSelector } from "react-redux"
+import { useSelector, useDispatch } from "react-redux"
+import { clearProjects } from "@/lib/features/projectSlice"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -59,6 +60,7 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const searchInputRef = useRef(null)
+  const dispatch = useDispatch()
   const projects = useSelector((s) => s.projects?.items || [])
 
   const title =
@@ -112,7 +114,10 @@ export default function Navbar() {
             <div className="border-t border-white/10 p-3">
               <Button
                 variant="ghost"
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={() => {
+                  dispatch(clearProjects())
+                  signOut({ callbackUrl: "/login" })
+                }}
                 className="w-full justify-start gap-3 text-sm font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
               >
                 <LogOut className="h-4 w-4" />

@@ -22,6 +22,13 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    if (
+      project.createdBy?.toString() !== session.user.id &&
+      project.assignee?.toString() !== session.user.id
+    ) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     return NextResponse.json(project);
   } catch (error) {
     console.error('GET /api/projects/[id] error:', error);
@@ -44,6 +51,13 @@ export async function PATCH(request, { params }) {
     const existingProject = await Project.findById(id);
     if (!existingProject) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    if (
+      existingProject.createdBy?.toString() !== session.user.id &&
+      existingProject.assignee?.toString() !== session.user.id
+    ) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const updates = {};
@@ -133,6 +147,13 @@ export async function DELETE(request, { params }) {
     const project = await Project.findById(id);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    if (
+      project.createdBy?.toString() !== session.user.id &&
+      project.assignee?.toString() !== session.user.id
+    ) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await Promise.all([

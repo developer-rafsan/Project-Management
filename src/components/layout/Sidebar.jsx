@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
+import { useDispatch } from "react-redux"
+import { clearProjects } from "@/lib/features/projectSlice"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -25,6 +27,7 @@ const menuItems = [
 
 export default function Sidebar({ isOpen, onToggle }) {
   const pathname = usePathname()
+  const dispatch = useDispatch()
 
   const content = (
     <>
@@ -66,7 +69,10 @@ export default function Sidebar({ isOpen, onToggle }) {
       <div className="border-t border-border p-3">
         <Button
           variant="ghost"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => {
+            dispatch(clearProjects())
+            signOut({ callbackUrl: "/login" })
+          }}
           className="w-full justify-start gap-3 text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10"
         >
           <LogOut className="h-4 w-4" />

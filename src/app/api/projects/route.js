@@ -40,14 +40,29 @@ export async function GET(request) {
       filter.tags = { $in: tags.split(',').map((t) => t.trim()) };
     }
     if (assignee) filter.assignee = assignee;
+
+    const ownershipFilter = {
+      $or: [
+        { createdBy: session.user.id },
+        { assignee: session.user.id },
+      ],
+    };
+
     if (search) {
       const regex = { $regex: search, $options: 'i' };
-      filter.$or = [
-        { orderId: regex },
-        { projectName: regex },
-        { businessName: regex },
-        { websiteUrl: regex },
+      filter.$and = [
+        ownershipFilter,
+        {
+          $or: [
+            { orderId: regex },
+            { projectName: regex },
+            { businessName: regex },
+            { websiteUrl: regex },
+          ],
+        },
       ];
+    } else {
+      Object.assign(filter, ownershipFilter);
     }
 
     const skip = (page - 1) * limit;
@@ -137,13 +152,14 @@ export async function POST(request) {
       cms: cms || 'Other',
       priority: priority || 'Medium',
       status: status || 'Pending',
-      assignee: assignee || null,
+      assignee: assignee || session.user.id,
       startDate: startDate ? new Date(startDate) : new Date(),
       tags: tags || [],
       description: description || '',
       price: price ? Number(price) : 0,
       currentMonth: currentMonth || now.getMonth() + 1,
       currentYear: currentYear || now.getFullYear(),
+      createdBy: session.user.id,
     };
 
     const project = await Project.create(projectData);

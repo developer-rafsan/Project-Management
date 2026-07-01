@@ -19,7 +19,12 @@ export async function GET(request) {
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
-    const dateFilter = {};
+    const dateFilter = {
+      $or: [
+        { createdBy: session.user.id },
+        { assignee: session.user.id },
+      ],
+    };
     if (allParam !== 'true') {
       const fromDate = fromParam ? new Date(fromParam) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
       const toDate = toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
