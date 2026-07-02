@@ -70,7 +70,7 @@ export async function GET(request) {
 
     const [projects, total] = await Promise.all([
       Project.find(filter)
-        .select('orderId projectName businessName websiteUrl websiteUsername status priority cms price startDate createdAt currentMonth currentYear assignee tags createdBy')
+        .select('orderId projectName websiteUrl websiteUsername websitePassword status priority cms price startDate createdAt currentMonth currentYear assignee tags createdBy')
         .sort(sort).skip(skip).limit(limit).lean(),
       Project.countDocuments(filter),
     ]);

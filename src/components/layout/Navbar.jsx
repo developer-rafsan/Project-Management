@@ -33,7 +33,6 @@ import {
   LogOut,
   LayoutDashboard,
   FolderKanban,
-  PlusCircle,
   Kanban,
   Hash,
   StickyNote,
@@ -43,7 +42,6 @@ import {
 const pageTitles = {
   "/dashboard": "Dashboard",
   "/dashboard/projects": "Projects",
-  "/dashboard/projects/new": "Create Project",
   "/dashboard/notes": "Notes",
   "/dashboard/settings": "Settings",
 }
@@ -51,7 +49,6 @@ const pageTitles = {
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
-  { href: "/dashboard/projects/new", label: "Create Project", icon: PlusCircle },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
   { href: null, label: "Logout", icon: LogOut, logout: true },

@@ -116,14 +116,10 @@ function StepLabel({ icon: Icon, label }) {
 
 function ReviewRow({ icon: Icon, label, value }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border bg-card/50 px-3.5 py-2.5">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          {Icon && <Icon className="size-3" />}
-        </div>
-        <span className="text-sm text-muted-foreground truncate">{label}</span>
-      </div>
-      <span className="text-sm font-medium text-right break-all max-w-[55%]">{value}</span>
+    <div className="flex items-center gap-2 py-1">
+      {Icon && <Icon className="size-3 text-muted-foreground/50 shrink-0" />}
+      <span className="text-xs text-muted-foreground/60 shrink-0">{label}</span>
+      <span className="text-xs font-medium truncate ml-auto">{value}</span>
     </div>
   )
 }
@@ -279,146 +275,145 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   const ActiveIcon = stepIcons[step]
 
   return (
-    <form onKeyDown={(e) => e.key === "Enter" && e.target.tagName !== "TEXTAREA" && e.preventDefault()} className="space-y-6">
+    <form onKeyDown={(e) => e.key === "Enter" && e.target.tagName !== "TEXTAREA" && e.preventDefault()} className="w-full flex flex-col h-full overflow-hidden">
       {/* Step indicator */}
-      <div className="relative">
-        <div className="flex items-center justify-between">
+      <div className="shrink-0 px-1 pt-1">
+        <div className="flex items-center w-full">
           {STEPS.map((s, i) => {
-            const StepIcon = s.icon
             const isComplete = i < step
             const isCurrent = i === step
+            const leftDone = i <= step
+            const rightDone = i < step
             return (
-              <div key={i} className="flex items-center gap-0 flex-1">
-                <div className="flex flex-col items-center gap-1.5">
+              <div key={i} className="flex items-center flex-1">
+                <div className={`flex-1 h-0.5 transition-colors duration-300 ${i === 0 ? "invisible" : leftDone ? "bg-primary/50" : "bg-border/60"}`} />
+                <div className="flex flex-col items-center gap-1 shrink-0 px-1">
                   <div
-                    className={`relative flex size-9 items-center justify-center rounded-xl transition-all duration-300 ${
+                    className={`relative flex size-7 items-center justify-center rounded-full transition-all duration-300 ${
                       isCurrent
-                        ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 ring-2 ring-primary/20"
+                        ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 ring-2 ring-primary/20 scale-110"
                         : isComplete
-                          ? "bg-primary/90 text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
+                          ? "bg-primary/80 text-primary-foreground"
+                          : "bg-muted/60 text-muted-foreground"
                     }`}
                   >
                     {isComplete ? (
-                      <Check className="size-[15px]" />
+                      <Check className="size-3.5" />
                     ) : (
-                      <span className="text-xs font-bold">{i + 1}</span>
+                      <span className="text-[11px] font-bold">{i + 1}</span>
                     )}
                   </div>
-                  <span className={`text-[11px] font-semibold text-center leading-tight px-1 ${
-                    isCurrent ? "text-foreground" : isComplete ? "text-primary" : "text-muted-foreground"
+                  <span className={`text-[10px] font-medium text-center leading-tight px-0.5 ${
+                    isCurrent ? "text-foreground font-semibold" : isComplete ? "text-primary/80" : "text-muted-foreground/60"
                   }`}>
                     <span className="hidden sm:inline">{s.title}</span>
                     <span className="sm:hidden">{i + 1}</span>
                   </span>
                 </div>
-                {i < STEPS.length - 1 && (
-                  <div className={`flex-1 h-px mx-2 transition-colors duration-300 ${
-                    i < step ? "bg-primary/60" : "bg-border"
-                  }`} />
-                )}
+                <div className={`flex-1 h-0.5 transition-colors duration-300 ${i === STEPS.length - 1 ? "invisible" : rightDone ? "bg-primary/50" : "bg-border/60"}`} />
               </div>
             )
           })}
         </div>
       </div>
 
-      {/* Step header */}
-      <div className="flex items-center gap-3 pb-3 border-b border-border">
-        <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10">
-          <ActiveIcon className="size-4 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold tracking-tight">{STEPS[step].title}</h2>
-            <span className="text-xs text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-full">Step {step + 1} of {STEPS.length}</span>
+      <div className="flex-1 h-[60vh] sm:h-[420px] space-y-4 sm:space-y-5 py-3 sm:py-4 overflow-hidden">
+        {/* Step header */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex size-7 sm:size-8 items-center justify-center rounded-lg bg-primary/[0.08]">
+            <ActiveIcon className="size-3.5 sm:size-4 text-primary" />
           </div>
-          <p className="text-sm text-muted-foreground">{STEPS[step].description}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h2 className="text-sm sm:text-base font-semibold tracking-tight truncate">{STEPS[step].title}</h2>
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground/60 font-medium bg-muted/50 px-1.5 sm:px-2 py-0.5 rounded-full border border-border/30 shrink-0">Step {step + 1} of {STEPS.length}</span>
+            </div>
+            <p className="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 truncate">{STEPS[step].description}</p>
+          </div>
         </div>
-      </div>
 
-      {/* Step content */}
-      <div key={step} className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-300 ease-out">
+        {/* Step content */}
+        <div key={step} className="space-y-4">
         {step === 0 && (
-          <div className="space-y-5">
-            <div className="rounded-xl border bg-card p-4 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-primary/10">
-                  <Layout className="size-3.5 text-primary" />
-                </div>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3 sm:space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <Layout className="size-3.5 text-primary" />
                 Project Information
               </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-sm font-medium">
-                  <Hash className="size-3.5 text-muted-foreground" />
-                  Order ID <span className="text-muted-foreground font-normal">(optional)</span>
-                </label>
-                <Input {...register("orderId")} placeholder="Leave empty to auto-generate" className="h-10" />
-              </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-sm font-medium">
-                  Project Name <span className="text-destructive">*</span>
-                </label>
-                <Input {...register("projectName")} placeholder="Enter project name" className="h-10" />
-                {errors.projectName && (
-                  <p className="flex items-center gap-1.5 text-xs text-destructive mt-1.5 ml-0.5">
-                    <AlertCircle className="size-3 shrink-0" /> {errors.projectName.message}
-                  </p>
-                )}
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Hash className="size-3" />
+                    Order ID <span className="font-normal">(optional)</span>
+                  </label>
+                  <Input {...register("orderId")} placeholder="Leave empty to auto-generate" className="h-9 text-sm bg-background" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    Project Name <span className="text-destructive">*</span>
+                  </label>
+                  <Input {...register("projectName")} placeholder="Enter project name" className="h-9 text-sm bg-background" />
+                  {errors.projectName && (
+                    <p className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="size-3 shrink-0" /> {errors.projectName.message}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="rounded-xl border bg-card p-4 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-primary/10">
-                  <Globe className="size-3.5 text-primary" />
-                </div>
+            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3 sm:space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <Globe className="size-3.5 text-primary" />
                 Website Credentials
               </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-sm font-medium">
-                  <Globe className="size-3.5 text-muted-foreground" />
-                  Website URL
-                </label>
-                <Input {...register("websiteUrl")} placeholder="https://example.com" className="h-10" />
-                {errors.websiteUrl && (
-                  <p className="flex items-center gap-1.5 text-xs text-destructive mt-1.5 ml-0.5">
-                    <AlertCircle className="size-3 shrink-0" /> {errors.websiteUrl.message}
-                  </p>
-                )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="flex items-center gap-1.5 text-sm font-medium">
-                    <User className="size-3.5 text-muted-foreground" />
-                    Username
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Globe className="size-3" />
+                    Website URL
                   </label>
-                  <Input {...register("websiteUsername")} placeholder="Username" className="h-10" />
+                  <Input {...register("websiteUrl")} placeholder="https://example.com" className="h-9 text-sm bg-background" />
+                  {errors.websiteUrl && (
+                    <p className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="size-3 shrink-0" /> {errors.websiteUrl.message}
+                    </p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-1.5 text-sm font-medium">
-                    <Lock className="size-3.5 text-muted-foreground" />
-                    Password
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1 min-w-0">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        {...register("websitePassword")}
-                        placeholder="Password"
-                        className="h-10 pr-14"
-                      />
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
-                        <Button type="button" variant="ghost" size="icon-xs" onClick={() => setShowPassword(!showPassword)} tabIndex={-1}>
-                          {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon-xs" onClick={copyPassword} tabIndex={-1}>
-                          <Copy className="size-3.5" />
-                        </Button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <User className="size-3" />
+                      Username
+                    </label>
+                    <Input {...register("websiteUsername")} placeholder="Username" className="h-9 text-sm bg-background" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Lock className="size-3" />
+                      Password
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1 min-w-0">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          {...register("websitePassword")}
+                          placeholder="Password"
+                          className="h-9 text-sm bg-background pr-12"
+                        />
+                        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 flex">
+                          <Button type="button" variant="ghost" size="icon-xs" onClick={() => setShowPassword(!showPassword)} tabIndex={-1} className="size-7">
+                            {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon-xs" onClick={copyPassword} tabIndex={-1} className="size-7">
+                            <Copy className="size-3.5" />
+                          </Button>
+                        </div>
                       </div>
+                      <Button type="button" variant="outline" size="icon" onClick={generatePassword} title="Generate strong password" className="shrink-0 size-9">
+                        <RefreshCw className="size-4" />
+                      </Button>
                     </div>
-                    <Button type="button" variant="outline" size="icon" onClick={generatePassword} title="Generate strong password" className="shrink-0 h-10 w-10">
-                      <RefreshCw className="size-4" />
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -427,21 +422,19 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         )}
 
         {step === 1 && (
-          <div className="space-y-5">
-            <div className="rounded-xl border bg-card p-4 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-primary/10">
-                  <Layout className="size-3.5 text-primary" />
-                </div>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3 sm:space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <Layout className="size-3.5 text-primary" />
                 Platform
               </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-sm font-medium">
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   CMS <span className="text-destructive">*</span>
                 </label>
                 <Controller name="cms" control={control} render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="h-10"><SelectValue placeholder="Select CMS platform" /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm bg-background"><SelectValue placeholder="Select CMS platform" /></SelectTrigger>
                     <SelectContent className="max-h-[320px]">
                       {CMS_CATEGORIES.map((cat) => (
                         <div key={cat.label}>
@@ -449,7 +442,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                             {cat.label}
                           </div>
                           {cat.items.map((item) => (
-                            <SelectItem key={item} value={item} className="pl-6">{item}</SelectItem>
+                            <SelectItem key={item} value={item} className="pl-6 text-sm">{item}</SelectItem>
                           ))}
                         </div>
                       ))}
@@ -457,35 +450,33 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                   </Select>
                 )} />
                 {errors.cms && (
-                  <p className="flex items-center gap-1.5 text-xs text-destructive mt-1.5 ml-0.5">
+                  <p className="flex items-center gap-1 text-xs text-destructive">
                     <AlertCircle className="size-3 shrink-0" /> {errors.cms.message}
                   </p>
                 )}
                 {watch("cms") === "Other" && (
-                  <div className="mt-2 p-3 rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-900/10 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <label className="flex items-center gap-1.5 text-sm font-medium mb-2">
+                  <div className="mt-2 p-3 rounded-lg bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/60 dark:border-amber-800/30">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
                       Custom CMS Name
                     </label>
-                    <Input {...register("customCms")} placeholder="e.g., Drupal, Joomla" className="h-10" />
+                    <Input {...register("customCms")} placeholder="e.g., Drupal, Joomla" className="h-9 text-sm bg-background" />
                   </div>
                 )}
               </div>
             </div>
-            <div className="rounded-xl border bg-card p-4 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-primary/10">
-                  <ArrowUpDown className="size-3.5 text-primary" />
-                </div>
+            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3 sm:space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <ArrowUpDown className="size-3.5 text-primary" />
                 Classification
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="flex items-center gap-1.5 text-sm font-medium">
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     Priority <span className="text-destructive">*</span>
                   </label>
                   <Controller name="priority" control={control} render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="h-10">
+                      <SelectTrigger className="h-9 text-sm bg-background">
                         {field.value ? (
                           <div className="flex items-center gap-2">
                             <div className={`size-2 rounded-full ${PRIORITY_STYLES[field.value]?.dot}`} />
@@ -511,18 +502,18 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                     </Select>
                   )} />
                   {errors.priority && (
-                    <p className="flex items-center gap-1.5 text-xs text-destructive mt-1.5 ml-0.5">
+                    <p className="flex items-center gap-1 text-xs text-destructive">
                       <AlertCircle className="size-3 shrink-0" /> {errors.priority.message}
                     </p>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-1.5 text-sm font-medium">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     Status <span className="text-destructive">*</span>
                   </label>
                   <Controller name="status" control={control} render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="h-10">
+                      <SelectTrigger className="h-9 text-sm bg-background">
                         {field.value ? (
                           <div className="flex items-center gap-2">
                             <div className={`size-2 rounded-full ${STATUS_STYLES[field.value]?.dot}`} />
@@ -548,7 +539,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                     </Select>
                   )} />
                   {errors.status && (
-                    <p className="flex items-center gap-1.5 text-xs text-destructive mt-1.5 ml-0.5">
+                    <p className="flex items-center gap-1 text-xs text-destructive">
                       <AlertCircle className="size-3 shrink-0" /> {errors.status.message}
                     </p>
                   )}
@@ -559,119 +550,142 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         )}
 
         {step === 2 && (
-          <div className="space-y-5">
-            <div className="rounded-xl border bg-card p-4 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-primary/10">
-                  <Calendar className="size-3.5 text-primary" />
-                </div>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3 sm:space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <Calendar className="size-3.5 text-primary" />
                 Schedule &amp; Pricing
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="flex items-center gap-1.5 text-sm font-medium">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     Start Date
                   </label>
                   <Controller name="startDate" control={control} render={({ field }) => (
                     <DatePicker value={field.value} onChange={(date) => field.onChange(date || new Date())} placeholder="Pick a start date" />
                   )} />
-                  <p className="text-xs text-muted-foreground">Defaults to today if not set</p>
+                  <p className="text-[10px] text-muted-foreground/60">Defaults to today</p>
                 </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-1.5 text-sm font-medium">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     Price
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">$</span>
-                    <Input {...register("price")} type="number" step="0.01" placeholder="0.00" className="h-10 pl-8" />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 text-sm font-medium">$</span>
+                    <Input {...register("price")} type="number" step="0.01" placeholder="0.00" className="h-9 text-sm bg-background pl-7" />
                   </div>
                 </div>
               </div>
             </div>
-            <div className="rounded-xl border bg-card p-4 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-primary/10">
-                  <FileText className="size-3.5 text-primary" />
-                </div>
+            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3 sm:space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <FileText className="size-3.5 text-primary" />
                 Additional Info
               </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-sm font-medium">
-                  <Tag className="size-3.5 text-muted-foreground" />
-                  Tags
-                </label>
-                <Input {...register("tags")} placeholder="e.g., redesign, landing-page, ecommerce" className="h-10" />
-                <p className="text-xs text-muted-foreground">Comma separated values</p>
-              </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-sm font-medium">
-                  <FileText className="size-3.5 text-muted-foreground" />
-                  Description
-                </label>
-                <Textarea {...register("description")} placeholder="Describe the project scope, requirements, and any notes..." rows={4} className="resize-none min-h-[100px]" />
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Tag className="size-3" />
+                    Tags
+                  </label>
+                  <Input {...register("tags")} placeholder="e.g., redesign, landing-page, ecommerce" className="h-9 text-sm bg-background" />
+                  <p className="text-[10px] text-muted-foreground/60">Comma separated values</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <FileText className="size-3" />
+                    Description
+                  </label>
+                  <Textarea {...register("description")} placeholder="Describe the project scope, requirements, and any notes..." rows={3} className="resize-none text-sm bg-background" />
+                </div>
               </div>
             </div>
           </div>
         )}
 
         {step === 3 && (
-          <div className="space-y-4">
-            <ReviewSection title="Basic Information" icon={Layout}>
-              <ReviewRow icon={Hash} label="Order ID" value={formValues.orderId || "Auto-generated"} />
-              <ReviewRow icon={Layout} label="Project Name" value={formValues.projectName} />
-              <ReviewRow icon={Globe} label="Website URL" value={formValues.websiteUrl || "—"} />
-              <ReviewRow icon={User} label="Username" value={formValues.websiteUsername || "—"} />
-              <ReviewRow icon={Lock} label="Password" value={formValues.websitePassword ? "••••••••" : "—"} />
-            </ReviewSection>
-            <ReviewSection title="Classification" icon={ListChecks}>
-              <ReviewRow icon={Layout} label="CMS" value={formValues.cms === "Other" && formValues.customCms ? formValues.customCms : formValues.cms} />
-              <ReviewRow icon={ArrowUpDown} label="Priority" value={formValues.priority} />
-              <ReviewRow icon={ListChecks} label="Status" value={formValues.status} />
-            </ReviewSection>
-            <ReviewSection title="Schedule &amp; Details" icon={Calendar}>
-              <ReviewRow icon={Calendar} label="Start Date" value={formValues.startDate ? new Date(formValues.startDate).toLocaleDateString() : "Today"} />
-              <ReviewRow icon={DollarSign} label="Price" value={formValues.price ? `$${formValues.price}` : "—"} />
-              <ReviewRow icon={Tag} label="Tags" value={formValues.tags || "—"} />
-              <ReviewRow icon={FileText} label="Description" value={formValues.description || "—"} />
-            </ReviewSection>
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <div className="flex size-5 items-center justify-center rounded bg-primary/10">
+                  <Layout className="size-3 text-primary" />
+                </div>
+                Basic Information
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <ReviewRow icon={Hash} label="Order ID" value={formValues.orderId || "Auto-generated"} />
+                <ReviewRow icon={Layout} label="Project Name" value={formValues.projectName} />
+                <ReviewRow icon={Globe} label="Website URL" value={formValues.websiteUrl || "—"} />
+                <ReviewRow icon={User} label="Username" value={formValues.websiteUsername || "—"} />
+                <ReviewRow icon={Lock} label="Password" value={formValues.websitePassword ? "••••••••" : "—"} />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <div className="flex size-5 items-center justify-center rounded bg-primary/10">
+                  <ListChecks className="size-3 text-primary" />
+                </div>
+                Classification
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <ReviewRow icon={Layout} label="CMS" value={formValues.cms === "Other" && formValues.customCms ? formValues.customCms : formValues.cms} />
+                <ReviewRow icon={ArrowUpDown} label="Priority" value={formValues.priority} />
+                <ReviewRow icon={ListChecks} label="Status" value={formValues.status} />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <div className="flex size-5 items-center justify-center rounded bg-primary/10">
+                  <Calendar className="size-3 text-primary" />
+                </div>
+                Schedule &amp; Details
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <ReviewRow icon={Calendar} label="Start Date" value={formValues.startDate ? new Date(formValues.startDate).toLocaleDateString() : "Today"} />
+                <ReviewRow icon={DollarSign} label="Price" value={formValues.price ? `$${formValues.price}` : "—"} />
+                <ReviewRow icon={Tag} label="Tags" value={formValues.tags || "—"} />
+                <ReviewRow icon={FileText} label="Description" value={formValues.description || "—"} />
+              </div>
+            </div>
           </div>
         )}
       </div>
+      </div>
 
       {/* Buttons */}
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-5 border-t border-border">
-        <div className="flex items-center gap-2.5">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2 pt-3 sm:pt-4 border-t border-border/50 shrink-0 px-1">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {step > 0 && (
-            <Button type="button" variant="outline" onClick={handlePrev} disabled={submitting} className="w-full sm:w-auto gap-1.5">
-              <ChevronLeft className="size-4" />
-              <span className="sm:inline">Back</span>
+            <Button type="button" variant="ghost" onClick={handlePrev} disabled={submitting} className="w-full sm:w-auto gap-1 text-muted-foreground hover:text-foreground h-8 sm:h-9 text-xs sm:text-sm">
+              <ChevronLeft className="size-3.5 sm:size-4" />
+              <span>Back</span>
             </Button>
           )}
           {onCancel && (
-            <Button type="button" variant="ghost" onClick={onCancel} disabled={submitting} className="w-full sm:w-auto text-muted-foreground">
+            <Button type="button" variant="ghost" onClick={onCancel} disabled={submitting} className="w-full sm:w-auto text-muted-foreground/60 hover:text-muted-foreground h-8 sm:h-9 text-xs sm:text-sm">
               Cancel
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {!isLastStep && (
-            <span className="text-xs text-muted-foreground hidden sm:block">
+            <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
               Step {step + 1} of {STEPS.length}
             </span>
           )}
           {isLastStep ? (
-            <Button type="button" onClick={handleSubmitForm} disabled={submitting} className="w-full sm:w-auto min-w-[180px] gap-2 shadow-sm">
+            <Button type="button" onClick={handleSubmitForm} disabled={submitting} className="w-full sm:w-auto min-w-[120px] sm:min-w-[140px] gap-1.5 h-8 sm:h-9 text-xs sm:text-sm">
               {submitting ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-3.5 sm:size-4 animate-spin" />
               ) : (
-                <Check className="size-4" />
+                <Check className="size-3.5 sm:size-4" />
               )}
-              {submitting ? "Saving..." : isEditing ? "Update Project" : "Create Project"}
+              {submitting ? "Saving..." : isEditing ? "Update" : "Create"}
             </Button>
           ) : (
-            <Button type="button" onClick={(e) => handleNext(e)} className="w-full sm:w-auto min-w-[120px] gap-1.5 shadow-sm">
-              Next Step
-              <ChevronRight className="size-4" />
+            <Button type="button" onClick={(e) => handleNext(e)} className="w-full sm:w-auto gap-1 h-8 sm:h-9 text-xs sm:text-sm">
+              Next
+              <ChevronRight className="size-3.5 sm:size-4" />
             </Button>
           )}
         </div>

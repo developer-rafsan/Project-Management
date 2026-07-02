@@ -36,13 +36,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet"
 
 export default function ProjectDetailPage() {
   const router = useRouter()
@@ -56,6 +49,15 @@ export default function ProjectDetailPage() {
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+
+  useEffect(() => {
+    if (editOpen || deleteOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => { document.body.style.overflow = "" }
+  }, [editOpen, deleteOpen])
   const [transferOpen, setTransferOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("")
@@ -65,12 +67,14 @@ export default function ProjectDetailPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [projectData, updatesData] = await Promise.all([
+      const [projectData, updatesData, passwordData] = await Promise.all([
         getProject(params.id),
         getProjectUpdates(params.id),
+        getProjectPassword(params.id).catch(() => ({ password: "" })),
       ])
       setProject(projectData)
       setUpdates(updatesData || [])
+      setDecryptedPassword(passwordData.password || null)
     } catch (err) {
       toast.error(err.message || "Failed to load project")
     } finally {
@@ -277,22 +281,20 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      <Sheet open={editOpen} onOpenChange={setEditOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Edit Project</SheetTitle>
-            <SheetDescription>Update project details</SheetDescription>
-          </SheetHeader>
-          <div className="p-4">
-            <ProjectForm
-              key={editOpen ? project._id : "closed"}
-              initialData={project}
-              onSuccess={handleEditSuccess}
-              onCancel={() => setEditOpen(false)}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-2xl overflow-hidden p-3 sm:p-4">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+            <DialogDescription>Update project details</DialogDescription>
+          </DialogHeader>
+          <ProjectForm
+            key={editOpen ? project._id : "closed"}
+            initialData={project}
+            onSuccess={handleEditSuccess}
+            onCancel={() => setEditOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>

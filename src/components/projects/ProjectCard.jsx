@@ -144,9 +144,6 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction }) {
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-1.5">
-        {project.businessName && (
-          <div className="text-xs text-muted-foreground truncate">{project.businessName}</div>
-        )}
         {project.tags?.length > 0 && (
           <div className="flex flex-wrap gap-1 justify-end">
             {project.tags.map((tag, idx) => (

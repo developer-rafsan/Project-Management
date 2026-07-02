@@ -19,9 +19,17 @@ import {
 import ProjectFilters from "@/components/projects/ProjectFilters"
 import ProjectTable from "@/components/projects/ProjectTable"
 import ProjectCard from "@/components/projects/ProjectCard"
+import ProjectForm from "@/components/projects/ProjectForm"
 import Pagination from "@/components/projects/Pagination"
 import { getMonthRange, getEffectiveMonthYear } from "@/lib/dateUtils"
-import { createProject, deleteProject } from "@/actions/projectActions"
+import { createProject, deleteProject, getProjectPassword } from "@/actions/projectActions"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Plus, FolderKanban } from "lucide-react"
 
 const PAGE_SIZE = 20
@@ -42,6 +50,17 @@ export default function ProjectsPage() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
   const [page, setPage] = useState(1)
   const [viewMode, setViewMode] = useState("list")
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editProject, setEditProject] = useState(null)
+
+  useEffect(() => {
+    if (createOpen || editProject) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => { document.body.style.overflow = "" }
+  }, [createOpen, editProject])
   const [startDay] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("monthStartDay")
@@ -56,12 +75,16 @@ export default function ProjectsPage() {
   }, [])
 
   const handleCardAction = useCallback(async (action, project) => {
-    if (action === "duplicate") {
+    if (action === "edit") {
+      setEditProject(project)
+    } else if (action === "duplicate") {
       try {
-        const { _id, createdAt, updatedAt, orderId, transferHistory, __v, ...rest } = project
+        const { _id, createdAt, updatedAt, orderId, transferHistory, __v, websitePassword, ...rest } = project
+        const pwRes = await getProjectPassword(project._id).catch(() => ({ password: "" }))
         const newProj = await createProject({
           ...rest,
           projectName: `${project.projectName} (Copy)`,
+          websitePassword: pwRes.password || "",
         })
         dispatch(addProject(newProj))
         toast.success("Project duplicated")
@@ -80,6 +103,18 @@ export default function ProjectsPage() {
     }
   }, [dispatch, router])
 
+  const handleCreateSuccess = (project) => {
+    dispatch(addProject(project))
+    setCreateOpen(false)
+    toast.success("Project created")
+  }
+
+  const handleEditSuccess = (updatedProject) => {
+    dispatch(updateProjectInStore(updatedProject))
+    setEditProject(null)
+    toast.success("Project updated")
+  }
+
   useEffect(() => {
     if (!fetched) dispatch(fetchProjects())
   }, [fetched, dispatch])
@@ -93,7 +128,6 @@ export default function ProjectsPage() {
         (p) =>
           (p.orderId && p.orderId.toLowerCase().includes(q)) ||
           (p.projectName && p.projectName.toLowerCase().includes(q)) ||
-          (p.businessName && p.businessName.toLowerCase().includes(q)) ||
           (p.websiteUrl && p.websiteUrl.toLowerCase().includes(q))
       )
     }
@@ -155,7 +189,7 @@ export default function ProjectsPage() {
             <span className="font-medium text-foreground">{total}</span> {total === 1 ? "project" : "projects"} &middot; <span className="font-medium text-emerald-600 dark:text-emerald-400">${totalPrice.toFixed(2)}</span> total
           </p>
         </div>
-        <Button onClick={() => router.push("/dashboard/projects/new")} className="w-full sm:w-auto shrink-0 gap-2">
+        <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto shrink-0 gap-2 cursor-pointer">
           <Plus className="size-4" />
           <span>New Project</span>
         </Button>
@@ -321,7 +355,7 @@ export default function ProjectsPage() {
         <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
           <FolderKanban className="size-10 sm:size-12 text-muted-foreground/40 mb-3" />
           <p className="text-muted-foreground mb-4">Project not available</p>
-          <Button onClick={() => router.push("/dashboard/projects/new")} className="w-full sm:w-auto">
+          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto">
             <Plus className="size-4" />
             Create Project
           </Button>
@@ -333,10 +367,41 @@ export default function ProjectsPage() {
           ))}
         </div>
       ) : (
-        <ProjectTable projects={paginated} page={page} pageSize={PAGE_SIZE} />
+        <ProjectTable projects={paginated} page={page} pageSize={PAGE_SIZE} onAction={handleCardAction} />
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <Dialog open={!!editProject} onOpenChange={(open) => !open && setEditProject(null)}>
+        <DialogContent className="sm:max-w-2xl overflow-hidden p-3 sm:p-4">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+            <DialogDescription>Update project details</DialogDescription>
+          </DialogHeader>
+          {editProject && (
+            <ProjectForm
+              key={editProject._id}
+              initialData={editProject}
+              onSuccess={handleEditSuccess}
+              onCancel={() => setEditProject(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-2xl overflow-hidden p-3 sm:p-4">
+          <DialogHeader>
+            <DialogTitle>Create New Project</DialogTitle>
+            <DialogDescription>Fill in the project details</DialogDescription>
+          </DialogHeader>
+          <ProjectForm
+            key={createOpen ? "open" : "closed"}
+            onSuccess={handleCreateSuccess}
+            onCancel={() => setCreateOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
