@@ -6,6 +6,7 @@ import { store } from "@/lib/store"
 import { ThemeProvider } from "@/components/layout/ThemeProvider"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { NotificationProvider } from "@/components/layout/NotificationProvider"
 
 export function Providers({ children }) {
   return (
@@ -13,7 +14,9 @@ export function Providers({ children }) {
       <SessionProvider>
         <ThemeProvider>
           <TooltipProvider>
-            {children}
+            <NotificationProvider>
+              {children}
+            </NotificationProvider>
             <Toaster />
           </TooltipProvider>
         </ThemeProvider>

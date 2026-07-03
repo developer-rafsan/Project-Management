@@ -14,6 +14,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetDescription,
 } from "@/components/ui/sheet"
 import {
   Dialog,
@@ -24,6 +25,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { version } from "../../../package.json"
+import { useNotifications } from "./NotificationProvider"
 
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -37,6 +39,11 @@ import {
   Hash,
   StickyNote,
   Settings,
+  Bell,
+  Check,
+  X,
+  Mail,
+  MailOpen,
 } from "lucide-react"
 
 const pageTitles = {
@@ -59,6 +66,8 @@ export default function Navbar() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [searchOpen, setSearchOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [selectedNotif, setSelectedNotif] = useState(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [logoutOpen, setLogoutOpen] = useState(false)
   const searchInputRef = useRef(null)
@@ -69,6 +78,8 @@ export default function Navbar() {
     Object.entries(pageTitles).find(([path]) => pathname.startsWith(path))?.[1] ||
     "Dashboard"
 
+  const { notifications, unreadCount, fetchNotifications, acceptTransfer, rejectTransfer, setReadStatus } = useNotifications()
+
   const userInitials = session?.user?.name
     ? session.user.name
         .split(" ")
@@ -77,6 +88,25 @@ export default function Navbar() {
         .toUpperCase()
         .slice(0, 2)
     : "U"
+
+  function formatRelativeTime(dateStr) {
+    const now = Date.now()
+    const date = new Date(dateStr).getTime()
+    const diff = now - date
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'Just now'
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    const days = Math.floor(hrs / 24)
+    if (days < 7) return `${days}d ago`
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  const pendingRequests = notifications.filter(
+    (n) => n.type === "assignee_transfer_request" && n.status === "pending"
+  )
+  const recentNotifs = notifications.slice(0, 20)
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl sm:px-6">
@@ -181,7 +211,7 @@ export default function Navbar() {
         <Button
           variant="ghost"
           size="icon"
-          className="text-muted-foreground"
+          className="text-muted-foreground cursor-pointer"
           aria-label="Search"
           onClick={() => {
             setSearchQuery("")
@@ -191,6 +221,164 @@ export default function Navbar() {
         >
           <Search className="h-5 w-5" />
         </Button>
+
+        <div className="relative">
+          <button
+            className="relative flex size-8 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/60 active:scale-95 transition-all duration-200 cursor-pointer"
+            aria-label="Notifications"
+            onClick={() => {
+              setNotifOpen((prev) => !prev)
+              if (!notifOpen) fetchNotifications()
+            }}
+          >
+            <div className="relative">
+              <Bell className={`size-5 transition-transform duration-200 ${notifOpen ? 'rotate-12 scale-110 text-primary' : ''}`} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </div>
+          </button>
+          {notifOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setNotifOpen(false)}
+              />
+              <div className="absolute right-0 top-full mt-2 z-50 w-88 rounded-xl border bg-card shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Bell className="size-4 text-primary" />
+                    <span className="text-sm font-semibold">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="text-[11px] font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors cursor-pointer"
+                      onClick={() => {
+                        notifications.forEach((n) => {
+                          if (!n.read) setReadStatus(n._id, true)
+                        })
+                      }}
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-96 overflow-y-auto divide-y divide-border/40">
+                  {recentNotifs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 px-4">
+                      <Bell className="size-8 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground">No notifications yet</p>
+                    </div>
+                  ) : (
+                    recentNotifs.map((n) => (
+                      <div
+                        key={n._id}
+                        className={`relative px-4 py-3 cursor-pointer transition-all duration-150 hover:bg-accent/50 group ${
+                          !n.read ? 'bg-gradient-to-r from-red-50/80 to-transparent dark:from-red-950/15' : ''
+                        }`}
+                        onClick={() => {
+                          if (n.type === "assignee_transfer_request" && n.status === "pending") return
+                          setSelectedNotif(n)
+                          setNotifOpen(false)
+                          if (!n.read) setReadStatus(n._id, true)
+                        }}
+                      >
+                        {!n.read && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-red-500" />
+                        )}
+                        <div className="flex items-start gap-3 pl-1">
+                          <div className="relative shrink-0 mt-0.5">
+                            <Avatar className="size-9 ring-2 ring-background shadow-sm">
+                              <AvatarImage src={n.from?.image} />
+                              <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
+                                {n.from?.name?.charAt(0) || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className={`text-sm font-semibold leading-tight ${!n.read ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground transition-colors'}`}>
+                                {n.title || "Notification"}
+                              </p>
+                              <button
+                                className="shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setReadStatus(n._id, !n.read)
+                                }}
+                              >
+                                {n.read ? <Mail className="size-3.5" /> : <MailOpen className="size-3.5 text-red-500" />}
+                              </button>
+                            </div>
+                            {n.type === "assignee_transfer_request" && n.status === "pending" ? (
+                              <>
+                                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                  <span className="font-medium text-foreground/80">{n.from?.name || "Someone"}</span>
+                                  {" "}wants to transfer{" "}
+                                  <span className="font-medium text-foreground/80">&ldquo;{n.project?.projectName || "project"}&rdquo;</span>
+                                  {" "}to you
+                                </p>
+                                {n.message && (
+                                  <p className="text-xs text-muted-foreground/60 mt-1 italic leading-relaxed">
+                                    &ldquo;{n.message}&rdquo;
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-2 mt-2.5">
+                                  <Button
+                                    size="xs"
+                                    variant="default"
+                                    className="h-7 gap-1 rounded-lg font-medium"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      acceptTransfer(n)
+                                      setNotifOpen(false)
+                                    }}
+                                  >
+                                    <Check className="size-3.5" />
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    className="h-7 gap-1 rounded-lg"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      rejectTransfer(n)
+                                      setNotifOpen(false)
+                                    }}
+                                  >
+                                    <X className="size-3.5" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              </>
+                            ) : (
+                              <p className={`text-xs mt-0.5 leading-relaxed ${!n.read ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground'}`}>
+                                {n.message || "Notification"}
+                              </p>
+                            )}
+                            {n.createdAt && (
+                              <p className="text-[10px] text-muted-foreground/50 mt-1.5">
+                                {formatRelativeTime(n.createdAt)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         <Avatar className="size-8 cursor-default">
           <AvatarImage
@@ -255,6 +443,89 @@ export default function Navbar() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={!!selectedNotif} onOpenChange={(open) => { if (!open) setSelectedNotif(null) }}>
+        <SheetContent side="right" className="sm:max-w-md">
+          <SheetHeader className="border-b pb-4 mb-0">
+            <SheetTitle className="text-lg flex items-center gap-2">
+              <span className={`inline-flex size-2 rounded-full ${!selectedNotif?.read ? 'bg-red-500' : 'bg-muted-foreground/30'}`} />
+              {selectedNotif?.title || "Notification"}
+            </SheetTitle>
+            <SheetDescription />
+          </SheetHeader>
+
+          <div className="flex-1 px-4 py-5 space-y-5 overflow-y-auto">
+            <div className="flex items-center gap-4">
+              <Avatar className="size-12 ring-2 ring-background shadow-md">
+                <AvatarImage src={selectedNotif?.from?.image} />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {selectedNotif?.from?.name?.charAt(0) || "?"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-semibold text-base">{selectedNotif?.from?.name || "Someone"}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                  <Bell className="size-3" />
+                  {selectedNotif?.type === "assignee_transfer_request" ? "Transfer Request" :
+                   selectedNotif?.type === "assignee_transfer_accepted" ? "Transfer Accepted" :
+                   selectedNotif?.type === "assignee_transfer_rejected" ? "Transfer Rejected" : "Notification"}
+                </p>
+              </div>
+            </div>
+
+            {selectedNotif?.project && (
+              <div className="rounded-xl border bg-gradient-to-br from-muted/50 to-muted/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="size-1.5 rounded-full bg-primary/60" />
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</p>
+                </div>
+                <p className="text-sm font-semibold">
+                  {selectedNotif.project.projectName}
+                  {selectedNotif.project.orderId && (
+                    <span className="text-muted-foreground ml-2 font-mono text-xs bg-muted/50 px-1.5 py-0.5 rounded">
+                      #{selectedNotif.project.orderId}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {selectedNotif?.message && (
+              <div className="rounded-xl border bg-gradient-to-br from-muted/50 to-muted/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="size-1.5 rounded-full bg-primary/60" />
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Message</p>
+                </div>
+                <p className="text-sm leading-relaxed">{selectedNotif.message}</p>
+              </div>
+            )}
+
+            {selectedNotif?.createdAt && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
+                <span>Received {formatRelativeTime(selectedNotif.createdAt)}</span>
+                <span className="size-1 rounded-full bg-muted-foreground/20" />
+                <span>{new Date(selectedNotif.createdAt).toLocaleString()}</span>
+              </div>
+            )}
+
+            <div className="pt-2 border-t">
+              <button
+                className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-1.5 px-3 rounded-lg hover:bg-muted/50"
+                onClick={() => {
+                  if (selectedNotif) {
+                    const newRead = !selectedNotif.read
+                    setReadStatus(selectedNotif._id, newRead)
+                    setSelectedNotif((prev) => prev ? { ...prev, read: newRead } : null)
+                  }
+                }}
+              >
+                {selectedNotif?.read ? <Mail className="size-4" /> : <MailOpen className="size-4 text-red-500" />}
+                {selectedNotif?.read ? "Mark as unread" : "Mark as read"}
+              </button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </header>
   )
 }

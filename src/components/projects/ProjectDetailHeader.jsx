@@ -11,6 +11,7 @@ import {
   CalendarArrowUp,
   ArrowLeftRight,
   Circle,
+  UserRoundPlus,
 } from "lucide-react"
 
 const statusVariants = {
@@ -83,6 +84,7 @@ export function ProjectActions({
   onEdit,
   onDuplicate,
   onTransfer,
+  onTransferAssignee,
   onDelete,
 }) {
   return (
@@ -102,6 +104,10 @@ export function ProjectActions({
       <Button variant="outline" size="sm" onClick={onTransfer}>
         <CalendarArrowUp className="size-3.5" />
         Transfer
+      </Button>
+      <Button variant="outline" size="sm" onClick={onTransferAssignee}>
+        <UserRoundPlus className="size-3.5" />
+        Transfer to
       </Button>
       <Button variant="destructive" size="sm" onClick={onDelete}>
         <Trash2 className="size-3.5" />

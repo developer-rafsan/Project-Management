@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { FileText, CalendarArrowUp } from "lucide-react"
 import ProjectForm from "@/components/projects/ProjectForm"
 import MonthTransferDialog from "@/components/projects/MonthTransferDialog"
+import TransferAssigneeDialog from "@/components/projects/TransferAssigneeDialog"
 import Notes from "@/components/projects/Notes"
 import { ProjectBreadcrumbs, ProjectTitle, ProjectActions } from "@/components/projects/ProjectDetailHeader"
 import { ProjectTimeline, ProjectTransferHistory } from "@/components/projects/ProjectTimeline"
@@ -59,6 +60,7 @@ export default function ProjectDetailPage() {
     return () => { document.body.style.overflow = "" }
   }, [editOpen, deleteOpen])
   const [transferOpen, setTransferOpen] = useState(false)
+  const [transferAssigneeOpen, setTransferAssigneeOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("")
   const [statusNote, setStatusNote] = useState("")
@@ -231,6 +233,7 @@ export default function ProjectDetailPage() {
           onEdit={() => setEditOpen(true)}
           onDuplicate={handleDuplicate}
           onTransfer={() => setTransferOpen(true)}
+          onTransferAssignee={() => setTransferAssigneeOpen(true)}
           onDelete={() => setDeleteOpen(true)}
         />
       </div>
@@ -332,6 +335,15 @@ export default function ProjectDetailPage() {
         open={transferOpen}
         onClose={() => setTransferOpen(false)}
         onSuccess={handleTransferSuccess}
+      />
+
+      <TransferAssigneeDialog
+        project={project}
+        open={transferAssigneeOpen}
+        onClose={() => setTransferAssigneeOpen(false)}
+        onSuccess={() => {
+          setTransferAssigneeOpen(false)
+        }}
       />
     </div>
   )
