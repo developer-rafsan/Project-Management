@@ -143,6 +143,41 @@ export async function PATCH(request, { params }) {
       });
     }
 
+    const generalFieldKeys = fields.filter(
+      f => !['status', 'currentMonth', 'currentYear'].includes(f)
+    );
+    const hasGeneralChanges = generalFieldKeys.some(key => {
+      if (body[key] === undefined) return false;
+      const existing = existingProject[key];
+      const incoming = body[key];
+      if (key === 'startDate') {
+        return new Date(incoming).getTime() !== new Date(existing).getTime();
+      }
+      if (key === 'price') {
+        return Number(incoming) !== Number(existing);
+      }
+      if (key === 'tags') {
+        const a = (Array.isArray(incoming) ? incoming : []).sort().join(',');
+        const b = (Array.isArray(existing) ? existing : []).sort().join(',');
+        return a !== b;
+      }
+      if (key === 'assignee') {
+        const eId = existing?._id?.toString() || existing?.toString() || '';
+        const iId = incoming?.toString() || '';
+        return eId !== iId;
+      }
+      return String(incoming ?? '') !== String(existing != null ? existing : '');
+    });
+
+    if (hasGeneralChanges) {
+      await Activity.create({
+        project: id,
+        type: 'project_updated',
+        performedBy: session.user.id,
+        description: 'Project details updated',
+      });
+    }
+
     await Project.findByIdAndUpdate(id, updateOps, { new: true });
 
     const updatedProject = await Project.findById(id)

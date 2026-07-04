@@ -21,6 +21,7 @@ import MonthTransferDialog from "@/components/projects/MonthTransferDialog"
 import TransferAssigneeDialog from "@/components/projects/TransferAssigneeDialog"
 import Notes from "@/components/projects/Notes"
 import { ProjectBreadcrumbs, ProjectTitle, ProjectActions } from "@/components/projects/ProjectDetailHeader"
+import ShareDialog from "@/components/projects/ShareDialog"
 import { ProjectTimeline } from "@/components/projects/ProjectTimeline"
 import {
   ProjectDetailsCard,
@@ -50,6 +51,7 @@ export default function ProjectDetailPage() {
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
     if (editOpen || deleteOpen) {
@@ -88,10 +90,12 @@ export default function ProjectDetailPage() {
     fetchData()
   }, [fetchData])
 
-  const handleEditSuccess = (updatedProject) => {
+  const handleEditSuccess = async (updatedProject) => {
     setProject(updatedProject)
     dispatch(updateProjectInStore(updatedProject))
     setEditOpen(false)
+    const freshActivities = await getProjectActivities(params.id)
+    setActivities(freshActivities || [])
   }
 
   const handleDuplicate = async () => {
@@ -237,6 +241,7 @@ export default function ProjectDetailPage() {
           onTransfer={() => setTransferOpen(true)}
           onTransferAssignee={() => setTransferAssigneeOpen(true)}
           onDelete={() => setDeleteOpen(true)}
+          onShare={() => setShareOpen(true)}
         />
       </div>
 
@@ -336,6 +341,13 @@ export default function ProjectDetailPage() {
         onSuccess={() => {
           setTransferAssigneeOpen(false)
         }}
+      />
+
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        projectId={project._id}
+        projectName={project.projectName}
       />
     </div>
   )

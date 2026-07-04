@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { useSelector, useDispatch } from "react-redux"
@@ -71,7 +71,25 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("")
   const [logoutOpen, setLogoutOpen] = useState(false)
   const searchInputRef = useRef(null)
+  const notifRef = useRef(null)
+  const bellRef = useRef(null)
   const dispatch = useDispatch()
+
+  useEffect(() => {
+    if (!notifOpen) return
+    function handleClickOutside(e) {
+      if (
+        notifRef.current &&
+        !notifRef.current.contains(e.target) &&
+        bellRef.current &&
+        !bellRef.current.contains(e.target)
+      ) {
+        setNotifOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [notifOpen])
   const projects = useSelector((s) => s.projects?.items || [])
 
   const title =
@@ -224,6 +242,7 @@ export default function Navbar() {
 
         <div className="relative">
           <button
+            ref={bellRef}
             className="relative flex size-8 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/60 active:scale-95 transition-all duration-200 cursor-pointer"
             aria-label="Notifications"
             onClick={() => {
@@ -241,12 +260,7 @@ export default function Navbar() {
             </div>
           </button>
           {notifOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setNotifOpen(false)}
-              />
-              <div className="absolute right-0 top-full mt-2 z-50 w-88 rounded-xl border bg-card shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-200">
+            <div ref={notifRef} className="absolute right-0 top-full mt-2 z-50 w-88 rounded-xl border bg-card shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                   <div className="flex items-center gap-2">
                     <Bell className="size-4 text-primary" />
@@ -376,7 +390,6 @@ export default function Navbar() {
                   )}
                 </div>
               </div>
-            </>
           )}
         </div>
 

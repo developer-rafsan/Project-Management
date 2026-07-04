@@ -16,16 +16,17 @@ import { Plus, Pencil, Trash2, Check, X, Loader2 } from "lucide-react"
 import { getProjectNotes, createNote, updateNote, deleteNote } from "@/actions/projectActions"
 import { useSession } from "next-auth/react"
 
-export default function Notes({ projectId }) {
+export default function Notes({ projectId, readOnly = false, notes: propNotes }) {
   const { data: session } = useSession()
-  const [notes, setNotes] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [notes, setNotes] = useState(propNotes || [])
+  const [loading, setLoading] = useState(!propNotes)
   const [newContent, setNewContent] = useState("")
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editContent, setEditContent] = useState("")
 
   const fetchNotes = async () => {
+    if (propNotes) return
     try {
       const data = await getProjectNotes(projectId)
       setNotes(data)
@@ -37,8 +38,13 @@ export default function Notes({ projectId }) {
   }
 
   useEffect(() => {
-    fetchNotes()
-  }, [projectId])
+    if (propNotes) {
+      setNotes(propNotes)
+      setLoading(false)
+    } else {
+      fetchNotes()
+    }
+  }, [projectId, propNotes])
 
   const handleAdd = async () => {
     if (!newContent.trim()) return
@@ -94,19 +100,21 @@ export default function Notes({ projectId }) {
         <CardTitle>Notes</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Textarea
-            value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
-            placeholder="Write a note..."
-            rows={2}
-          />
-          <Button onClick={handleAdd} disabled={adding || !newContent.trim()} size="sm">
-            {adding && <Loader2 className="size-3.5 animate-spin" />}
-            <Plus className="size-3.5" />
-            Add Note
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="space-y-2">
+            <Textarea
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              placeholder="Write a note..."
+              rows={2}
+            />
+            <Button onClick={handleAdd} disabled={adding || !newContent.trim()} size="sm">
+              {adding && <Loader2 className="size-3.5 animate-spin" />}
+              <Plus className="size-3.5" />
+              Add Note
+            </Button>
+          </div>
+        )}
 
         {loading ? (
           <div className="space-y-3">
@@ -142,7 +150,7 @@ export default function Notes({ projectId }) {
                   ) : (
                     <p className="text-sm whitespace-pre-wrap flex-1">{note.content}</p>
                   )}
-                  {editingId !== note._id && session?.user?.id === note.createdBy?._id && (
+                  {!readOnly && editingId !== note._id && session?.user?.id === note.createdBy?._id && (
                     <div className="flex gap-0.5 shrink-0">
                       <Button variant="ghost" size="icon-xs" onClick={() => startEdit(note)}>
                         <Pencil className="size-3" />

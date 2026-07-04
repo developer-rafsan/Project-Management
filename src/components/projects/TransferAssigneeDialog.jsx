@@ -25,7 +25,7 @@ import { toast } from "sonner"
 import { getUsers } from "@/actions/projectActions"
 import { cn } from "@/lib/utils"
 
-export default function TransferAssigneeDialog({ project, open, onClose, onSuccess }) {
+export default function TransferAssigneeDialog({ project, open, onClose, onSuccess, bulkProjectIds }) {
   const [users, setUsers] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedUserId, setSelectedUserId] = useState("")
@@ -34,6 +34,9 @@ export default function TransferAssigneeDialog({ project, open, onClose, onSucce
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [focused, setFocused] = useState(false)
   const inputRef = useRef(null)
+
+  const isBulk = Array.isArray(bulkProjectIds) && bulkProjectIds.length > 0
+  const projectIds = isBulk ? bulkProjectIds : (project ? [project._id] : [])
 
   useEffect(() => {
     if (open) {
@@ -50,7 +53,7 @@ export default function TransferAssigneeDialog({ project, open, onClose, onSucce
     setLoadingUsers(true)
     try {
       const allUsers = await getUsers()
-      setUsers(allUsers.filter((u) => u._id !== project?.assignee?._id && u._id !== project?.assignee))
+      setUsers(allUsers)
     } catch (err) {
       toast.error("Failed to load users")
     } finally {
@@ -78,22 +81,24 @@ export default function TransferAssigneeDialog({ project, open, onClose, onSucce
 
     setSubmitting(true)
     try {
-      const res = await fetch("/api/notifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: selectedUserId,
-          project: project._id,
-          message,
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.message || "Failed to send transfer request")
+      let successCount = 0
+      for (const pid of projectIds) {
+        const res = await fetch("/api/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: selectedUserId,
+            project: pid,
+            message,
+          }),
+        })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.message || "Failed to send transfer request")
+        }
+        successCount++
       }
-
-      toast.success("Transfer request sent")
+      toast.success(`Transfer request${projectIds.length > 1 ? "s" : ""} sent for ${successCount} project${successCount > 1 ? "s" : ""}`)
       onSuccess?.()
       onClose?.()
     } catch (err) {
@@ -109,7 +114,10 @@ export default function TransferAssigneeDialog({ project, open, onClose, onSucce
         <DialogHeader>
           <DialogTitle>Transfer to Person</DialogTitle>
           <DialogDescription>
-            Send a transfer request for &ldquo;{project?.projectName}&rdquo; to another user.
+            {isBulk
+              ? `Send transfer requests for ${projectIds.length} selected projects to another user.`
+              : `Send a transfer request for &ldquo;${project?.projectName}&rdquo; to another user.`
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -180,7 +188,10 @@ export default function TransferAssigneeDialog({ project, open, onClose, onSucce
                 <AvatarFallback className="text-[9px]">{selectedUser.name?.charAt(0) || "?"}</AvatarFallback>
               </Avatar>
               <UserRound className="size-3.5 text-muted-foreground shrink-0" />
-              Transferring to <strong className="truncate">{selectedUser.name}</strong>
+              {isBulk
+                ? <>Transferring <strong className="truncate">{projectIds.length} projects</strong> to <strong className="truncate">{selectedUser.name}</strong></>
+                : <>Transferring to <strong className="truncate">{selectedUser.name}</strong></>
+              }
             </div>
           )}
 
@@ -203,7 +214,7 @@ export default function TransferAssigneeDialog({ project, open, onClose, onSucce
           </Button>
           <Button onClick={handleConfirm} disabled={submitting || !selectedUserId}>
             {submitting && <Loader2 className="size-4 animate-spin" />}
-            Send Request
+            {isBulk ? `Send to ${selectedUser?.name || "User"}` : "Send Request"}
           </Button>
         </DialogFooter>
       </DialogContent>

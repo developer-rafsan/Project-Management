@@ -26,6 +26,9 @@ import {
   ArrowLeftRight,
   CalendarArrowUp,
   UserRoundPlus,
+  Link,
+  Square,
+  CheckSquare,
 } from "lucide-react"
 
 const statusStyles = {
@@ -43,7 +46,7 @@ const priorityStyles = {
   "Urgent": "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800",
 }
 
-const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageSize = 20, onAction }) {
+const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageSize = 20, onAction, selectedIds = [], onSelectionChange }) {
   const router = useRouter()
   const startSerial = (page - 1) * pageSize + 1
   const [copied, setCopied] = useState({})
@@ -181,7 +184,20 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
   return (
     <div className="space-y-2 sm:space-y-1.5">
       {/* Desktop header row */}
-      <div className="hidden sm:grid grid-cols-[36px_minmax(0,1fr)_110px] md:grid-cols-[36px_minmax(0,1fr)_1fr_120px_100px] lg:grid-cols-[36px_1fr_1fr_130px_110px_100px_36px] gap-4 px-4 sm:px-6 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <div className="hidden sm:grid grid-cols-[24px_36px_minmax(0,1fr)_110px] md:grid-cols-[24px_36px_minmax(0,1fr)_1fr_120px_100px] lg:grid-cols-[24px_36px_1fr_1fr_130px_110px_100px_36px] gap-4 px-4 sm:px-6 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            const allIds = projects.map(p => p._id)
+            onSelectionChange?.(selectedIds.length === allIds.length ? [] : allIds)
+          }}
+          className="text-center cursor-pointer"
+        >
+          {selectedIds.length === projects.length && projects.length > 0
+            ? <CheckSquare className="size-4 mx-auto text-primary" />
+            : <Square className="size-4 mx-auto text-muted-foreground/40 hover:text-muted-foreground" />
+          }
+        </button>
         <span className="text-center">#</span>
         <span>Project</span>
         <span className="hidden md:block">Website</span>
@@ -255,6 +271,11 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                     Transfer to
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onAction?.("share", project)}>
+                    <Link className="size-4" />
+                    Share
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={() => onAction?.("delete", project)}>
                     <Trash2 className="size-4" />
                     Delete
@@ -265,7 +286,20 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
           </div>
 
           {/* Desktop layout */}
-          <div className="hidden sm:grid grid-cols-[36px_minmax(0,1fr)_110px] md:grid-cols-[36px_minmax(0,1fr)_1fr_120px_100px] lg:grid-cols-[36px_1fr_1fr_130px_110px_100px_36px] items-center gap-4 px-4 sm:px-6 py-3">
+          <div className="hidden sm:grid grid-cols-[24px_36px_minmax(0,1fr)_110px] md:grid-cols-[24px_36px_minmax(0,1fr)_1fr_120px_100px] lg:grid-cols-[24px_36px_1fr_1fr_130px_110px_100px_36px] items-center gap-4 px-4 sm:px-6 py-3">
+            <button
+              onClick={(e) => { e.stopPropagation(); onSelectionChange?.(
+                selectedIds.includes(project._id)
+                  ? selectedIds.filter(id => id !== project._id)
+                  : [...selectedIds, project._id]
+              ) }}
+              className="text-center cursor-pointer"
+            >
+              {selectedIds.includes(project._id)
+                ? <CheckSquare className="size-4 mx-auto text-primary" />
+                : <Square className="size-4 mx-auto text-muted-foreground/40 hover:text-muted-foreground" />
+              }
+            </button>
             <span className="text-sm text-muted-foreground tabular-nums text-center">{startSerial + idx}</span>
             <div className="min-w-0">
               <div className="flex items-center gap-1">
@@ -322,6 +356,11 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                   <DropdownMenuItem onClick={() => onAction?.("transferAssignee", project)}>
                     <UserRoundPlus className="size-4" />
                     Transfer to
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onAction?.("share", project)}>
+                    <Link className="size-4" />
+                    Share
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={() => onAction?.("delete", project)}>

@@ -1,7 +1,7 @@
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CalendarArrowUp, UserRoundPlus, ArrowLeftRight, Plus } from "lucide-react"
+import { CalendarArrowUp, UserRoundPlus, ArrowLeftRight, Plus, Pencil } from "lucide-react"
 
 const statusColors = {
   Pending: "bg-yellow-500",
@@ -80,6 +80,16 @@ function getActivityConfig(activity) {
         user: activity.performedBy || null,
         description: activity.description || null,
         note: null,
+      }
+    case "project_updated":
+      return {
+        dotColor: "bg-amber-500",
+        dotIcon: Pencil,
+        icon: <Pencil className="size-3.5 text-muted-foreground" />,
+        title: "Project Updated",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: activity.note || null,
       }
     default:
       return {

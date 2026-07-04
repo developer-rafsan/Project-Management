@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
   Circle,
   UserRoundPlus,
+  Link as LinkIcon,
 } from "lucide-react"
 
 const statusVariants = {
@@ -86,6 +87,7 @@ export function ProjectActions({
   onTransfer,
   onTransferAssignee,
   onDelete,
+  onShare,
 }) {
   return (
     <div className="flex items-center gap-1 flex-wrap">
@@ -96,6 +98,10 @@ export function ProjectActions({
       <Button variant="outline" size="sm" onClick={onEdit}>
         <Pencil className="size-3.5" />
         Edit
+      </Button>
+      <Button variant="outline" size="sm" onClick={onShare}>
+        <LinkIcon className="size-3.5" />
+        Share
       </Button>
       <Button variant="outline" size="sm" onClick={onDuplicate} disabled={actionLoading}>
         <DuplicateIcon className="size-3.5" />
