@@ -23,6 +23,9 @@ import {
   MoreHorizontal,
   Trash2,
   Pencil,
+  ArrowLeftRight,
+  CalendarArrowUp,
+  UserRoundPlus,
 } from "lucide-react"
 
 const statusStyles = {
@@ -239,6 +242,19 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                     Duplicate
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onAction?.("status", project)}>
+                    <ArrowLeftRight className="size-4" />
+                    Status
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onAction?.("transfer", project)}>
+                    <CalendarArrowUp className="size-4" />
+                    Transfer
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onAction?.("transferAssignee", project)}>
+                    <UserRoundPlus className="size-4" />
+                    Transfer to
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={() => onAction?.("delete", project)}>
                     <Trash2 className="size-4" />
                     Delete
@@ -293,6 +309,19 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                   <DropdownMenuItem onClick={() => onAction?.("duplicate", project)}>
                     <Copy className="size-4" />
                     Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onAction?.("status", project)}>
+                    <ArrowLeftRight className="size-4" />
+                    Status
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onAction?.("transfer", project)}>
+                    <CalendarArrowUp className="size-4" />
+                    Transfer
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onAction?.("transferAssignee", project)}>
+                    <UserRoundPlus className="size-4" />
+                    Transfer to
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={() => onAction?.("delete", project)}>

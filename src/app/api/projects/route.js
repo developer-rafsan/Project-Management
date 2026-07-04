@@ -4,7 +4,7 @@ import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import { encrypt } from '@/lib/encryption';
 import Project from '@/models/Project';
-import ProjectUpdate from '@/models/ProjectUpdate';
+import Activity from '@/models/Activity';
 
 export async function GET(request) {
   try {
@@ -166,15 +166,23 @@ export async function POST(request) {
 
     const project = await Project.create(projectData);
 
+    await Activity.create({
+      project: project._id,
+      type: 'project_created',
+      performedBy: session.user.id,
+      newStatus: status || 'Pending',
+      note: note || '',
+      description: `Project created with status "${status || 'Pending'}"`,
+    });
+
     if (status && status !== 'Pending') {
-      await ProjectUpdate.create({
+      await Activity.create({
         project: project._id,
+        type: 'status_change',
+        performedBy: session.user.id,
         previousStatus: 'Pending',
         newStatus: status,
-        updatedBy: session.user.id,
         note: note || '',
-        month: project.currentMonth,
-        year: project.currentYear,
       });
     }
 

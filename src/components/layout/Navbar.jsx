@@ -270,7 +270,7 @@ export default function Navbar() {
                     </button>
                   )}
                 </div>
-                <div className="max-h-96 overflow-y-auto divide-y divide-border/40">
+                <div className="max-h-96 overflow-y-auto divide-y divide-border/40 hide-scrollbar">
                   {recentNotifs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 px-4">
                       <Bell className="size-8 text-muted-foreground/30 mb-3" />

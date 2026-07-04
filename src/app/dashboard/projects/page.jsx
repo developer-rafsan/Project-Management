@@ -21,8 +21,11 @@ import ProjectTable from "@/components/projects/ProjectTable"
 import ProjectCard from "@/components/projects/ProjectCard"
 import ProjectForm from "@/components/projects/ProjectForm"
 import Pagination from "@/components/projects/Pagination"
+import MonthTransferDialog from "@/components/projects/MonthTransferDialog"
+import TransferAssigneeDialog from "@/components/projects/TransferAssigneeDialog"
+import { StatusChangeDialog } from "@/components/projects/StatusChangeDialog"
 import { getMonthRange, getEffectiveMonthYear } from "@/lib/dateUtils"
-import { createProject, deleteProject, getProjectPassword } from "@/actions/projectActions"
+import { createProject, deleteProject, getProjectPassword, updateProject } from "@/actions/projectActions"
 import {
   Dialog,
   DialogContent,
@@ -30,7 +33,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { Plus, FolderKanban } from "lucide-react"
+import { Plus, FolderKanban, ArrowLeftRight, CalendarArrowUp, UserRoundPlus } from "lucide-react"
 
 const PAGE_SIZE = 20
 
@@ -52,6 +55,9 @@ export default function ProjectsPage() {
   const [viewMode, setViewMode] = useState("list")
   const [createOpen, setCreateOpen] = useState(false)
   const [editProject, setEditProject] = useState(null)
+  const [statusProject, setStatusProject] = useState(null)
+  const [transferProject, setTransferProject] = useState(null)
+  const [transferAssigneeProject, setTransferAssigneeProject] = useState(null)
 
   useEffect(() => {
     if (createOpen || editProject) {
@@ -100,6 +106,12 @@ export default function ProjectsPage() {
       } catch (err) {
         toast.error(err.message || "Failed to delete")
       }
+    } else if (action === "status") {
+      setStatusProject(project)
+    } else if (action === "transfer") {
+      setTransferProject(project)
+    } else if (action === "transferAssignee") {
+      setTransferAssigneeProject(project)
     }
   }, [dispatch, router])
 
@@ -388,6 +400,50 @@ export default function ProjectsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {statusProject && (
+        <StatusChangeDialog
+          open={!!statusProject}
+          onOpenChange={(open) => { if (!open) setStatusProject(null) }}
+          projectName={statusProject.projectName}
+          newStatus={statusProject.status}
+          onNewStatusChange={(s) => setStatusProject((prev) => prev ? { ...prev, status: s } : null)}
+          statusNote=""
+          onStatusNoteChange={() => {}}
+          actionLoading={false}
+          onConfirm={async () => {
+            try {
+              const updated = await updateProject(statusProject._id, { status: statusProject.status })
+              dispatch(updateProjectInStore(updated))
+              toast.success("Status updated")
+              setStatusProject(null)
+            } catch (err) {
+              toast.error(err.message || "Failed to update status")
+            }
+          }}
+        />
+      )}
+
+      {transferProject && (
+        <MonthTransferDialog
+          project={transferProject}
+          open={!!transferProject}
+          onClose={() => setTransferProject(null)}
+          onSuccess={(updated) => {
+            dispatch(updateProjectInStore(updated))
+            setTransferProject(null)
+          }}
+        />
+      )}
+
+      {transferAssigneeProject && (
+        <TransferAssigneeDialog
+          project={transferAssigneeProject}
+          open={!!transferAssigneeProject}
+          onClose={() => setTransferAssigneeProject(null)}
+          onSuccess={() => setTransferAssigneeProject(null)}
+        />
+      )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-2xl overflow-hidden p-3 sm:p-4">

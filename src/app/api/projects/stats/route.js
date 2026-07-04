@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import Project from '@/models/Project';
-import ProjectUpdate from '@/models/ProjectUpdate';
+import Activity from '@/models/Activity';
 
 function getEffectiveMonthYear(project) {
   return { month: project.currentMonth, year: project.currentYear }
@@ -99,11 +99,11 @@ export async function GET(request) {
         .sort({ createdAt: -1 })
         .limit(10)
         .lean(),
-      ProjectUpdate.find({ project: { $in: filteredIds } })
+      Activity.find({ project: { $in: filteredIds } })
         .sort({ createdAt: -1 })
         .limit(10)
         .populate('project', 'projectName')
-        .populate('updatedBy', 'name')
+        .populate('performedBy', 'name')
         .lean(),
     ])
 

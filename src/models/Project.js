@@ -75,11 +75,25 @@ const projectSchema = new mongoose.Schema(
       {
         oldMonth: Number,
         newMonth: Number,
+        newYear: Number,
         transferDate: Date,
         transferredBy: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'User',
         },
+      },
+    ],
+    personTransferHistory: [
+      {
+        from: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        to: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        transferDate: Date,
       },
     ],
   },

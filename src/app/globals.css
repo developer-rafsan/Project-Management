@@ -172,3 +172,15 @@ select:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s;
   caret-color: var(--foreground);
 }
+
+/* Hide scrollbar globally */
+html, body, main, .hide-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+main::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}

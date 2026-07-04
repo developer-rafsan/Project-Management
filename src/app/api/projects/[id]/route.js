@@ -3,8 +3,9 @@ import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import { encrypt } from '@/lib/encryption';
+import User from '@/models/User';
 import Project from '@/models/Project';
-import ProjectUpdate from '@/models/ProjectUpdate';
+import Activity from '@/models/Activity';
 
 export async function GET(request, { params }) {
   try {
@@ -16,10 +17,30 @@ export async function GET(request, { params }) {
     await connectDB();
 
     const { id } = await params;
-    const project = await Project.findById(id).populate('assignee').lean();
+    const project = await Project.findById(id)
+      .populate('assignee')
+      .populate('transferHistory.transferredBy', '_id name email image')
+      .lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    if (project.personTransferHistory?.length) {
+      const ids = new Set();
+      project.personTransferHistory.forEach(e => { if (e.from) ids.add(e.from.toString()); if (e.to) ids.add(e.to.toString()); });
+      if (ids.size) {
+        const users = await User.find({ _id: { $in: [...ids] } }).select('_id name email image').lean();
+        const map = {};
+        users.forEach(u => { map[u._id.toString()] = u; });
+        project.personTransferHistory = project.personTransferHistory.map(e => ({
+          ...e,
+          from: e.from ? (map[e.from.toString()] || e.from) : e.from,
+          to: e.to ? (map[e.to.toString()] || e.to) : e.to,
+        }));
+      }
+    } else {
+      project.personTransferHistory = [];
     }
 
     const assigneeId = project.assignee?._id?.toString() || project.assignee?.toString();
@@ -93,14 +114,13 @@ export async function PATCH(request, { params }) {
       if (!body.currentMonth) updates.currentMonth = now.getMonth() + 1;
       if (!body.currentYear) updates.currentYear = now.getFullYear();
 
-      await ProjectUpdate.create({
+      await Activity.create({
         project: id,
+        type: 'status_change',
+        performedBy: session.user.id,
         previousStatus: existingProject.status,
         newStatus: body.status,
-        updatedBy: session.user.id,
         note: body.updateNote || '',
-        month: updates.currentMonth,
-        year: updates.currentYear,
       });
     }
 
@@ -113,19 +133,21 @@ export async function PATCH(request, { params }) {
     const updateOps = { $set: updates };
 
     if (monthYearChanged) {
-      const transferEntry = {
+      await Activity.create({
+        project: id,
+        type: 'month_transfer',
+        performedBy: session.user.id,
         oldMonth: existingProject.currentMonth,
         newMonth: updates.currentMonth || existingProject.currentMonth,
         newYear: updates.currentYear || existingProject.currentYear,
-        transferDate: new Date(),
-        transferredBy: session.user.id,
-      };
-      updateOps.$push = { transferHistory: transferEntry };
+      });
     }
 
     await Project.findByIdAndUpdate(id, updateOps, { new: true });
 
-    const updatedProject = await Project.findById(id).populate('assignee').lean();
+    const updatedProject = await Project.findById(id)
+      .populate('assignee')
+      .lean();
 
     return NextResponse.json(updatedProject);
   } catch (error) {
@@ -159,7 +181,7 @@ export async function DELETE(request, { params }) {
 
     await Promise.all([
       Project.findByIdAndDelete(id),
-      ProjectUpdate.deleteMany({ project: id }),
+      Activity.deleteMany({ project: id }),
     ]);
 
     return NextResponse.json({ message: 'Project deleted successfully' });

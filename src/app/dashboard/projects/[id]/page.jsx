@@ -10,18 +10,18 @@ import {
   updateProject,
   deleteProject,
   createProject,
-  getProjectUpdates,
+  getProjectActivities,
   getProjectPassword,
 } from "@/actions/projectActions"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { FileText, CalendarArrowUp } from "lucide-react"
+import { FileText } from "lucide-react"
 import ProjectForm from "@/components/projects/ProjectForm"
 import MonthTransferDialog from "@/components/projects/MonthTransferDialog"
 import TransferAssigneeDialog from "@/components/projects/TransferAssigneeDialog"
 import Notes from "@/components/projects/Notes"
 import { ProjectBreadcrumbs, ProjectTitle, ProjectActions } from "@/components/projects/ProjectDetailHeader"
-import { ProjectTimeline, ProjectTransferHistory } from "@/components/projects/ProjectTimeline"
+import { ProjectTimeline } from "@/components/projects/ProjectTimeline"
 import {
   ProjectDetailsCard,
   ProjectWebsiteCard,
@@ -43,7 +43,7 @@ export default function ProjectDetailPage() {
   const params = useParams()
   const dispatch = useDispatch()
   const [project, setProject] = useState(null)
-  const [updates, setUpdates] = useState([])
+  const [activities, setActivities] = useState([])
   const [loading, setLoading] = useState(true)
   const [decryptedPassword, setDecryptedPassword] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -69,13 +69,13 @@ export default function ProjectDetailPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [projectData, updatesData, passwordData] = await Promise.all([
+      const [projectData, activitiesData, passwordData] = await Promise.all([
         getProject(params.id),
-        getProjectUpdates(params.id),
+        getProjectActivities(params.id),
         getProjectPassword(params.id).catch(() => ({ password: "" })),
       ])
       setProject(projectData)
-      setUpdates(updatesData || [])
+      setActivities(activitiesData || [])
       setDecryptedPassword(passwordData.password || null)
     } catch (err) {
       toast.error(err.message || "Failed to load project")
@@ -127,10 +127,12 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const handleTransferSuccess = (updatedProject) => {
+  const handleTransferSuccess = async (updatedProject) => {
     setProject(updatedProject)
     dispatch(updateProjectInStore(updatedProject))
     setTransferOpen(false)
+    const freshActivities = await getProjectActivities(params.id)
+    setActivities(freshActivities || [])
   }
 
   const handleStatusChange = async () => {
@@ -143,8 +145,8 @@ export default function ProjectDetailPage() {
       })
       setProject(updated)
       dispatch(updateProjectInStore(updated))
-      const freshUpdates = await getProjectUpdates(params.id)
-      setUpdates(freshUpdates || [])
+      const freshActivities = await getProjectActivities(params.id)
+      setActivities(freshActivities || [])
       setStatusOpen(false)
       setNewStatus("")
       setStatusNote("")
@@ -253,20 +255,10 @@ export default function ProjectDetailPage() {
           <div className="rounded-xl border bg-card p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-4">
               <div className="size-2 rounded-full bg-primary shrink-0" />
-              <h2 className="text-sm font-semibold">Timeline</h2>
+              <h2 className="text-sm font-semibold">Activity Timeline</h2>
             </div>
-            <ProjectTimeline updates={updates} />
+            <ProjectTimeline activities={activities} />
           </div>
-
-          {project.transferHistory?.length > 0 && (
-            <div className="rounded-xl border bg-card p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <CalendarArrowUp className="size-4 text-muted-foreground shrink-0" />
-                <h2 className="text-sm font-semibold">Transfer History</h2>
-              </div>
-              <ProjectTransferHistory transferHistory={project.transferHistory} />
-            </div>
-          )}
 
           <Notes projectId={project._id} />
         </div>

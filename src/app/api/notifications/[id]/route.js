@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import Notification from '@/models/Notification';
 import Project from '@/models/Project';
+import Activity from '@/models/Activity';
 
 export async function PATCH(request, { params }) {
   try {
@@ -35,7 +36,24 @@ export async function PATCH(request, { params }) {
       if (project) {
         project.assignee = session.user.id;
         project.createdBy = session.user.id;
+        if (!project.personTransferHistory) {
+          project.personTransferHistory = [];
+        }
+        project.personTransferHistory.push({
+          from: notification.from,
+          to: session.user.id,
+          transferDate: new Date(),
+        });
         await project.save();
+
+        await Activity.create({
+          project: notification.project,
+          type: 'person_transfer',
+          performedBy: notification.from,
+          fromUser: notification.from,
+          toUser: session.user.id,
+          description: `Transferred to ${session.user.name || 'new assignee'}`,
+        });
       }
 
       await Notification.create({

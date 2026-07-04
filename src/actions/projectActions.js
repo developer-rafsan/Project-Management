@@ -65,10 +65,12 @@ export async function getProjectPassword(projectId) {
   return handleResponse(response);
 }
 
-export async function getProjectUpdates(projectId) {
+export async function getProjectActivities(projectId) {
   const response = await fetch(`/api/projects/${projectId}/updates`);
   return handleResponse(response);
 }
+
+export { getProjectActivities as getProjectUpdates };
 
 export async function getProjectNotes(projectId) {
   const response = await fetch(`/api/projects/${projectId}/notes`);
