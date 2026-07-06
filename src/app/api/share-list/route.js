@@ -54,9 +54,13 @@ export async function POST(request) {
       expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     } else if (body.expiresIn === '24h') {
       expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    } else if (body.expiresIn === 'custom' && body.customDate) {
+      expiresAt = new Date(body.customDate);
     }
 
-    const shareData = { token, createdBy: session.user.id, expiresAt };
+    const accessLevel = body.accessLevel || 'view';
+
+    const shareData = { token, createdBy: session.user.id, expiresAt, accessLevel };
     if (body.projectIds?.length) {
       shareData.projects = body.projectIds;
     }
@@ -68,7 +72,7 @@ export async function POST(request) {
 
     const savedCount = share.projects?.length || 0;
     console.log(`[POST /api/share-list] token=${token}, received=${body.projectIds?.length || 0}, saved=${savedCount}`);
-    return NextResponse.json({ _id: share._id, token, url, expiresAt, projectCount: savedCount, requestedCount: body.projectIds?.length || 0 });
+    return NextResponse.json({ _id: share._id, token, url, expiresAt, accessLevel, projectCount: savedCount, requestedCount: body.projectIds?.length || 0 });
   } catch (error) {
     console.error('POST /api/share-list error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

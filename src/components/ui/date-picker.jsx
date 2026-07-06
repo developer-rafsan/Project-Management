@@ -8,7 +8,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-function DatePicker({ value, onChange, placeholder = "Pick a date", className }) {
+function DatePicker({ value, onChange, placeholder = "Pick a date", className, fromDate }) {
   return (
     <Popover>
       <PopoverTrigger
@@ -27,6 +27,7 @@ function DatePicker({ value, onChange, placeholder = "Pick a date", className })
           mode="single"
           selected={value}
           onSelect={onChange}
+          fromDate={fromDate}
           initialFocus
         />
       </PopoverContent>

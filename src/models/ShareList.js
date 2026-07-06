@@ -20,6 +20,11 @@ const shareListSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  accessLevel: {
+    type: String,
+    enum: ['view', 'manager', 'full'],
+    default: 'view',
+  },
 }, { timestamps: true });
 
 // Allow model re-registration during hot-reload in development

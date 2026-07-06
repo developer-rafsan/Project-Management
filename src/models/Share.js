@@ -21,6 +21,11 @@ const shareSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  accessLevel: {
+    type: String,
+    enum: ['view', 'manager', 'full'],
+    default: 'view',
+  },
 }, { timestamps: true });
 
 export default mongoose.models.Share || mongoose.model('Share', shareSchema);

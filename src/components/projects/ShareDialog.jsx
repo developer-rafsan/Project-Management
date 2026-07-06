@@ -11,14 +11,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Copy, Check, Link, Clock, Infinity, Trash2, Plus } from "lucide-react"
+import { Copy, Check, Link, Clock, Infinity, CalendarDays, Trash2, Plus, Eye, Settings, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
+import { DatePicker } from "@/components/ui/date-picker"
 
 const EXPIRY_OPTIONS = [
   { value: "1h", label: "1 Hour", icon: Clock },
   { value: "24h", label: "24 Hours", icon: Clock },
   { value: "never", label: "Until Revoked", icon: Infinity },
+  { value: "custom", label: "Custom", icon: CalendarDays },
 ]
+
+const ACCESS_OPTIONS = [
+  { value: "view", label: "View", desc: "Can only view project details", icon: Eye },
+  { value: "manager", label: "Manager", desc: "Can edit project settings", icon: Settings },
+  { value: "full", label: "Full Access", desc: "Can edit, delete, and manage", icon: ShieldCheck },
+]
+
+const ACCESS_LABELS = { view: "View", manager: "Manager", full: "Full Access" }
 
 function formatExpiry(dateStr) {
   if (!dateStr) return "Never"
@@ -30,6 +40,8 @@ function formatExpiry(dateStr) {
 export default function ShareDialog({ open, onOpenChange, projectId, projectName }) {
   const [step, setStep] = useState("list")
   const [selectedExpiry, setSelectedExpiry] = useState("24h")
+  const [customDate, setCustomDate] = useState(null)
+  const [accessLevel, setAccessLevel] = useState("view")
   const [loading, setLoading] = useState(false)
   const [shareUrl, setShareUrl] = useState(null)
   const [copied, setCopied] = useState(false)
@@ -41,6 +53,9 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
     setStep("list")
     setShareUrl(null)
     setCopied(false)
+    setSelectedExpiry("24h")
+    setCustomDate(null)
+    setAccessLevel("view")
     setFetching(true)
 
     fetch(`/api/projects/${projectId}/shares`)
@@ -53,10 +68,17 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
   const handleGenerate = async () => {
     setLoading(true)
     try {
+      const body = {
+        expiresIn: selectedExpiry,
+        accessLevel,
+      }
+      if (selectedExpiry === "custom" && customDate) {
+        body.customDate = customDate.toISOString()
+      }
       const res = await fetch(`/api/projects/${projectId}/shares`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expiresIn: selectedExpiry }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to create share link")
@@ -99,6 +121,9 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
     setStep("list")
     setShareUrl(null)
     setCopied(false)
+    setSelectedExpiry("24h")
+    setCustomDate(null)
+    setAccessLevel("view")
     onOpenChange(false)
   }
 
@@ -121,35 +146,78 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
         {step === "create" ? (
           <>
             {!shareUrl ? (
-              <div className="space-y-3 py-2">
-                <p className="text-sm font-medium text-muted-foreground">Link expiry</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {EXPIRY_OPTIONS.map((opt) => {
-                    const Icon = opt.icon
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all cursor-pointer ${
-                          selectedExpiry === opt.value
-                            ? "border-primary bg-primary/5 ring-1 ring-primary"
-                            : "border-border hover:border-muted-foreground/30"
-                        }`}
-                        onClick={() => setSelectedExpiry(opt.value)}
-                      >
-                        <Icon className={`size-4 ${selectedExpiry === opt.value ? "text-primary" : "text-muted-foreground"}`} />
-                        <span className="text-xs font-medium">{opt.label}</span>
-                      </button>
-                    )
-                  })}
+              <div className="space-y-4 py-2">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Link expiry</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {EXPIRY_OPTIONS.map((opt) => {
+                      const Icon = opt.icon
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all cursor-pointer ${
+                            selectedExpiry === opt.value
+                              ? "border-primary bg-primary/5 ring-1 ring-primary"
+                              : "border-border hover:border-muted-foreground/30"
+                          }`}
+                          onClick={() => setSelectedExpiry(opt.value)}
+                        >
+                          <Icon className={`size-4 ${selectedExpiry === opt.value ? "text-primary" : "text-muted-foreground"}`} />
+                          <span className="text-xs font-medium">{opt.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {selectedExpiry === "custom" && (
+                    <div className="mt-3">
+                      <DatePicker
+                        value={customDate}
+                        onChange={(date) => setCustomDate(date)}
+                        placeholder="Pick an expiry date"
+                        fromDate={new Date()}
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground/60 mt-2">
+                    {selectedExpiry === "never"
+                      ? "Link works until you revoke it"
+                      : selectedExpiry === "1h"
+                        ? "Link expires in 1 hour"
+                        : selectedExpiry === "24h"
+                          ? "Link expires in 24 hours"
+                          : customDate
+                            ? `Link expires on ${customDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                            : "Select a custom expiry date"}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground/60">
-                  {selectedExpiry === "never"
-                    ? "Link works until you revoke it"
-                    : selectedExpiry === "1h"
-                      ? "Link expires in 1 hour"
-                      : "Link expires in 24 hours"}
-                </p>
+
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Access level</p>
+                  <div className="space-y-2">
+                    {ACCESS_OPTIONS.map((opt) => {
+                      const Icon = opt.icon
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={`flex items-start gap-3 w-full rounded-xl border p-3 transition-all cursor-pointer text-left ${
+                            accessLevel === opt.value
+                              ? "border-primary bg-primary/5 ring-1 ring-primary"
+                              : "border-border hover:border-muted-foreground/30"
+                          }`}
+                          onClick={() => setAccessLevel(opt.value)}
+                        >
+                          <Icon className={`size-4 mt-0.5 shrink-0 ${accessLevel === opt.value ? "text-primary" : "text-muted-foreground"}`} />
+                          <div>
+                            <p className={`text-sm font-medium ${accessLevel === opt.value ? "text-primary" : ""}`}>{opt.label}</p>
+                            <p className="text-xs text-muted-foreground/60">{opt.desc}</p>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="space-y-3 py-2">
@@ -160,7 +228,7 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground/60">
-                  Anyone with this link can view the project but cannot edit or perform actions.
+                  Anyone with this link has <strong>{ACCESS_LABELS[accessLevel]}</strong> access to this project.
                 </p>
               </div>
             )}
@@ -169,7 +237,7 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
               {!shareUrl ? (
                 <>
                   <Button variant="outline" onClick={() => setStep("list")}>Back</Button>
-                  <Button onClick={handleGenerate} disabled={loading}>
+                  <Button onClick={handleGenerate} disabled={loading || (selectedExpiry === "custom" && !customDate)}>
                     {loading ? "Generating..." : "Generate Link"}
                   </Button>
                 </>
@@ -195,13 +263,15 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
                   const active = !link.expiresAt || new Date(link.expiresAt) > new Date()
                   const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
                   const url = link.url || `${baseUrl}/shared/${link.token}`
+                  const level = link.accessLevel || "view"
                   return (
                     <div key={link._id} className="flex items-center gap-2 rounded-lg border p-2.5">
                       <div className={`size-2 rounded-full shrink-0 ${active ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-mono truncate">{url}</p>
                         <p className="text-[10px] text-muted-foreground/60">
-                          {active ? `Expires: ${formatExpiry(link.expiresAt)}` : "Expired"}
+                          {ACCESS_LABELS[level]} access
+                          {active ? ` · Expires: ${formatExpiry(link.expiresAt)}` : " · Expired"}
                         </p>
                       </div>
                       <div className="flex gap-1 shrink-0">

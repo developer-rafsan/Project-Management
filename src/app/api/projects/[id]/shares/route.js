@@ -37,18 +37,23 @@ export async function POST(request, { params }) {
       expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     } else if (body.expiresIn === '24h') {
       expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    } else if (body.expiresIn === 'custom' && body.customDate) {
+      expiresAt = new Date(body.customDate);
     }
+
+    const accessLevel = body.accessLevel || 'view';
 
     const share = await Share.create({
       project: id,
       token,
       createdBy: session.user.id,
       expiresAt,
+      accessLevel,
     });
 
     const url = `${process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/shared/${token}`;
 
-    return NextResponse.json({ _id: share._id, token, url, expiresAt });
+    return NextResponse.json({ _id: share._id, token, url, expiresAt, accessLevel });
   } catch (error) {
     console.error('POST /api/projects/[id]/shares error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

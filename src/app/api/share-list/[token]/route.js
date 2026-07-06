@@ -48,6 +48,9 @@ export async function GET(request, { params }) {
       const expired = s.expiresAt && new Date(s.expiresAt) < new Date();
       if (!expired) {
         shareMap[s.project.toString()] = s.token;
+        if (s.accessLevel !== share.accessLevel) {
+          await Share.findByIdAndUpdate(s._id, { accessLevel: share.accessLevel || 'view' });
+        }
       }
     }
 
@@ -62,6 +65,7 @@ export async function GET(request, { params }) {
           token,
           createdBy: share.createdBy._id,
           expiresAt: null,
+          accessLevel: share.accessLevel || 'view',
         });
       }
 
@@ -81,6 +85,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({
       projects: safeProjects,
       sharedBy: share.createdBy,
+      accessLevel: share.accessLevel,
       projectCount: safeProjects.length,
       isSelectedShare: (share.projects?.length || 0) > 0,
       storedProjectIds: share.projects || [],
