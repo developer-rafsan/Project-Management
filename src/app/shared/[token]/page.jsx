@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { ProjectBreadcrumbs, ProjectTitle } from "@/components/projects/ProjectDetailHeader"
@@ -13,6 +14,9 @@ import {
   ProjectTagsCard,
 } from "@/components/projects/ProjectInfoSidebar"
 import Notes from "@/components/projects/Notes"
+import SharedEditForm from "@/components/shared/SharedEditForm"
+import SharedMonthTransfer from "@/components/shared/SharedMonthTransfer"
+import SharedTransferAssignee from "@/components/shared/SharedTransferAssignee"
 import { FileText, Eye, Settings, ShieldCheck, Pencil, Trash2, ArrowLeftRight, CalendarArrowUp, UserRoundPlus } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -60,6 +64,7 @@ const MONTHS = [
 
 export default function SharedProjectPage({ params: paramsPromise }) {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [project, setProject] = useState(null)
   const [activities, setActivities] = useState([])
   const [notes, setNotes] = useState([])
@@ -83,6 +88,15 @@ export default function SharedProjectPage({ params: paramsPromise }) {
   useEffect(() => {
     paramsPromise.then((p) => setShareToken(p.token))
   }, [paramsPromise])
+
+  useEffect(() => {
+    if (status === "loading") return
+    if (status === "unauthenticated") {
+      paramsPromise.then((p) => {
+        router.replace(`/login?callbackUrl=/shared/${p.token}`)
+      })
+    }
+  }, [status, paramsPromise, router])
 
   const fetchData = useCallback(async () => {
     if (!shareToken) return
@@ -153,7 +167,7 @@ export default function SharedProjectPage({ params: paramsPromise }) {
     }
   }
 
-  if (loading) {
+  if (loading || status === "loading") {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
@@ -196,6 +210,7 @@ export default function SharedProjectPage({ params: paramsPromise }) {
 
   const badge = ACCESS_BADGES[accessLevel] || ACCESS_BADGES.view
   const BadgeIcon = badge.icon
+  const apiPath = `/api/shared/${shareToken}`
 
   return (
     <div className="min-h-screen bg-background">
@@ -284,9 +299,9 @@ export default function SharedProjectPage({ params: paramsPromise }) {
             <DialogTitle>Edit Project</DialogTitle>
             <DialogDescription>Update project details</DialogDescription>
           </DialogHeader>
-          <EditForm
+          <SharedEditForm
             project={project}
-            token={shareToken}
+            apiPath={apiPath}
             onSuccess={handleEditSuccess}
             onCancel={() => setEditOpen(false)}
           />
@@ -320,392 +335,21 @@ export default function SharedProjectPage({ params: paramsPromise }) {
         onConfirm={handleStatusChange}
       />
 
-      <MonthTransferDialog
+      <SharedMonthTransfer
         project={project}
-        token={shareToken}
+        apiPath={apiPath}
         open={transferMonthOpen}
         onClose={() => setTransferMonthOpen(false)}
         onSuccess={() => { setTransferMonthOpen(false); fetchData() }}
       />
 
-      <TransferAssigneeDialog
+      <SharedTransferAssignee
         project={project}
-        token={shareToken}
+        apiPath={apiPath}
         open={transferAssigneeOpen}
         onClose={() => setTransferAssigneeOpen(false)}
         onSuccess={() => { setTransferAssigneeOpen(false); fetchData() }}
       />
     </div>
-  )
-}
-
-function EditForm({ project, token, onSuccess, onCancel }) {
-  const [formData, setFormData] = useState({
-    projectName: project.projectName || "",
-    websiteUrl: project.websiteUrl || "",
-    websiteUsername: project.websiteUsername || "",
-    orderId: project.orderId || "",
-    cms: project.cms || "",
-    priority: project.priority || "Medium",
-    description: project.description || "",
-    price: project.price || "",
-    startDate: project.startDate ? new Date(project.startDate).toISOString().split("T")[0] : "",
-    tags: project.tags || [],
-    websitePassword: "",
-  })
-  const [tagInput, setTagInput] = useState("")
-  const [saving, setSaving] = useState(false)
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      const body = { ...formData }
-      if (body.price) body.price = Number(body.price)
-      if (!body.websitePassword) delete body.websitePassword
-      const res = await fetch(`/api/shared/${token}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to update")
-      onSuccess(data)
-    } catch (err) {
-      toast.error(err.message || "Failed to update project")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const addTag = () => {
-    const tag = tagInput.trim()
-    if (tag && !formData.tags.includes(tag)) {
-      setFormData((prev) => ({ ...prev, tags: [...prev.tags, tag] }))
-      setTagInput("")
-    }
-  }
-
-  const removeTag = (tag) => {
-    setFormData((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }))
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Project Name</label>
-          <input
-            value={formData.projectName}
-            onChange={(e) => setFormData((p) => ({ ...p, projectName: e.target.value }))}
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Order ID</label>
-          <input
-            value={formData.orderId}
-            onChange={(e) => setFormData((p) => ({ ...p, orderId: e.target.value }))}
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">CMS</label>
-          <input
-            value={formData.cms}
-            onChange={(e) => setFormData((p) => ({ ...p, cms: e.target.value }))}
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Website URL</label>
-          <input
-            value={formData.websiteUrl}
-            onChange={(e) => setFormData((p) => ({ ...p, websiteUrl: e.target.value }))}
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Website Username</label>
-          <input
-            value={formData.websiteUsername}
-            onChange={(e) => setFormData((p) => ({ ...p, websiteUsername: e.target.value }))}
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Website Password</label>
-          <input
-            type="password"
-            value={formData.websitePassword}
-            onChange={(e) => setFormData((p) => ({ ...p, websitePassword: e.target.value }))}
-            placeholder="Leave blank to keep current"
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Priority</label>
-          <select
-            value={formData.priority}
-            onChange={(e) => setFormData((p) => ({ ...p, priority: e.target.value }))}
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          >
-            <option>Low</option><option>Medium</option><option>High</option><option>Urgent</option>
-          </select>
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Price</label>
-          <input
-            type="number"
-            value={formData.price}
-            onChange={(e) => setFormData((p) => ({ ...p, price: e.target.value }))}
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Start Date</label>
-          <input
-            type="date"
-            value={formData.startDate}
-            onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Tags</label>
-        <div className="flex gap-2">
-          <input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag() } }}
-            placeholder="Add a tag..."
-            className="flex h-9 flex-1 rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          />
-          <Button type="button" variant="outline" size="sm" onClick={addTag}>Add</Button>
-        </div>
-        {formData.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {formData.tags.map((tag) => (
-              <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs">
-                {tag}
-                <button type="button" onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-foreground cursor-pointer">&times;</button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Description</label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-          rows={3}
-          className="flex w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-        />
-      </div>
-
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
-      </DialogFooter>
-    </form>
-  )
-}
-
-function MonthTransferDialog({ project, token, open, onClose, onSuccess }) {
-  const [newMonth, setNewMonth] = useState("")
-  const [newYear, setNewYear] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const CURRENT_YEAR = new Date().getFullYear()
-  const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - 2 + i)
-
-  const handleConfirm = async () => {
-    if (!newMonth || !newYear) {
-      toast.error("Please select both month and year")
-      return
-    }
-    setSubmitting(true)
-    try {
-      const res = await fetch(`/api/shared/${token}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentMonth: Number(newMonth), currentYear: Number(newYear) }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to transfer")
-      toast.success("Project transferred successfully")
-      onSuccess?.(data)
-    } catch (err) {
-      toast.error(err.message || "Failed to transfer project")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose?.()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Transfer Project</DialogTitle>
-          <DialogDescription>Move &ldquo;{project?.projectName}&rdquo; to a different month.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Month</label>
-              <Select value={newMonth} onValueChange={setNewMonth}>
-                <SelectTrigger><SelectValue placeholder="Select month" /></SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Year</label>
-              <Select value={newYear} onValueChange={setNewYear}>
-                <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
-                <SelectContent>
-                  {YEARS.map((y) => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button onClick={handleConfirm} disabled={submitting || !newMonth || !newYear}>
-            {submitting ? "Transferring..." : "Transfer"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function TransferAssigneeDialog({ project, token, open, onClose, onSuccess }) {
-  const [users, setUsers] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedUserId, setSelectedUserId] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const [loadingUsers, setLoadingUsers] = useState(false)
-  const [focused, setFocused] = useState(false)
-
-  useEffect(() => {
-    if (open) {
-      setSearchQuery("")
-      setSelectedUserId("")
-      setLoadingUsers(true)
-      fetch(`/api/users?share_token=${token}`)
-        .then((r) => r.json())
-        .then(setUsers)
-        .catch(() => toast.error("Failed to load users"))
-        .finally(() => setLoadingUsers(false))
-    }
-  }, [open, token])
-
-  const filteredUsers = users.filter((u) =>
-    u.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-  const selectedUser = users.find((u) => u._id === selectedUserId)
-
-  const handleSelect = (userId) => {
-    setSelectedUserId(userId)
-    setSearchQuery(users.find((u) => u._id === userId)?.name || "")
-    setFocused(false)
-  }
-
-  const handleConfirm = async () => {
-    if (!selectedUserId) {
-      toast.error("Please select a user")
-      return
-    }
-    setSubmitting(true)
-    try {
-      const res = await fetch(`/api/shared/${token}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignee: selectedUserId }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to transfer")
-      toast.success("Project transferred successfully")
-      onSuccess?.(data)
-    } catch (err) {
-      toast.error(err.message || "Failed to transfer project")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose?.()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Transfer to Person</DialogTitle>
-          <DialogDescription>Transfer &ldquo;{project?.projectName}&rdquo; to another user.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Select User</label>
-            <div className="relative">
-              <input
-                placeholder={loadingUsers ? "Loading users..." : "Search by name..."}
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); if (selectedUserId) setSelectedUserId("") }}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setTimeout(() => setFocused(false), 200)}
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm pl-8"
-                disabled={loadingUsers}
-              />
-              {focused && searchQuery && filteredUsers.length > 0 && (
-                <div className="absolute top-full mt-1 left-0 right-0 z-50 rounded-lg border bg-popover shadow-md overflow-hidden">
-                  {filteredUsers.map((u) => (
-                    <button
-                      key={u._id}
-                      type="button"
-                      onMouseDown={() => handleSelect(u._id)}
-                      className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-accent cursor-pointer"
-                    >
-                      <Avatar className="size-7 shrink-0">
-                        <AvatarImage src={u.image} />
-                        <AvatarFallback className="text-[10px]">{u.name?.charAt(0) || "?"}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{u.name}</p>
-                        {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          {selectedUser && (
-            <div className="flex items-center gap-2.5 rounded-lg border bg-muted/30 px-3 py-2.5 text-sm">
-              <Avatar className="size-6 shrink-0">
-                <AvatarImage src={selectedUser.image} />
-                <AvatarFallback className="text-[9px]">{selectedUser.name?.charAt(0) || "?"}</AvatarFallback>
-              </Avatar>
-              <UserRoundPlus className="size-3.5 text-muted-foreground shrink-0" />
-              Transferring to <strong className="truncate">{selectedUser.name}</strong>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button onClick={handleConfirm} disabled={submitting || !selectedUserId}>
-            {submitting ? "Transferring..." : "Transfer"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }

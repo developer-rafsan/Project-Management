@@ -85,10 +85,10 @@ export async function PATCH(request, { params }) {
     const updates = {};
 
     const fields = [
-      'orderId', 'projectName', 'businessName', 'websiteUrl',
+      'orderId', 'projectName', 'websiteUrl',
       'websiteUsername', 'cms', 'priority', 'status',
       'assignee', 'startDate', 'tags', 'description', 'price',
-      'currentMonth', 'currentYear',
+      'progress', 'additionalWebsites', 'figmaLinks', 'referenceLinks', 'currentMonth', 'currentYear',
     ];
 
     for (const field of fields) {
@@ -105,6 +105,13 @@ export async function PATCH(request, { params }) {
 
     if (body.websitePassword) {
       updates.websitePassword = encrypt(body.websitePassword);
+    }
+
+    if (updates.additionalWebsites) {
+      updates.additionalWebsites = updates.additionalWebsites.map(ws => ({
+        ...ws,
+        password: ws.password ? encrypt(ws.password) : {},
+      }));
     }
 
     const statusChanged = body.status && body.status !== existingProject.status;
@@ -129,19 +136,6 @@ export async function PATCH(request, { params }) {
       (updates.currentYear && updates.currentYear !== existingProject.currentYear) ||
       (body.currentMonth && body.currentMonth !== existingProject.currentMonth) ||
       (body.currentYear && body.currentYear !== existingProject.currentYear);
-
-    const updateOps = { $set: updates };
-
-    if (monthYearChanged) {
-      await Activity.create({
-        project: id,
-        type: 'month_transfer',
-        performedBy: session.user.id,
-        oldMonth: existingProject.currentMonth,
-        newMonth: updates.currentMonth || existingProject.currentMonth,
-        newYear: updates.currentYear || existingProject.currentYear,
-      });
-    }
 
     const generalFieldKeys = fields.filter(
       f => !['status', 'currentMonth', 'currentYear'].includes(f)
@@ -169,6 +163,22 @@ export async function PATCH(request, { params }) {
       return String(incoming ?? '') !== String(existing != null ? existing : '');
     });
 
+    if (hasGeneralChanges || Object.keys(updates).length > 0) {
+      existingProject.set(updates);
+      await existingProject.save();
+    }
+
+    if (monthYearChanged) {
+      await Activity.create({
+        project: id,
+        type: 'month_transfer',
+        performedBy: session.user.id,
+        oldMonth: existingProject.currentMonth,
+        newMonth: updates.currentMonth || existingProject.currentMonth,
+        newYear: updates.currentYear || existingProject.currentYear,
+      });
+    }
+
     if (hasGeneralChanges) {
       await Activity.create({
         project: id,
@@ -177,8 +187,6 @@ export async function PATCH(request, { params }) {
         description: 'Project details updated',
       });
     }
-
-    await Project.findByIdAndUpdate(id, updateOps, { new: true });
 
     const updatedProject = await Project.findById(id)
       .populate('assignee')

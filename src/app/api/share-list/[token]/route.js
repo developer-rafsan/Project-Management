@@ -3,29 +3,34 @@ import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import { decrypt } from '@/lib/encryption';
-import ShareList from '@/models/ShareList';
-import Share from '@/models/Share';
+import Share, { cleanupExpiredShares } from '@/models/Share';
 import Project from '@/models/Project';
 import crypto from 'crypto';
 
 export async function GET(request, { params }) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectDB();
+
+    await cleanupExpiredShares();
 
     const { token } = await params;
 
-    const share = await ShareList.findOne({ token }).populate('createdBy', 'name image').lean();
+    const share = await Share.findOne({ token }).populate('createdBy', 'name image').lean();
     if (!share) {
       return NextResponse.json({ error: 'Share link not found' }, { status: 404 });
     }
 
-    if (share.expiresAt && new Date() > new Date(share.expiresAt)) {
-      return NextResponse.json({ error: 'Share link has expired' }, { status: 410 });
+    if (share.type !== 'list') {
+      return NextResponse.json({ error: 'Invalid share link' }, { status: 400 });
     }
 
     const storedCount = share.projects?.length || 0;
     const storedIds = (share.projects || []).map(p => p.toString ? p.toString() : p);
-    console.log(`[GET /api/share-list/${token}] storedCount=${storedCount}, storedIds=${JSON.stringify(storedIds)}`);
 
     const query = share.projects?.length
       ? { _id: { $in: share.projects } }
@@ -42,7 +47,7 @@ export async function GET(request, { params }) {
       .lean();
 
     const projectIds = projects.map((p) => p._id);
-    const existingShares = await Share.find({ project: { $in: projectIds } }).lean();
+    const existingShares = await Share.find({ type: 'project', project: { $in: projectIds } }).lean();
     const shareMap = {};
     for (const s of existingShares) {
       const expired = s.expiresAt && new Date(s.expiresAt) < new Date();
@@ -61,6 +66,7 @@ export async function GET(request, { params }) {
       if (!token) {
         token = crypto.randomUUID();
         await Share.create({
+          type: 'project',
           project: p._id,
           token,
           createdBy: share.createdBy._id,
@@ -108,12 +114,12 @@ export async function DELETE(request, { params }) {
 
     const { token } = await params;
 
-    const share = await ShareList.findOne({ token, createdBy: session.user.id });
+    const share = await Share.findOne({ token, type: 'list', createdBy: session.user.id });
     if (!share) {
       return NextResponse.json({ error: 'Share link not found' }, { status: 404 });
     }
 
-    await ShareList.findByIdAndDelete(share._id);
+    await Share.findByIdAndDelete(share._id);
 
     return NextResponse.json({ message: 'Share link revoked' });
   } catch (error) {

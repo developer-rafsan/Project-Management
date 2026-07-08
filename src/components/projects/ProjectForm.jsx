@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
-import { useForm, Controller } from "react-hook-form"
+import { useForm, Controller, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -38,6 +38,10 @@ import {
   ChevronRight,
   ChevronLeft,
   AlertCircle,
+  Plus,
+  Trash2,
+  Link,
+  Palette,
 } from "lucide-react"
 import { createProject, updateProject, getProjectPassword } from "@/actions/projectActions"
 
@@ -55,9 +59,21 @@ const schema = z.object({
   description: z.string().optional(),
   tags: z.string().optional(),
   price: z.string().optional(),
+  progress: z.number().min(0).max(100).optional(),
+  additionalWebsites: z.array(z.object({
+    url: z.string().optional(),
+    username: z.string().optional(),
+    password: z.string().optional(),
+  })).optional(),
+  figmaLinks: z.array(z.object({
+    url: z.string().optional(),
+  })).optional(),
+  referenceLinks: z.array(z.object({
+    url: z.string().optional(),
+  })).optional(),
 })
 
-const STATUSES = ["Pending", "In Progress", "Delivered", "On Hold", "Cancelled"]
+const STATUSES = ["Pending", "In Progress", "Delivered", "Revision", "On Hold", "Cancelled"]
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"]
 const CMS_OPTIONS = ["WordPress", "WooCommerce", "Shopify", "Wix", "Webflow", "Next.js", "React", "Laravel", "PHP", "Custom", "HTML", "Other"]
 
@@ -81,6 +97,7 @@ const STATUS_STYLES = {
   Delivered: { dot: "bg-green-500", bg: "bg-green-100 dark:bg-green-900/20", text: "text-green-700 dark:text-green-300" },
   "On Hold": { dot: "bg-amber-500", bg: "bg-amber-100 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-300" },
   Cancelled: { dot: "bg-red-500", bg: "bg-red-100 dark:bg-red-900/20", text: "text-red-700 dark:text-red-300" },
+  Revision: { dot: "bg-purple-500", bg: "bg-purple-100 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-300" },
 }
 
 function generateStrongPassword() {
@@ -183,8 +200,16 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       description: initialData?.description || "",
       tags: initialData?.tags?.join(", ") || "",
       price: initialData?.price ? String(initialData.price) : "",
+      progress: initialData?.progress ?? 0,
+      additionalWebsites: initialData?.additionalWebsites || [],
+      figmaLinks: initialData?.figmaLinks || [],
+      referenceLinks: initialData?.referenceLinks || [],
     },
   })
+
+  const { fields: addSiteFields, append: appendSite, remove: removeSite } = useFieldArray({ control, name: "additionalWebsites" })
+  const { fields: figmaFields, append: appendFigma, remove: removeFigma } = useFieldArray({ control, name: "figmaLinks" })
+  const { fields: refFields, append: appendRef, remove: removeRef } = useFieldArray({ control, name: "referenceLinks" })
 
   const stepFields = [
     ['orderId', 'projectName', 'websiteUrl', 'websiteUsername', 'websitePassword'],
@@ -240,6 +265,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         cms: data.cms === "Other" && data.customCms ? data.customCms : data.cms,
         startDate: data.startDate || new Date(),
         price: data.price ? Number(data.price) : 0,
+        progress: data.progress ?? 0,
         tags: data.tags
           ? data.tags.split(",").map((t) => t.trim()).filter(Boolean)
           : [],
@@ -275,7 +301,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   const ActiveIcon = stepIcons[step]
 
   return (
-    <form onKeyDown={(e) => e.key === "Enter" && e.target.tagName !== "TEXTAREA" && e.preventDefault()} className="w-full flex flex-col h-full overflow-hidden">
+    <form onKeyDown={(e) => e.key === "Enter" && e.target.tagName !== "TEXTAREA" && e.preventDefault()} className="w-full flex flex-col flex-1 min-h-0">
       {/* Step indicator */}
       <div className="shrink-0 px-1 pt-1">
         <div className="flex items-center w-full">
@@ -317,7 +343,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         </div>
       </div>
 
-      <div className="flex-1 h-[60vh] sm:h-[420px] space-y-4 sm:space-y-5 py-3 sm:py-4 overflow-hidden">
+      <div className="flex-1 min-h-0 space-y-4 sm:space-y-5 py-3 sm:py-4 overflow-y-auto">
         {/* Step header */}
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex size-7 sm:size-8 items-center justify-center rounded-lg bg-primary/[0.08]">
@@ -417,6 +443,38 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                   </div>
                 </div>
               </div>
+            </div>
+            {/* Additional Websites */}
+            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <Globe className="size-3.5 text-primary" />
+                  Additional Websites
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => appendSite({ url: "", username: "", password: "" })} className="gap-1 h-7 text-xs cursor-pointer">
+                  <Plus className="size-3" /> Add
+                </Button>
+              </div>
+              {addSiteFields.length === 0 && (
+                <p className="text-xs text-muted-foreground/60">No additional websites</p>
+              )}
+              {addSiteFields.map((field, idx) => (
+                <div key={field.id} className="rounded-lg border bg-card p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Website #{idx + 1}</span>
+                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => removeSite(idx)} className="text-destructive hover:text-destructive cursor-pointer">
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <Input {...register(`additionalWebsites.${idx}.url`)} placeholder="https://example.com" className="h-8 text-sm bg-background" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input {...register(`additionalWebsites.${idx}.username`)} placeholder="Username" className="h-8 text-sm bg-background" />
+                      <Input {...register(`additionalWebsites.${idx}.password`)} placeholder="Password" className="h-8 text-sm bg-background" />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -544,6 +602,33 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                     </p>
                   )}
                 </div>
+                <div className="space-y-1.5 pt-2 border-t border-border/40">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <ListChecks className="size-3" />
+                    Progress
+                  </label>
+                  <Controller name="progress" control={control} render={({ field }) => (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={field.value ?? 0}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-muted [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110"
+                        />
+                        <span className="text-sm font-semibold tabular-nums min-w-[3ch] text-right">{field.value ?? 0}%</span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-muted-foreground/60">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                      </div>
+                    </div>
+                  )} />
+                </div>
               </div>
             </div>
           </div>
@@ -600,6 +685,52 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 </div>
               </div>
             </div>
+            {/* Figma Links */}
+            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <Palette className="size-3.5 text-primary" />
+                  Figma Links
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => appendFigma({ url: "" })} className="gap-1 h-7 text-xs cursor-pointer">
+                  <Plus className="size-3" /> Add
+                </Button>
+              </div>
+              {figmaFields.length === 0 && (
+                <p className="text-xs text-muted-foreground/60">No Figma links</p>
+              )}
+              {figmaFields.map((field, idx) => (
+                <div key={field.id} className="flex items-center gap-2">
+                  <Input {...register(`figmaLinks.${idx}.url`)} placeholder="https://figma.com/file/..." className="h-8 text-sm bg-background flex-1" />
+                  <Button type="button" variant="ghost" size="icon-xs" onClick={() => removeFigma(idx)} className="text-destructive hover:text-destructive shrink-0 cursor-pointer">
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            {/* Reference Links */}
+            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <Link className="size-3.5 text-primary" />
+                  Reference Sites
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => appendRef({ url: "" })} className="gap-1 h-7 text-xs cursor-pointer">
+                  <Plus className="size-3" /> Add
+                </Button>
+              </div>
+              {refFields.length === 0 && (
+                <p className="text-xs text-muted-foreground/60">No reference sites</p>
+              )}
+              {refFields.map((field, idx) => (
+                <div key={field.id} className="flex items-center gap-2">
+                  <Input {...register(`referenceLinks.${idx}.url`)} placeholder="https://example.com" className="h-8 text-sm bg-background flex-1" />
+                  <Button type="button" variant="ghost" size="icon-xs" onClick={() => removeRef(idx)} className="text-destructive hover:text-destructive shrink-0 cursor-pointer">
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -611,6 +742,15 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                   <Layout className="size-3 text-primary" />
                 </div>
                 Basic Information
+              </div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${formValues.progress ?? 0}%` }}
+                  />
+                </div>
+                <span className="text-sm font-semibold tabular-nums">{formValues.progress ?? 0}%</span>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                 <ReviewRow icon={Hash} label="Order ID" value={formValues.orderId || "Auto-generated"} />
@@ -645,6 +785,20 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 <ReviewRow icon={DollarSign} label="Price" value={formValues.price ? `$${formValues.price}` : "—"} />
                 <ReviewRow icon={Tag} label="Tags" value={formValues.tags || "—"} />
                 <ReviewRow icon={FileText} label="Description" value={formValues.description || "—"} />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <div className="flex size-5 items-center justify-center rounded bg-primary/10">
+                  <Globe className="size-3 text-primary" />
+                </div>
+                Websites &amp; Links
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <ReviewRow icon={Globe} label="Primary URL" value={formValues.websiteUrl || "—"} />
+                <ReviewRow icon={Palette} label="Figma Links" value={formValues.figmaLinks?.length ? `${formValues.figmaLinks.length} link(s)` : "—"} />
+                <ReviewRow icon={Link} label="Reference Sites" value={formValues.referenceLinks?.length ? `${formValues.referenceLinks.length} link(s)` : "—"} />
+                <ReviewRow icon={Globe} label="Extra Sites" value={formValues.additionalWebsites?.length ? `${formValues.additionalWebsites.length} site(s)` : "—"} />
               </div>
             </div>
           </div>

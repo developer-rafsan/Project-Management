@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, memo } from "react"
+import { useState, memo, useRef, useCallback } from "react"
 import Link from "next/link"
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -38,6 +37,7 @@ const statusVariants = {
   "Delivered": "secondary",
   "On Hold": "destructive",
   "Cancelled": "destructive",
+  "Revision": "secondary",
 }
 
 const priorityVariants = {
@@ -47,12 +47,41 @@ const priorityVariants = {
   "Urgent": "destructive",
 }
 
-const ProjectCard = memo(function ProjectCard({ project, index, onAction }) {
+const ProjectCard = memo(function ProjectCard({ project, index, onAction, selected = false, onSelect, selectionMode = false }) {
   const [copied, setCopied] = useState(null)
   const [password, setPassword] = useState(null)
   const [loadingPassword, setLoadingPassword] = useState(false)
   const [passwordChecked, setPasswordChecked] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
+
+  const timerRef = useRef(null)
+  const movedRef = useRef(false)
+
+  const handleTouchStart = useCallback(() => {
+    movedRef.current = false
+    timerRef.current = setTimeout(() => {
+      onSelect?.()
+    }, 500)
+  }, [onSelect])
+
+  const handleTouchMove = useCallback(() => {
+    movedRef.current = true
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+      if (selectionMode && !movedRef.current) {
+        onSelect?.()
+      }
+    }
+  }, [selectionMode, onSelect])
+
   const handleAction = (action) => {
     onAction?.(action, project)
   }
@@ -79,25 +108,42 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction }) {
   }
 
   return (
-    <Card className="group relative overflow-hidden transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+    <Card
+      className={cn(
+        "group relative overflow-hidden transition-all duration-200",
+        selected
+          ? "border-primary/50 ring-1 ring-primary/20 bg-primary/5"
+          : selectionMode
+            ? "hover:border-primary/30 hover:shadow-md cursor-pointer"
+            : "hover:border-primary/30 hover:shadow-md"
+      )}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onClick={() => { if (selectionMode) onSelect?.() }}
+    >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               <CardTitle className="truncate text-sm sm:text-base font-bold">
-                <Link href={`/dashboard/projects/${project._id}`} className="hover:text-primary transition-colors uppercase">
+                <Link
+                  href={selectionMode ? "#" : `/dashboard/projects/${project._id}`}
+                  className="hover:text-primary transition-colors uppercase"
+                  onClick={(e) => { if (selectionMode) { e.preventDefault(); onSelect?.() } }}
+                >
                   {project.orderId
                     ? `${project.orderId}_${project.projectName}`
                     : project.projectName}
                 </Link>
               </CardTitle>
               <button
-                onClick={() => handleCopy(
+                onClick={(e) => { e.stopPropagation(); handleCopy(
                   project.orderId
                     ? `${project.orderId}_${project.projectName}`
                     : project.projectName,
                   "title"
-                )}
+                )}}
                 className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
                 title="Copy title"
               >
@@ -125,22 +171,24 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction }) {
               )}
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="-mr-1.5 mt-0.5" />}>
-              <MoreHorizontal className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleAction("duplicate")}>
-                <Copy className="size-4" />
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => handleAction("delete")}>
-                <Trash2 className="size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-1 shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="-mr-1.5 mt-0.5" />}>
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleAction("duplicate")}>
+                  <Copy className="size-4" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={() => handleAction("delete")}>
+                  <Trash2 className="size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-1.5">
@@ -188,6 +236,13 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction }) {
                 </a>
               </div>
             </div>
+            {(project.additionalWebsites?.length > 0 || project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                {project.additionalWebsites?.length > 0 && <span>{project.additionalWebsites.length} extra</span>}
+                {project.figmaLinks?.length > 0 && <span>{project.figmaLinks.length} figma</span>}
+                {project.referenceLinks?.length > 0 && <span>{project.referenceLinks.length} ref</span>}
+              </div>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               {project.websiteUsername && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1">
@@ -224,6 +279,14 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction }) {
             </div>
           </div>
         )}
+        <div className="pt-2">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${project.progress ?? 0}%` }} />
+            </div>
+            <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">{project.progress ?? 0}%</span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

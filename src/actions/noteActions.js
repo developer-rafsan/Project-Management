@@ -1,12 +1,6 @@
-const BASE_URL = '/api/notes';
+import { handleResponse } from '@/lib/fetchUtils';
 
-async function handleResponse(response) {
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || data.message || 'Something went wrong');
-  }
-  return data;
-}
+const BASE_URL = '/api/notes';
 
 export async function getNotes() {
   const response = await fetch(BASE_URL);

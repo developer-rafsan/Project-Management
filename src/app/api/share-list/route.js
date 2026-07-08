@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
-import ShareList from '@/models/ShareList';
+import Share, { cleanupExpiredShares } from '@/models/Share';
 import crypto from 'crypto';
 
 export async function GET(request) {
@@ -14,7 +14,9 @@ export async function GET(request) {
 
     await connectDB();
 
-    const shares = await ShareList.find({ createdBy: session.user.id })
+    await cleanupExpiredShares();
+
+    const shares = await Share.find({ type: 'list', createdBy: session.user.id })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -24,6 +26,7 @@ export async function GET(request) {
       token: s.token,
       url: `${baseUrl}/shared-list/${s.token}`,
       expiresAt: s.expiresAt,
+      accessLevel: s.accessLevel || 'view',
       createdAt: s.createdAt,
       active: !s.expiresAt || new Date(s.expiresAt) > new Date(),
       projectCount: s.projects?.length || 0,
@@ -60,18 +63,23 @@ export async function POST(request) {
 
     const accessLevel = body.accessLevel || 'view';
 
-    const shareData = { token, createdBy: session.user.id, expiresAt, accessLevel };
+    const shareData = {
+      type: 'list',
+      token,
+      createdBy: session.user.id,
+      expiresAt,
+      accessLevel,
+    };
     if (body.projectIds?.length) {
       shareData.projects = body.projectIds;
     }
 
-    const share = await ShareList.create(shareData);
+    const share = await Share.create(shareData);
 
     const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
     const url = `${baseUrl}/shared-list/${token}`;
 
     const savedCount = share.projects?.length || 0;
-    console.log(`[POST /api/share-list] token=${token}, received=${body.projectIds?.length || 0}, saved=${savedCount}`);
     return NextResponse.json({ _id: share._id, token, url, expiresAt, accessLevel, projectCount: savedCount, requestedCount: body.projectIds?.length || 0 });
   } catch (error) {
     console.error('POST /api/share-list error:', error);

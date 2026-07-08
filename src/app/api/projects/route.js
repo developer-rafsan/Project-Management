@@ -56,7 +56,6 @@ export async function GET(request) {
           $or: [
             { orderId: regex },
             { projectName: regex },
-            { businessName: regex },
             { websiteUrl: regex },
           ],
         },
@@ -70,7 +69,7 @@ export async function GET(request) {
 
     const [projects, total] = await Promise.all([
       Project.find(filter)
-        .select('orderId projectName websiteUrl websiteUsername websitePassword status priority cms price startDate createdAt currentMonth currentYear assignee tags createdBy')
+        .select('orderId projectName websiteUrl websiteUsername websitePassword status priority cms price progress additionalWebsites figmaLinks referenceLinks startDate createdAt currentMonth currentYear assignee tags createdBy')
         .sort(sort).skip(skip).limit(limit).lean(),
       Project.countDocuments(filter),
     ]);
@@ -109,13 +108,16 @@ export async function POST(request) {
       cms,
       priority,
       status,
-      businessName,
       assignee,
       startDate,
       tags,
       note,
       description,
       price,
+      progress,
+      additionalWebsites,
+      figmaLinks,
+      referenceLinks,
       currentMonth,
       currentYear,
     } = body;
@@ -147,7 +149,6 @@ export async function POST(request) {
     const projectData = {
       orderId: generatedOrderId,
       projectName,
-      businessName: businessName || '',
       websiteUrl: websiteUrl || '',
       websiteUsername: websiteUsername || '',
       websitePassword: encryptedPassword,
@@ -159,6 +160,13 @@ export async function POST(request) {
       tags: tags || [],
       description: description || '',
       price: price ? Number(price) : 0,
+      progress: progress !== undefined ? Number(progress) : 0,
+      additionalWebsites: (additionalWebsites || []).map(ws => ({
+        ...ws,
+        password: ws.password ? encrypt(ws.password) : {},
+      })),
+      figmaLinks: figmaLinks || [],
+      referenceLinks: referenceLinks || [],
       currentMonth: currentMonth || now.getMonth() + 1,
       currentYear: currentYear || now.getFullYear(),
       createdBy: session.user.id,

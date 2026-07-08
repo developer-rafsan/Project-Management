@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Search, X } from "lucide-react"
 
-const STATUSES = ["Pending", "In Progress", "Delivered", "On Hold", "Cancelled"]
+const STATUSES = ["Pending", "In Progress", "Delivered", "Revision", "On Hold", "Cancelled"]
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"]
 const CMS_OPTIONS = ["WordPress", "WooCommerce", "Shopify", "Wix", "Webflow", "Next.js", "React", "Laravel", "PHP", "Custom", "HTML", "Other"]
 

@@ -37,7 +37,7 @@ export default function RecentUpdates({ updates }) {
               const projectName =
                 update.project?.projectName || "Unknown Project"
               const updatedByName =
-                update.updatedBy?.name || "Unknown"
+                update.performedBy?.name || "Unknown"
               return (
                 <div key={update._id} className="relative flex gap-4 pb-6 last:pb-0">
                   {i < updates.length - 1 && (

@@ -10,10 +10,6 @@ const projectSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    businessName: {
-      type: String,
-      default: '',
-    },
     websiteUrl: {
       type: String,
       default: '',
@@ -40,7 +36,7 @@ const projectSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'In Progress', 'Delivered', 'On Hold', 'Cancelled'],
+      enum: ['Pending', 'In Progress', 'Delivered', 'Revision', 'On Hold', 'Cancelled'],
       default: 'Pending',
     },
     assignee: {
@@ -65,6 +61,23 @@ const projectSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    progress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    additionalWebsites: [{
+      url: { type: String, default: '' },
+      username: { type: String, default: '' },
+      password: { type: { iv: String, encryptedData: String }, default: {} },
+    }],
+    figmaLinks: [{
+      url: { type: String, default: '' },
+    }],
+    referenceLinks: [{
+      url: { type: String, default: '' },
+    }],
     currentMonth: {
       type: Number,
     },

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { connectDB } from '@/lib/mongodb';
 import { decrypt, encrypt } from '@/lib/encryption';
-import Share from '@/models/Share';
+import Share, { cleanupExpiredShares } from '@/models/Share';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
 import Note from '@/models/Note';
@@ -17,7 +19,14 @@ async function validateShare(token) {
 
 export async function GET(request, { params }) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectDB();
+
+    await cleanupExpiredShares();
 
     const { token } = await params;
 
@@ -26,8 +35,8 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Share link not found' }, { status: 404 });
     }
 
-    if (share.expiresAt && new Date() > new Date(share.expiresAt)) {
-      return NextResponse.json({ error: 'Share link has expired' }, { status: 410 });
+    if (share.type !== 'project') {
+      return NextResponse.json({ error: 'Invalid share link' }, { status: 400 });
     }
 
     const project = await Project.findById(share.project)
@@ -77,12 +86,21 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectDB();
 
     const { token } = await params;
     const share = await validateShare(token);
     if (!share) {
       return NextResponse.json({ error: 'Share link not found or expired' }, { status: 404 });
+    }
+
+    if (share.type !== 'project') {
+      return NextResponse.json({ error: 'Invalid share link' }, { status: 400 });
     }
 
     if (share.accessLevel === 'view') {
@@ -99,7 +117,7 @@ export async function PATCH(request, { params }) {
 
     const updates = {};
     const fields = [
-      'orderId', 'projectName', 'businessName', 'websiteUrl',
+      'orderId', 'projectName', 'websiteUrl',
       'websiteUsername', 'cms', 'priority', 'status',
       'startDate', 'tags', 'description', 'price',
       'currentMonth', 'currentYear', 'assignee',
@@ -199,12 +217,21 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectDB();
 
     const { token } = await params;
     const share = await validateShare(token);
     if (!share) {
       return NextResponse.json({ error: 'Share link not found or expired' }, { status: 404 });
+    }
+
+    if (share.type !== 'project') {
+      return NextResponse.json({ error: 'Invalid share link' }, { status: 400 });
     }
 
     if (share.accessLevel !== 'full') {

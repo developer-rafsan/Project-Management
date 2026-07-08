@@ -36,15 +36,7 @@ export default function DashboardLayout({ children }) {
           {children}
           <footer className="mt-8 border-t border-border pt-4 pb-2 text-center text-xs text-muted-foreground">
             Crafted by{" "}
-            <a
-              href="https://your-portfolio-link.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-primary hover:underline"
-            >
-              Jahid Islam Rafsan
-            </a>{" "}
-            &mdash; NanoPiCode
+            <span className="font-medium text-primary">NanoPiCode</span>
           </footer>
         </main>
       </div>

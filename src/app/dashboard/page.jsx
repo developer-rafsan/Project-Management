@@ -72,6 +72,7 @@ export default function DashboardPage() {
             completedProjects: data.completed,
             pendingProjects: data.pending,
             onHoldProjects: data.onHold,
+            revisionProjects: data.revision || 0,
           })
 
           const grouped = (data.chartData?.byStatus || [])

@@ -60,12 +60,13 @@ export async function GET(request) {
       })
     }
 
-    const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, statusMap, priceMap, dayMap } = filtered.reduce((acc, p) => {
+    const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, revisionProjects, statusMap, priceMap, dayMap } = filtered.reduce((acc, p) => {
       acc.totalProjects++
       if (p.status === 'In Progress') acc.runningProjects++
       if (p.status === 'Delivered') acc.completedProjects++
       if (p.status === 'Pending') acc.pendingProjects++
       if (p.status === 'On Hold') acc.onHoldProjects++
+      if (p.status === 'Revision') acc.revisionProjects++
       if (p.status) {
         acc.statusMap[p.status] = (acc.statusMap[p.status] || 0) + 1
         acc.priceMap[p.status] = (acc.priceMap[p.status] || 0) + (p.price || 0)
@@ -76,7 +77,7 @@ export async function GET(request) {
         acc.dayMap[key] = (acc.dayMap[key] || 0) + 1
       }
       return acc
-    }, { totalProjects: 0, runningProjects: 0, completedProjects: 0, pendingProjects: 0, onHoldProjects: 0, statusMap: {}, priceMap: {}, dayMap: {} })
+    }, { totalProjects: 0, runningProjects: 0, completedProjects: 0, pendingProjects: 0, onHoldProjects: 0, revisionProjects: 0, statusMap: {}, priceMap: {}, dayMap: {} })
 
     const statusGrouped = Object.entries(statusMap).map(([key, count]) => ({ _id: key, count }))
     const priceByStatus = Object.entries(priceMap).map(([key, total]) => ({ _id: key, total }))
@@ -113,6 +114,7 @@ export async function GET(request) {
       completed: completedProjects,
       pending: pendingProjects,
       onHold: onHoldProjects,
+      revision: revisionProjects,
       priceByStatus,
       recentProjects,
       recentUpdates,

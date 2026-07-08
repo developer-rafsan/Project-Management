@@ -1,22 +1,6 @@
+import { handleResponse, buildQueryString } from '@/lib/fetchUtils';
+
 const BASE_URL = '/api/projects';
-
-async function handleResponse(response) {
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || data.message || 'Something went wrong');
-  }
-  return data;
-}
-
-function buildQueryString(params) {
-  const searchParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      searchParams.append(key, value);
-    }
-  });
-  return searchParams.toString();
-}
 
 export async function getProjects(filters = {}) {
   const query = buildQueryString(filters);
@@ -62,6 +46,11 @@ export async function getUsers() {
 
 export async function getProjectPassword(projectId) {
   const response = await fetch(`/api/projects/${projectId}/password`);
+  return handleResponse(response);
+}
+
+export async function getAdditionalPasswords(projectId) {
+  const response = await fetch(`/api/projects/${projectId}/additional-passwords`);
   return handleResponse(response);
 }
 

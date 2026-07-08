@@ -12,6 +12,7 @@ import {
   createProject,
   getProjectActivities,
   getProjectPassword,
+  getAdditionalPasswords,
 } from "@/actions/projectActions"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -22,12 +23,14 @@ import TransferAssigneeDialog from "@/components/projects/TransferAssigneeDialog
 import Notes from "@/components/projects/Notes"
 import { ProjectBreadcrumbs, ProjectTitle, ProjectActions } from "@/components/projects/ProjectDetailHeader"
 import ShareDialog from "@/components/projects/ShareDialog"
+import ProgressDialog from "@/components/projects/ProgressDialog"
 import { ProjectTimeline } from "@/components/projects/ProjectTimeline"
 import {
   ProjectDetailsCard,
   ProjectWebsiteCard,
   ProjectMetaCard,
   ProjectTagsCard,
+  ProjectLinksCard,
 } from "@/components/projects/ProjectInfoSidebar"
 import { StatusChangeDialog } from "@/components/projects/StatusChangeDialog"
 import {
@@ -49,6 +52,7 @@ export default function ProjectDetailPage() {
   const [decryptedPassword, setDecryptedPassword] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
+  const [additionalPasswords, setAdditionalPasswords] = useState({})
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -67,18 +71,26 @@ export default function ProjectDetailPage() {
   const [newStatus, setNewStatus] = useState("")
   const [statusNote, setStatusNote] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
+  const [progressOpen, setProgressOpen] = useState(false)
+  const [progressLoading, setProgressLoading] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [projectData, activitiesData, passwordData] = await Promise.all([
+      const [projectData, activitiesData, passwordData, additionalPwData] = await Promise.all([
         getProject(params.id),
         getProjectActivities(params.id),
         getProjectPassword(params.id).catch(() => ({ password: "" })),
+        getAdditionalPasswords(params.id).catch(() => ({ passwords: [] })),
       ])
       setProject(projectData)
       setActivities(activitiesData || [])
       setDecryptedPassword(passwordData.password || null)
+      const pwMap = {}
+      for (const item of additionalPwData.passwords || []) {
+        pwMap[item.index] = item.password
+      }
+      setAdditionalPasswords(pwMap)
     } catch (err) {
       toast.error(err.message || "Failed to load project")
     } finally {
@@ -269,20 +281,22 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className="space-y-4 sm:space-y-6">
-          <ProjectDetailsCard project={project} />
+          <ProjectDetailsCard project={project} onProgressClick={() => setProgressOpen(true)} />
           <ProjectWebsiteCard
             project={project}
             passwordDisplay={passwordDisplay}
             showPassword={showPassword}
             onTogglePassword={handleTogglePassword}
+            additionalPasswords={additionalPasswords}
           />
+          <ProjectLinksCard project={project} />
           <ProjectMetaCard project={project} />
           <ProjectTagsCard tags={project.tags} />
         </div>
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-2xl overflow-hidden p-3 sm:p-4">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto p-3 sm:p-4">
           <DialogHeader>
             <DialogTitle>Edit Project</DialogTitle>
             <DialogDescription>Update project details</DialogDescription>
@@ -340,6 +354,28 @@ export default function ProjectDetailPage() {
         onClose={() => setTransferAssigneeOpen(false)}
         onSuccess={() => {
           setTransferAssigneeOpen(false)
+        }}
+      />
+
+      <ProgressDialog
+        open={progressOpen}
+        onOpenChange={setProgressOpen}
+        projectName={project.projectName}
+        currentProgress={project.progress ?? 0}
+        actionLoading={progressLoading}
+        onConfirm={async (value) => {
+          setProgressLoading(true)
+          try {
+            const updated = await updateProject(project._id, { progress: value })
+            setProject(updated)
+            dispatch(updateProjectInStore(updated))
+            toast.success("Progress updated")
+            setProgressOpen(false)
+          } catch (err) {
+            toast.error(err.message || "Failed to update progress")
+          } finally {
+            setProgressLoading(false)
+          }
         }}
       />
 

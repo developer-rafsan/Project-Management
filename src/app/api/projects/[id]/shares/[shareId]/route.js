@@ -28,7 +28,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const share = await Share.findOne({ _id: shareId, project: id });
+    const share = await Share.findOne({ _id: shareId, type: 'project', project: id });
     if (!share) {
       return NextResponse.json({ error: 'Share link not found' }, { status: 404 });
     }

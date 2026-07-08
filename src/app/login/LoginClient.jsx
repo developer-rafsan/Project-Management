@@ -2,8 +2,12 @@
 
 import { signIn } from "next-auth/react"
 import { Kanban } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 
 export default function LoginClient() {
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 px-4 sm:px-6">
       <div className="w-full max-w-sm space-y-6 sm:space-y-8">
@@ -19,7 +23,7 @@ export default function LoginClient() {
 
         <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-xl">
           <button
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            onClick={() => signIn("google", { callbackUrl })}
             className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-lg border border-white/20 bg-white/10 px-6 py-2.5 sm:py-3 text-sm font-medium text-white transition-all hover:bg-white/20 active:scale-[0.98]"
           >
             <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24">

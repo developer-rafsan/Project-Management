@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,22 +17,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
   List, Eye, Settings, ShieldCheck, Circle, Hash, Globe, User, FolderKanban, Search, X,
   MoreHorizontal, Pencil, Trash2, CalendarArrowUp, UserRoundPlus, ExternalLink,
 } from "lucide-react"
-import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import SharedEditForm from "@/components/shared/SharedEditForm"
+import SharedMonthTransfer from "@/components/shared/SharedMonthTransfer"
+import SharedTransferAssignee from "@/components/shared/SharedTransferAssignee"
+import SharedDeleteConfirm from "@/components/shared/SharedDeleteConfirm"
 
-const STATUSES = ["All", "Pending", "In Progress", "Delivered", "On Hold", "Cancelled"]
+const STATUSES = ["All", "Pending", "In Progress", "Delivered", "Revision", "On Hold", "Cancelled"]
 const PRIORITIES = ["All", "Low", "Medium", "High", "Urgent"]
 const CMS_OPTIONS = ["All", "WordPress", "WooCommerce", "Shopify", "Wix", "Webflow", "Next.js", "React", "Laravel", "PHP", "Custom", "HTML", "Other"]
 
@@ -45,6 +41,7 @@ const statusStyles = {
   Delivered: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800",
   "On Hold": "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800",
   Cancelled: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800",
+  Revision: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800",
 }
 
 const priorityStyles = {
@@ -67,16 +64,9 @@ function formatDate(dateStr) {
   })
 }
 
-const MONTHS = [
-  { value: 1, label: "January" }, { value: 2, label: "February" },
-  { value: 3, label: "March" }, { value: 4, label: "April" },
-  { value: 5, label: "May" }, { value: 6, label: "June" },
-  { value: 7, label: "July" }, { value: 8, label: "August" },
-  { value: 9, label: "September" }, { value: 10, label: "October" },
-  { value: 11, label: "November" }, { value: 12, label: "December" },
-]
-
 export default function SharedListPage({ params: paramsPromise }) {
+  const router = useRouter()
+  const { data: session, status } = useSession()
   const [projects, setProjects] = useState([])
   const [sharedBy, setSharedBy] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -105,6 +95,15 @@ export default function SharedListPage({ params: paramsPromise }) {
   useEffect(() => {
     paramsPromise.then((p) => setListToken(p.token))
   }, [paramsPromise])
+
+  useEffect(() => {
+    if (status === "loading") return
+    if (status === "unauthenticated") {
+      paramsPromise.then((p) => {
+        router.replace(`/login?callbackUrl=/shared-list/${p.token}`)
+      })
+    }
+  }, [status, paramsPromise, router])
 
   const fetchData = useCallback(async () => {
     if (!listToken) return
@@ -163,7 +162,7 @@ export default function SharedListPage({ params: paramsPromise }) {
     return list
   }, [projects, filterMode, filterMonth, filterYear, filterStatus, filterPriority, filterCms, searchQuery, now])
 
-  if (loading) {
+  if (loading || status === "loading") {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-4">
@@ -193,6 +192,8 @@ export default function SharedListPage({ params: paramsPromise }) {
 
   const badge = ACCESS_BADGES[accessLevel] || ACCESS_BADGES.view
   const BadgeIcon = badge.icon
+  const canEdit = accessLevel === "manager" || accessLevel === "full"
+  const canFull = accessLevel === "full"
 
   return (
     <div className="min-h-screen bg-background">
@@ -326,6 +327,7 @@ export default function SharedListPage({ params: paramsPromise }) {
             {filtered.map((project) => {
               const isMenuOpen = activeMenu === project._id
               const shareTokenUrl = project.shareToken ? `/shared/${project.shareToken}` : "#"
+              const apiPath = `/api/shared/${project.shareToken}`
               return (
                 <div key={project._id} className="rounded-xl border bg-card hover:bg-accent/50 transition-colors">
                   <div className="flex items-start justify-between gap-4 p-4">
@@ -389,12 +391,12 @@ export default function SharedListPage({ params: paramsPromise }) {
                                 <ExternalLink className="size-3.5" />
                                 View
                               </Link>
-                              {(accessLevel === "manager" || accessLevel === "full") && (
+                              {canEdit && (
                                 <>
                                   <button
                                     type="button"
                                     className="flex items-center gap-2 w-full rounded-md px-2.5 py-2 text-sm hover:bg-accent cursor-pointer"
-                                    onClick={() => { setActiveMenu(null); setSelectedProject(project); setEditOpen(true) }}
+                                    onClick={() => { setActiveMenu(null); setSelectedProject({ ...project, shareToken: project.shareToken }); setEditOpen(true) }}
                                   >
                                     <Pencil className="size-3.5" />
                                     Edit
@@ -402,7 +404,7 @@ export default function SharedListPage({ params: paramsPromise }) {
                                   <button
                                     type="button"
                                     className="flex items-center gap-2 w-full rounded-md px-2.5 py-2 text-sm hover:bg-accent cursor-pointer"
-                                    onClick={() => { setActiveMenu(null); setSelectedProject(project); setTransferMonthOpen(true) }}
+                                    onClick={() => { setActiveMenu(null); setSelectedProject({ ...project, shareToken: project.shareToken }); setTransferMonthOpen(true) }}
                                   >
                                     <CalendarArrowUp className="size-3.5" />
                                     Transfer
@@ -410,18 +412,18 @@ export default function SharedListPage({ params: paramsPromise }) {
                                   <button
                                     type="button"
                                     className="flex items-center gap-2 w-full rounded-md px-2.5 py-2 text-sm hover:bg-accent cursor-pointer"
-                                    onClick={() => { setActiveMenu(null); setSelectedProject(project); setTransferAssigneeOpen(true) }}
+                                    onClick={() => { setActiveMenu(null); setSelectedProject({ ...project, shareToken: project.shareToken }); setTransferAssigneeOpen(true) }}
                                   >
                                     <UserRoundPlus className="size-3.5" />
                                     Transfer to
                                   </button>
                                 </>
                               )}
-                              {accessLevel === "full" && (
+                              {canFull && (
                                 <button
                                   type="button"
                                   className="flex items-center gap-2 w-full rounded-md px-2.5 py-2 text-sm text-destructive hover:bg-destructive/10 cursor-pointer"
-                                  onClick={() => { setActiveMenu(null); setSelectedProject(project); setDeleteProjectId(project._id); setDeleteOpen(true) }}
+                                  onClick={() => { setActiveMenu(null); setSelectedProject({ ...project, shareToken: project.shareToken }); setDeleteProjectId(project._id); setDeleteOpen(true) }}
                                 >
                                   <Trash2 className="size-3.5" />
                                   Delete
@@ -440,38 +442,37 @@ export default function SharedListPage({ params: paramsPromise }) {
         )}
 
         {selectedProject && editOpen && (
-          <ListEditForm
+          <SharedEditForm
             project={selectedProject}
-            open={editOpen}
-            onOpenChange={setEditOpen}
+            apiPath={`/api/shared/${selectedProject.shareToken}`}
             onSuccess={() => { setEditOpen(false); setSelectedProject(null); fetchData() }}
             onCancel={() => { setEditOpen(false); setSelectedProject(null) }}
           />
         )}
 
         {selectedProject && transferMonthOpen && (
-          <ListMonthTransfer
+          <SharedMonthTransfer
             project={selectedProject}
+            apiPath={`/api/shared/${selectedProject.shareToken}`}
             open={transferMonthOpen}
-            onOpenChange={setTransferMonthOpen}
+            onClose={() => setTransferMonthOpen(false)}
             onSuccess={() => { setTransferMonthOpen(false); setSelectedProject(null); fetchData() }}
-            onCancel={() => { setTransferMonthOpen(false); setSelectedProject(null) }}
           />
         )}
 
         {selectedProject && transferAssigneeOpen && (
-          <ListTransferAssignee
+          <SharedTransferAssignee
             project={selectedProject}
+            apiPath={`/api/shared/${selectedProject.shareToken}`}
             open={transferAssigneeOpen}
-            onOpenChange={setTransferAssigneeOpen}
+            onClose={() => setTransferAssigneeOpen(false)}
             onSuccess={() => { setTransferAssigneeOpen(false); setSelectedProject(null); fetchData() }}
-            onCancel={() => { setTransferAssigneeOpen(false); setSelectedProject(null) }}
           />
         )}
 
-        <ListDeleteConfirm
-          projects={projects}
-          deleteProjectId={deleteProjectId}
+        <SharedDeleteConfirm
+          project={projects.find((p) => p._id === deleteProjectId)}
+          apiPath={deleteProjectId ? `/api/shared/${projects.find((p) => p._id === deleteProjectId)?.shareToken}` : ""}
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
           onSuccess={() => { setDeleteOpen(false); setDeleteProjectId(null); fetchData() }}
@@ -479,322 +480,5 @@ export default function SharedListPage({ params: paramsPromise }) {
         />
       </div>
     </div>
-  )
-}
-
-function ListEditForm({ project, open, onOpenChange, onSuccess, onCancel }) {
-  const [formData, setFormData] = useState({
-    projectName: project.projectName || "",
-    websiteUrl: project.websiteUrl || "",
-    websiteUsername: project.websiteUsername || "",
-    orderId: project.orderId || "",
-    cms: project.cms || "",
-    priority: project.priority || "Medium",
-    description: project.description || "",
-    price: project.price || "",
-    startDate: project.startDate ? new Date(project.startDate).toISOString().split("T")[0] : "",
-    tags: project.tags || [],
-    websitePassword: "",
-  })
-  const [tagInput, setTagInput] = useState("")
-  const [saving, setSaving] = useState(false)
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      const body = { ...formData }
-      if (body.price) body.price = Number(body.price)
-      if (!body.websitePassword) delete body.websitePassword
-      const res = await fetch(`/api/shared/${project.shareToken}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to update")
-      toast.success("Project updated")
-      onSuccess(data)
-    } catch (err) {
-      toast.error(err.message || "Failed to update project")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const addTag = () => {
-    const tag = tagInput.trim()
-    if (tag && !formData.tags.includes(tag)) {
-      setFormData((prev) => ({ ...prev, tags: [...prev.tags, tag] }))
-      setTagInput("")
-    }
-  }
-  const removeTag = (tag) => {
-    setFormData((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }))
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl overflow-hidden p-3 sm:p-4">
-        <DialogHeader>
-          <DialogTitle>Edit Project</DialogTitle>
-          <DialogDescription>Update project details</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Project Name</label>
-              <input value={formData.projectName} onChange={(e) => setFormData((p) => ({ ...p, projectName: e.target.value }))} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm" required />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Order ID</label>
-              <input value={formData.orderId} onChange={(e) => setFormData((p) => ({ ...p, orderId: e.target.value }))} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">CMS</label>
-              <input value={formData.cms} onChange={(e) => setFormData((p) => ({ ...p, cms: e.target.value }))} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Website URL</label>
-              <input value={formData.websiteUrl} onChange={(e) => setFormData((p) => ({ ...p, websiteUrl: e.target.value }))} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Website Username</label>
-              <input value={formData.websiteUsername} onChange={(e) => setFormData((p) => ({ ...p, websiteUsername: e.target.value }))} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Website Password</label>
-              <input type="password" value={formData.websitePassword} onChange={(e) => setFormData((p) => ({ ...p, websitePassword: e.target.value }))} placeholder="Leave blank to keep current" className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Priority</label>
-              <select value={formData.priority} onChange={(e) => setFormData((p) => ({ ...p, priority: e.target.value }))} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
-                <option>Low</option><option>Medium</option><option>High</option><option>Urgent</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Price</label>
-              <input type="number" value={formData.price} onChange={(e) => setFormData((p) => ({ ...p, price: e.target.value }))} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Start Date</label>
-              <input type="date" value={formData.startDate} onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))} className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Tags</label>
-            <div className="flex gap-2">
-              <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag() } }} placeholder="Add a tag..." className="flex h-9 flex-1 rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm" />
-              <Button type="button" variant="outline" size="sm" onClick={addTag}>Add</Button>
-            </div>
-            {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {formData.tags.map((tag) => (
-                  <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs">
-                    {tag}
-                    <button type="button" onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-foreground cursor-pointer">&times;</button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Description</label>
-            <textarea value={formData.description} onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))} rows={3} className="flex w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm" />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function ListMonthTransfer({ project, open, onOpenChange, onSuccess, onCancel }) {
-  const [newMonth, setNewMonth] = useState("")
-  const [newYear, setNewYear] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const CURRENT_YEAR = new Date().getFullYear()
-  const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - 2 + i)
-
-  const handleConfirm = async () => {
-    if (!newMonth || !newYear) { toast.error("Please select both month and year"); return }
-    setSubmitting(true)
-    try {
-      const res = await fetch(`/api/shared/${project.shareToken}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentMonth: Number(newMonth), currentYear: Number(newYear) }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to transfer")
-      toast.success("Project transferred")
-      onSuccess(data)
-    } catch (err) {
-      toast.error(err.message || "Failed to transfer")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Transfer Project</DialogTitle>
-          <DialogDescription>Move &ldquo;{project?.projectName}&rdquo; to a different month.</DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Month</label>
-            <Select value={newMonth} onValueChange={setNewMonth}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>{MONTHS.map((m) => (<SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>))}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Year</label>
-            <Select value={newYear} onValueChange={setNewYear}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>{YEARS.map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}</SelectContent>
-            </Select>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={submitting}>Cancel</Button>
-          <Button onClick={handleConfirm} disabled={submitting || !newMonth || !newYear}>{submitting ? "Transferring..." : "Transfer"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function ListTransferAssignee({ project, open, onOpenChange, onSuccess, onCancel }) {
-  const [users, setUsers] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedUserId, setSelectedUserId] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const [loadingUsers, setLoadingUsers] = useState(false)
-
-  useEffect(() => {
-    if (!open) return
-    setSearchQuery(""); setSelectedUserId(""); setLoadingUsers(true)
-    fetch(`/api/users?share_token=${project.shareToken}`)
-      .then((r) => r.json()).then(setUsers).catch(() => toast.error("Failed to load users"))
-      .finally(() => setLoadingUsers(false))
-  }, [open, project.shareToken])
-
-  const filteredUsers = users.filter((u) => u.name?.toLowerCase().includes(searchQuery.toLowerCase()))
-  const selectedUser = users.find((u) => u._id === selectedUserId)
-
-  const handleConfirm = async () => {
-    if (!selectedUserId) { toast.error("Please select a user"); return }
-    setSubmitting(true)
-    try {
-      const res = await fetch(`/api/shared/${project.shareToken}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignee: selectedUserId }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to transfer")
-      toast.success("Project transferred")
-      onSuccess(data)
-    } catch (err) {
-      toast.error(err.message || "Failed to transfer")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Transfer to Person</DialogTitle>
-          <DialogDescription>Transfer &ldquo;{project?.projectName}&rdquo; to another user.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Select User</label>
-            <input
-              placeholder={loadingUsers ? "Loading..." : "Search by name..."}
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); if (selectedUserId) setSelectedUserId("") }}
-              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-              disabled={loadingUsers}
-            />
-            {searchQuery && filteredUsers.length > 0 && (
-              <div className="rounded-lg border bg-popover shadow-md overflow-hidden mt-1">
-                {filteredUsers.map((u) => (
-                  <button key={u._id} type="button" onMouseDown={() => { setSelectedUserId(u._id); setSearchQuery(u.name || "") }}
-                    className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-accent cursor-pointer"
-                  >
-                    <Avatar className="size-7 shrink-0">
-                      <AvatarImage src={u.image} /><AvatarFallback className="text-[10px]">{u.name?.charAt(0) || "?"}</AvatarFallback>
-                    </Avatar>
-                    <div><p className="text-sm font-medium">{u.name}</p>{u.email && <p className="text-xs text-muted-foreground">{u.email}</p>}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {selectedUser && (
-            <div className="flex items-center gap-2.5 rounded-lg border bg-muted/30 px-3 py-2.5 text-sm">
-              <Avatar className="size-6 shrink-0"><AvatarImage src={selectedUser.image} /><AvatarFallback className="text-[9px]">{selectedUser.name?.charAt(0) || "?"}</AvatarFallback></Avatar>
-              <UserRoundPlus className="size-3.5 text-muted-foreground shrink-0" />
-              Transferring to <strong>{selectedUser.name}</strong>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={submitting}>Cancel</Button>
-          <Button onClick={handleConfirm} disabled={submitting || !selectedUserId}>{submitting ? "Transferring..." : "Transfer"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function ListDeleteConfirm({ projects, deleteProjectId, open, onOpenChange, onSuccess, onCancel }) {
-  const [submitting, setSubmitting] = useState(false)
-  const project = projects.find((p) => p._id === deleteProjectId)
-  const [shareToken, setShareToken] = useState(null)
-
-  useEffect(() => {
-    if (project?.shareToken) setShareToken(project.shareToken)
-  }, [project])
-
-  const handleDelete = async () => {
-    if (!shareToken) return
-    setSubmitting(true)
-    try {
-      const res = await fetch(`/api/shared/${shareToken}`, { method: "DELETE" })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to delete")
-      toast.success("Project deleted")
-      onSuccess()
-    } catch (err) {
-      toast.error(err.message || "Failed to delete project")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Delete Project</DialogTitle>
-          <DialogDescription>Are you sure you want to delete &ldquo;{project?.projectName}&rdquo;? This action cannot be undone.</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={submitting}>Cancel</Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={submitting}>{submitting ? "Deleting..." : "Delete"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }

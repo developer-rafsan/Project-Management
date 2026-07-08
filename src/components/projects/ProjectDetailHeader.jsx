@@ -21,6 +21,7 @@ const statusVariants = {
   Delivered: "secondary",
   "On Hold": "destructive",
   Cancelled: "destructive",
+  Revision: "secondary",
 }
 
 const priorityVariants = {

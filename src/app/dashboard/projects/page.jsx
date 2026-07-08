@@ -26,6 +26,7 @@ import TransferAssigneeDialog from "@/components/projects/TransferAssigneeDialog
 import { StatusChangeDialog } from "@/components/projects/StatusChangeDialog"
 import ShareDialog from "@/components/projects/ShareDialog"
 import ShareListDialog from "@/components/projects/ShareListDialog"
+import ProgressDialog from "@/components/projects/ProgressDialog"
 import { getMonthRange, getEffectiveMonthYear } from "@/lib/dateUtils"
 import { createProject, deleteProject, getProjectPassword, updateProject } from "@/actions/projectActions"
 import {
@@ -36,7 +37,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Loader2, Plus, FolderKanban, ArrowLeftRight, CalendarArrowUp, UserRoundPlus, Link2, Trash2 } from "lucide-react"
+import { Loader2, Plus, FolderKanban, ArrowLeftRight, CalendarArrowUp, UserRoundPlus, Link2, Trash2, ListChecks, X } from "lucide-react"
 
 const PAGE_SIZE = 20
 
@@ -64,7 +65,10 @@ export default function ProjectsPage() {
   const [shareProject, setShareProject] = useState(null)
   const [shareListOpen, setShareListOpen] = useState(false)
   const [shareSelectedIds, setShareSelectedIds] = useState([])
+  const [progressProject, setProgressProject] = useState(null)
+  const [progressLoading, setProgressLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
+  const [selectMode, setSelectMode] = useState(false)
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
   const [bulkStatusValue, setBulkStatusValue] = useState("Pending")
   const [bulkStatusLoading, setBulkStatusLoading] = useState(false)
@@ -131,6 +135,8 @@ export default function ProjectsPage() {
       setTransferAssigneeProject(project)
     } else if (action === "share") {
       setShareProject(project)
+    } else if (action === "progress") {
+      setProgressProject(project)
     }
   }, [dispatch, router])
 
@@ -222,20 +228,37 @@ export default function ProjectsPage() {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
-            variant="outline"
+            variant={selectMode ? "default" : "outline"}
+            size={selectMode ? "sm" : "default"}
             onClick={() => {
-              setShareSelectedIds(selectedIds.length > 0 ? [...selectedIds] : [])
-              setShareListOpen(true)
+              if (selectMode) {
+                setSelectedIds([])
+                setSelectMode(false)
+              } else {
+                setSelectMode(true)
+              }
             }}
-            className="shrink-0 gap-2 cursor-pointer"
+            className={`shrink-0 gap-2 cursor-pointer transition-all ${selectMode ? "bg-primary/90 hover:bg-primary shadow-sm" : ""}`}
           >
-            <Link2 className="size-4" />
-            <span>{selectedIds.length > 0 ? `Share (${selectedIds.length})` : "Share"}</span>
+            {selectMode ? <X className="size-4" /> : <ListChecks className="size-4" />}
+            <span>{selectMode ? "Bulk action" : "Bulk action"}</span>
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="shrink-0 gap-2 cursor-pointer">
-            <Plus className="size-4" />
-            <span>New Project</span>
-          </Button>
+          {!selectMode && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setShareListOpen(true)}
+                className="shrink-0 gap-2 cursor-pointer border-dashed hover:border-primary/50"
+              >
+                <Link2 className="size-4" />
+                <span>Share</span>
+              </Button>
+              <Button onClick={() => setCreateOpen(true)} className="shrink-0 gap-2 cursor-pointer shadow-sm">
+                <Plus className="size-4" />
+                <span>New Project</span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -381,20 +404,20 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {selectedIds.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5">
-          <span className="text-sm font-medium text-foreground">{selectedIds.length} selected</span>
-          <div className="h-4 w-px bg-border" />
-          <Button variant="outline" size="sm" onClick={() => { setBulkStatusValue("Pending"); setBulkStatusOpen(true) }} className="gap-1.5 h-8 text-xs cursor-pointer">
+      {selectedIds.length > 0 && selectMode && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/5 to-transparent px-4 py-3 shadow-sm">
+          <span className="text-sm font-semibold text-foreground min-w-[5rem]">{selectedIds.length} selected</span>
+          <div className="h-5 w-px bg-border/60" />
+          <Button variant="secondary" size="sm" onClick={() => { setBulkStatusValue("Pending"); setBulkStatusOpen(true) }} className="gap-1.5 h-8 text-xs font-medium cursor-pointer shadow-sm">
             <ArrowLeftRight className="size-3.5" /> Status
           </Button>
-          <Button variant="outline" size="sm" onClick={() => { setBulkTransferMonth(""); setBulkTransferYear(""); setBulkTransferOpen(true) }} className="gap-1.5 h-8 text-xs cursor-pointer">
+          <Button variant="secondary" size="sm" onClick={() => { setBulkTransferMonth(""); setBulkTransferYear(""); setBulkTransferOpen(true) }} className="gap-1.5 h-8 text-xs font-medium cursor-pointer shadow-sm">
             <CalendarArrowUp className="size-3.5" /> Transfer
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setBulkTransferToOpen(true)} className="gap-1.5 h-8 text-xs cursor-pointer">
+          <Button variant="secondary" size="sm" onClick={() => setBulkTransferToOpen(true)} className="gap-1.5 h-8 text-xs font-medium cursor-pointer shadow-sm">
             <UserRoundPlus className="size-3.5" /> Transfer to
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setBulkDeleteOpen(true)} className="gap-1.5 h-8 text-xs text-destructive hover:text-destructive cursor-pointer">
+          <Button variant="secondary" size="sm" onClick={() => setBulkDeleteOpen(true)} className="gap-1.5 h-8 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer shadow-sm">
             <Trash2 className="size-3.5" /> Delete
           </Button>
         </div>
@@ -426,17 +449,17 @@ export default function ProjectsPage() {
       ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {paginated.map((project, idx) => (
-            <ProjectCard key={project._id} project={project} index={(page - 1) * PAGE_SIZE + idx + 1} onAction={handleCardAction} />
+            <ProjectCard key={project._id} project={project} index={(page - 1) * PAGE_SIZE + idx + 1} onAction={handleCardAction} selected={selectedIds.includes(project._id)} selectionMode={selectMode} onSelect={() => setSelectedIds(prev => prev.includes(project._id) ? prev.filter(id => id !== project._id) : [...prev, project._id])} />
           ))}
         </div>
       ) : (
-        <ProjectTable projects={paginated} page={page} pageSize={PAGE_SIZE} onAction={handleCardAction} selectedIds={selectedIds} onSelectionChange={setSelectedIds} />
+        <ProjectTable projects={paginated} page={page} pageSize={PAGE_SIZE} onAction={handleCardAction} selectedIds={selectedIds} onSelectionChange={setSelectedIds} selectMode={selectMode} />
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <Dialog open={!!editProject} onOpenChange={(open) => !open && setEditProject(null)}>
-        <DialogContent className="sm:max-w-2xl overflow-hidden p-3 sm:p-4">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-3 sm:p-4">
           <DialogHeader>
             <DialogTitle>Edit Project</DialogTitle>
             <DialogDescription>Update project details</DialogDescription>
@@ -513,7 +536,7 @@ export default function ProjectsPage() {
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {["Pending","In Progress","Delivered","On Hold","Cancelled"].map((s) => (
+                  {["Pending","In Progress","Delivered","Revision","On Hold","Cancelled"].map((s) => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
@@ -645,6 +668,7 @@ export default function ProjectsPage() {
                 }
                 toast.success(`Deleted ${count} project${count > 1 ? "s" : ""}`)
                 setSelectedIds([])
+                setSelectMode(false)
                 setBulkDeleteOpen(false)
               } catch (err) {
                 toast.error(err.message || "Failed to delete")
@@ -659,6 +683,28 @@ export default function ProjectsPage() {
         </DialogContent>
       </Dialog>
 
+      <ProgressDialog
+        open={!!progressProject}
+        onOpenChange={(v) => { if (!v) setProgressProject(null) }}
+        projectName={progressProject?.projectName}
+        currentProgress={progressProject?.progress ?? 0}
+        actionLoading={progressLoading}
+        onConfirm={async (value) => {
+          if (!progressProject) return
+          setProgressLoading(true)
+          try {
+            const updated = await updateProject(progressProject._id, { progress: value })
+            dispatch(updateProjectInStore(updated))
+            toast.success("Progress updated")
+            setProgressProject(null)
+          } catch (err) {
+            toast.error(err.message || "Failed to update progress")
+          } finally {
+            setProgressLoading(false)
+          }
+        }}
+      />
+
       <ShareDialog
         open={!!shareProject}
         onOpenChange={(v) => { if (!v) setShareProject(null) }}
@@ -668,12 +714,12 @@ export default function ProjectsPage() {
 
       <ShareListDialog
         open={shareListOpen}
-        onOpenChange={(v) => { if (!v) setSelectedIds([]); setShareListOpen(v) }}
+        onOpenChange={(v) => { if (!v) { setSelectedIds([]); setSelectMode(false) }; setShareListOpen(v) }}
         selectedProjectIds={shareSelectedIds}
       />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-2xl overflow-hidden p-3 sm:p-4">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-3 sm:p-4">
           <DialogHeader>
             <DialogTitle>Create New Project</DialogTitle>
             <DialogDescription>Fill in the project details</DialogDescription>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, memo } from "react"
+import { useState, memo, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -27,9 +27,9 @@ import {
   CalendarArrowUp,
   UserRoundPlus,
   Link,
-  Square,
-  CheckSquare,
+  Percent,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const statusStyles = {
   "Pending": "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800",
@@ -37,6 +37,7 @@ const statusStyles = {
   "Delivered": "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800",
   "On Hold": "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800",
   "Cancelled": "bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900/20 dark:text-zinc-400 dark:border-zinc-800",
+  "Revision": "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800",
 }
 
 const priorityStyles = {
@@ -46,7 +47,53 @@ const priorityStyles = {
   "Urgent": "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800",
 }
 
-const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageSize = 20, onAction, selectedIds = [], onSelectionChange }) {
+function LongPressHandler({ onLongPress, onClick, children, className, active }) {
+  const timerRef = useRef(null)
+  const movedRef = useRef(false)
+
+  const start = useCallback(() => {
+    movedRef.current = false
+    timerRef.current = setTimeout(() => {
+      onLongPress?.()
+    }, 500)
+  }, [onLongPress])
+
+  const move = useCallback(() => {
+    movedRef.current = true
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  const end = useCallback((e) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+      if (!movedRef.current) {
+        if (active) {
+          onLongPress?.()
+        } else {
+          onClick?.(e)
+        }
+      }
+    }
+  }, [onClick, onLongPress, active])
+
+  return (
+    <div
+      className={className}
+      onTouchStart={start}
+      onTouchMove={move}
+      onTouchEnd={end}
+      onClick={active ? undefined : onClick}
+    >
+      {children}
+    </div>
+  )
+}
+
+const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageSize = 20, onAction, selectedIds = [], onSelectionChange, selectMode = false }) {
   const router = useRouter()
   const startSerial = (page - 1) * pageSize + 1
   const [copied, setCopied] = useState({})
@@ -66,6 +113,14 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
     setCopied((prev) => ({ ...prev, [`${id}-${key}`]: true }))
     setTimeout(() => setCopied((prev) => ({ ...prev, [`${id}-${key}`]: false })), 1500)
   }
+
+  const toggleOne = useCallback((id) => {
+    onSelectionChange?.(
+      selectedIds.includes(id)
+        ? selectedIds.filter(i => i !== id)
+        : [...selectedIds, id]
+    )
+  }, [selectedIds, onSelectionChange])
 
   if (projects.length === 0) {
     return <div className="text-center text-muted-foreground py-12">Project not available</div>
@@ -177,6 +232,13 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
             <span className="text-xs text-muted-foreground">-</span>
           )}
         </div>
+        {(project.additionalWebsites?.length > 0 || project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            {project.additionalWebsites?.length > 0 && <span>{project.additionalWebsites.length} extra</span>}
+            {project.figmaLinks?.length > 0 && <span>{project.figmaLinks.length} figma</span>}
+            {project.referenceLinks?.length > 0 && <span>{project.referenceLinks.length} ref</span>}
+          </div>
+        )}
       </div>
     )
   }
@@ -184,38 +246,132 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
   return (
     <div className="space-y-2 sm:space-y-1.5">
       {/* Desktop header row */}
-      <div className="hidden sm:grid grid-cols-[24px_36px_minmax(0,1fr)_110px] md:grid-cols-[24px_36px_minmax(0,1fr)_1fr_120px_100px] lg:grid-cols-[24px_36px_1fr_1fr_130px_110px_100px_36px] gap-4 px-4 sm:px-6 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            const allIds = projects.map(p => p._id)
-            onSelectionChange?.(selectedIds.length === allIds.length ? [] : allIds)
-          }}
-          className="text-center cursor-pointer"
-        >
-          {selectedIds.length === projects.length && projects.length > 0
-            ? <CheckSquare className="size-4 mx-auto text-primary" />
-            : <Square className="size-4 mx-auto text-muted-foreground/40 hover:text-muted-foreground" />
-          }
-        </button>
+      <div className="hidden sm:grid grid-cols-[36px_minmax(0,1fr)_110px_70px] md:grid-cols-[36px_minmax(0,1fr)_1fr_120px_100px_80px] lg:grid-cols-[36px_1fr_1fr_130px_110px_100px_80px_36px] gap-4 px-4 sm:px-6 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
         <span className="text-center">#</span>
         <span>Project</span>
         <span className="hidden md:block">Website</span>
         <span>Status</span>
         <span className="hidden md:block">Priority</span>
         <span className="hidden lg:block text-right">Price</span>
+        <span className="text-center hidden lg:block">Progress</span>
         <span></span>
       </div>
 
-      {projects.map((project, idx) => (
-        <div
-          key={project._id}
-          className="rounded-xl border bg-card cursor-pointer transition-all hover:border-primary/30 hover:shadow-sm active:scale-[0.99]"
-          onClick={() => router.push(`/dashboard/projects/${project._id}`)}
-        >
-          {/* Mobile layout */}
-          <div className="block sm:hidden p-3">
-            <div className="flex items-start justify-between gap-2 mb-1">
+      {projects.map((project, idx) => {
+        const isSelected = selectedIds.includes(project._id)
+        return (
+          <div
+            key={project._id}
+            className={cn(
+              "rounded-xl border bg-card transition-all",
+              isSelected
+                ? "border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                : selectMode
+                  ? "hover:border-primary/30 hover:shadow-sm cursor-pointer active:scale-[0.99]"
+                  : "hover:border-primary/30 hover:shadow-sm"
+            )}
+          >
+            {/* Mobile layout */}
+            <div className="block sm:hidden">
+              <LongPressHandler
+                active={selectMode}
+                onLongPress={() => toggleOne(project._id)}
+                onClick={() => {
+                  if (selectMode) {
+                    toggleOne(project._id)
+                  } else {
+                    router.push(`/dashboard/projects/${project._id}`)
+                  }
+                }}
+                className="p-3"
+              >
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1">
+                      <p className={`font-medium truncate ${isSelected ? "text-base" : "text-base"}`}>
+                        {project.orderId ? `${project.orderId}_${project.projectName}` : project.projectName}
+                      </p>
+                      <button onClick={(e) => { e.stopPropagation(); handleCopy(project._id, project.orderId ? `${project.orderId}_${project.projectName}` : project.projectName, "title") }} className="shrink-0 text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-pointer">
+                        {copied[`${project._id}-title`] ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatDate(project.startDate)}{project.cms ? ` · ${project.cms}` : ""}
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums shrink-0">#{startSerial + idx}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs mb-1.5">
+                  {project.status && (
+                    <Badge variant="outline" className={`text-[11px] font-medium px-2 py-0 ${statusStyles[project.status] || ""}`}>{project.status}</Badge>
+                  )}
+                  {project.priority && (
+                    <Badge variant="outline" className={`text-[11px] font-medium px-2 py-0 ${priorityStyles[project.priority] || ""}`}>{project.priority}</Badge>
+                  )}
+                  {Number(project.price) ? (
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-md px-1.5 py-0.5">${Number(project.price).toFixed(2)}</span>
+                  ) : null}
+                </div>
+                <div className="text-xs text-muted-foreground mb-1.5">
+                  <span className="font-medium tabular-nums">Progress: {project.progress ?? 0}%</span>
+                </div>
+                {renderWebsite(project)}
+              </LongPressHandler>
+              <div className="flex items-center justify-end px-3 pb-3 gap-2">
+                <div onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" className="cursor-pointer" />}>
+                      <MoreHorizontal className="size-3.5" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onAction?.("edit", project)}>
+                        <Pencil className="size-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onAction?.("duplicate", project)}>
+                        <Copy className="size-4" /> Duplicate
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onAction?.("status", project)}>
+                        <ArrowLeftRight className="size-4" /> Status
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onAction?.("progress", project)}>
+                        <Percent className="size-4" /> Progress
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onAction?.("transfer", project)}>
+                        <CalendarArrowUp className="size-4" /> Transfer
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onAction?.("transferAssignee", project)}>
+                        <UserRoundPlus className="size-4" /> Transfer to
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onAction?.("share", project)}>
+                        <Link className="size-4" /> Share
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem variant="destructive" onClick={() => onAction?.("delete", project)}>
+                        <Trash2 className="size-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop layout */}
+            <div
+              className={cn(
+                "hidden sm:grid grid-cols-[36px_minmax(0,1fr)_110px_70px] md:grid-cols-[36px_minmax(0,1fr)_1fr_120px_100px_80px] lg:grid-cols-[36px_1fr_1fr_130px_110px_100px_80px_36px] items-center gap-4 px-4 sm:px-6 py-3",
+                selectMode ? "cursor-pointer" : ""
+              )}
+              onClick={() => {
+                if (selectMode) {
+                  toggleOne(project._id)
+                } else {
+                  router.push(`/dashboard/projects/${project._id}`)
+                }
+              }}
+            >
+              <span className="text-sm text-muted-foreground tabular-nums text-center">{startSerial + idx}</span>
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
                   <p className="font-medium text-base truncate">
@@ -225,154 +381,69 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                     {copied[`${project._id}-title`] ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
                   </button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {formatDate(project.startDate)}{project.cms ? ` · ${project.cms}` : ""}
                 </p>
               </div>
-              <span className="text-xs text-muted-foreground tabular-nums shrink-0">#{startSerial + idx}</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs mb-1.5">
-              {project.status && (
-                <Badge variant="outline" className={`text-[11px] font-medium px-2 py-0 ${statusStyles[project.status] || ""}`}>{project.status}</Badge>
-              )}
-              {project.priority && (
-                <Badge variant="outline" className={`text-[11px] font-medium px-2 py-0 ${priorityStyles[project.priority] || ""}`}>{project.priority}</Badge>
-              )}
-              {Number(project.price) ? (
-                <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-md px-1.5 py-0.5">${Number(project.price).toFixed(2)}</span>
-              ) : null}
-            </div>
-            {renderWebsite(project)}
-            <div className="flex justify-end mt-1" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenu>
-                <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" className="cursor-pointer" />}>
-                  <MoreHorizontal className="size-3.5" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onAction?.("edit", project)}>
-                    <Pencil className="size-4" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onAction?.("duplicate", project)}>
-                    <Copy className="size-4" />
-                    Duplicate
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onAction?.("status", project)}>
-                    <ArrowLeftRight className="size-4" />
-                    Status
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onAction?.("transfer", project)}>
-                    <CalendarArrowUp className="size-4" />
-                    Transfer
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onAction?.("transferAssignee", project)}>
-                    <UserRoundPlus className="size-4" />
-                    Transfer to
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onAction?.("share", project)}>
-                    <Link className="size-4" />
-                    Share
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => onAction?.("delete", project)}>
-                    <Trash2 className="size-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {/* Desktop layout */}
-          <div className="hidden sm:grid grid-cols-[24px_36px_minmax(0,1fr)_110px] md:grid-cols-[24px_36px_minmax(0,1fr)_1fr_120px_100px] lg:grid-cols-[24px_36px_1fr_1fr_130px_110px_100px_36px] items-center gap-4 px-4 sm:px-6 py-3">
-            <button
-              onClick={(e) => { e.stopPropagation(); onSelectionChange?.(
-                selectedIds.includes(project._id)
-                  ? selectedIds.filter(id => id !== project._id)
-                  : [...selectedIds, project._id]
-              ) }}
-              className="text-center cursor-pointer"
-            >
-              {selectedIds.includes(project._id)
-                ? <CheckSquare className="size-4 mx-auto text-primary" />
-                : <Square className="size-4 mx-auto text-muted-foreground/40 hover:text-muted-foreground" />
-              }
-            </button>
-            <span className="text-sm text-muted-foreground tabular-nums text-center">{startSerial + idx}</span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1">
-                <p className="font-medium text-base truncate">
-                  {project.orderId ? `${project.orderId}_${project.projectName}` : project.projectName}
-                </p>
-                <button onClick={(e) => { e.stopPropagation(); handleCopy(project._id, project.orderId ? `${project.orderId}_${project.projectName}` : project.projectName, "title") }} className="shrink-0 text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-pointer">
-                  {copied[`${project._id}-title`] ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                </button>
+              <div className="hidden md:block">{renderWebsite(project)}</div>
+              <div>
+                {project.status && (
+                  <Badge variant="outline" className={`text-xs font-medium px-2 py-0.5 ${statusStyles[project.status] || ""}`}>{project.status}</Badge>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {formatDate(project.startDate)}{project.cms ? ` · ${project.cms}` : ""}
-              </p>
-            </div>
-            <div className="hidden md:block">{renderWebsite(project)}</div>
-            <div>
-              {project.status && (
-                <Badge variant="outline" className={`text-xs font-medium px-2 py-0.5 ${statusStyles[project.status] || ""}`}>{project.status}</Badge>
-              )}
-            </div>
-            <div className="hidden md:block">
-              {project.priority && (
-                <Badge variant="outline" className={`text-xs font-medium px-2 py-0.5 ${priorityStyles[project.priority] || ""}`}>{project.priority}</Badge>
-              )}
-            </div>
-            <div className="hidden lg:block text-sm text-right">
-              {Number(project.price) ? (
-                <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-md px-1.5 py-0.5">${Number(project.price).toFixed(2)}</span>
-              ) : <span className="text-muted-foreground">-</span>}
-            </div>
-            <div onClick={(e) => e.stopPropagation()}>
-              <DropdownMenu>
-                <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="-mr-1.5 cursor-pointer" />}>
-                  <MoreHorizontal className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onAction?.("edit", project)}>
-                    <Pencil className="size-4" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onAction?.("duplicate", project)}>
-                    <Copy className="size-4" />
-                    Duplicate
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onAction?.("status", project)}>
-                    <ArrowLeftRight className="size-4" />
-                    Status
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onAction?.("transfer", project)}>
-                    <CalendarArrowUp className="size-4" />
-                    Transfer
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onAction?.("transferAssignee", project)}>
-                    <UserRoundPlus className="size-4" />
-                    Transfer to
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onAction?.("share", project)}>
-                    <Link className="size-4" />
-                    Share
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => onAction?.("delete", project)}>
-                    <Trash2 className="size-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="hidden md:block">
+                {project.priority && (
+                  <Badge variant="outline" className={`text-xs font-medium px-2 py-0.5 ${priorityStyles[project.priority] || ""}`}>{project.priority}</Badge>
+                )}
+              </div>
+              <div className="hidden lg:block text-sm text-right">
+                {Number(project.price) ? (
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-md px-1.5 py-0.5">${Number(project.price).toFixed(2)}</span>
+                ) : <span className="text-muted-foreground">-</span>}
+              </div>
+              <div className="hidden lg:block text-sm text-right">
+                <span className="font-medium tabular-nums text-muted-foreground">{project.progress ?? 0}%</span>
+              </div>
+              <div onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="-mr-1.5 cursor-pointer" />}>
+                    <MoreHorizontal className="size-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onAction?.("edit", project)}>
+                      <Pencil className="size-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onAction?.("duplicate", project)}>
+                      <Copy className="size-4" /> Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => onAction?.("status", project)}>
+                      <ArrowLeftRight className="size-4" /> Status
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onAction?.("progress", project)}>
+                      <Percent className="size-4" /> Progress
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onAction?.("transfer", project)}>
+                      <CalendarArrowUp className="size-4" /> Transfer
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onAction?.("transferAssignee", project)}>
+                      <UserRoundPlus className="size-4" /> Transfer to
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => onAction?.("share", project)}>
+                      <Link className="size-4" /> Share
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => onAction?.("delete", project)}>
+                      <Trash2 className="size-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 })
