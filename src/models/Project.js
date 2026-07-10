@@ -4,7 +4,6 @@ const projectSchema = new mongoose.Schema(
   {
     orderId: {
       type: String,
-      unique: true,
     },
     projectName: {
       type: String,

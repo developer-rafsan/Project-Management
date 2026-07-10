@@ -151,7 +151,7 @@ export default function Navbar() {
                 <SheetTitle className="text-base font-bold text-white">
                   Project Manager
                 </SheetTitle>
-                <p className="text-[10px] text-zinc-500 leading-tight">Project Manager</p>
+                <p className="text-[10px] text-zinc-500 leading-tight">NanoPiCode</p>
               </div>
             </SheetHeader>
             <div className="flex-1 flex flex-col py-3 px-3">

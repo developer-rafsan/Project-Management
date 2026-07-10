@@ -141,6 +141,18 @@ export async function POST(request) {
       generatedOrderId = `NPC-${String(nextNum).padStart(5, '0')}`;
     }
 
+    if (generatedOrderId && !body.confirmDuplicateOrderId) {
+      const existingCount = await Project.countDocuments({ orderId: generatedOrderId });
+      if (existingCount > 0) {
+        return NextResponse.json({
+          duplicateWarning: true,
+          count: existingCount,
+          orderId: generatedOrderId,
+          message: `This Order ID already has ${existingCount} project(s). Do you want to create another project with the same Order ID?`,
+        }, { status: 409 });
+      }
+    }
+
     let encryptedPassword = {};
     if (websitePassword) {
       encryptedPassword = encrypt(websitePassword);

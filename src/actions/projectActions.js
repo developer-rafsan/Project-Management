@@ -20,7 +20,14 @@ export async function createProject(data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return handleResponse(response);
+  const result = await response.json();
+  if (!response.ok) {
+    if (response.status === 409 && result.duplicateWarning) {
+      return result;
+    }
+    throw new Error(result.error || result.message || 'Something went wrong');
+  }
+  return result;
 }
 
 export async function updateProject(id, data) {

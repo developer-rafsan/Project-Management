@@ -61,7 +61,6 @@ const schema = z.object({
   description: z.string().optional(),
   tags: z.string().optional(),
   price: z.string().optional(),
-  progress: z.number().min(0).max(100).optional(),
   additionalWebsites: z.array(z.object({
     url: z.string().optional(),
     username: z.string().optional(),
@@ -174,6 +173,8 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   const [step, setStep] = useState(0)
   const [globalFiverrFee, setGlobalFiverrFee] = useState(true)
   const [fiverrFeeEnabled, setFiverrFeeEnabled] = useState(true)
+  const [duplicateWarning, setDuplicateWarning] = useState(null)
+  const [pendingPayload, setPendingPayload] = useState(null)
   const { data: session } = useSession()
 
   const isEditing = !!initialData
@@ -215,7 +216,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       description: initialData?.description || "",
       tags: initialData?.tags?.join(", ") || "",
       price: initialData?.price ? String(initialData.price) : "",
-      progress: initialData?.progress ?? 0,
+
       additionalWebsites: initialData?.additionalWebsites || [],
       figmaLinks: initialData?.figmaLinks || [],
       referenceLinks: initialData?.referenceLinks || [],
@@ -276,7 +277,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
     setValue("websitePassword", pwd, { shouldValidate: true })
   }, [setValue])
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (data, confirmDuplicate = false) => {
     setSubmitting(true)
     try {
       const payload = {
@@ -284,7 +285,6 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         cms: data.cms === "Other" && data.customCms ? data.customCms : data.cms,
         startDate: data.startDate || new Date(),
         price: data.price ? Number(data.price) : 0,
-        progress: data.progress ?? 0,
         tags: data.tags
           ? data.tags.split(",").map((t) => t.trim()).filter(Boolean)
           : [],
@@ -296,20 +296,43 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         fiverrFeeEnabled,
       }
 
+      if (confirmDuplicate) {
+        payload.confirmDuplicateOrderId = true
+      }
+
       let result
       if (isEditing) {
         result = await updateProject(initialData._id, payload)
         toast.success("Project updated successfully")
+        onSuccess?.(result)
       } else {
         result = await createProject(payload)
+        if (result.duplicateWarning) {
+          setDuplicateWarning(result)
+          setPendingPayload(data)
+          return
+        }
         toast.success("Project created successfully")
+        onSuccess?.(result)
       }
-      onSuccess?.(result)
     } catch (err) {
       toast.error(err.message || "Something went wrong")
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleConfirmDuplicate = () => {
+    setDuplicateWarning(null)
+    if (pendingPayload) {
+      onSubmit(pendingPayload, true)
+      setPendingPayload(null)
+    }
+  }
+
+  const handleCancelDuplicate = () => {
+    setDuplicateWarning(null)
+    setPendingPayload(null)
   }
 
   const isLastStep = step === STEPS.length - 1
@@ -622,33 +645,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                     </p>
                   )}
                 </div>
-                <div className="space-y-1.5 pt-2 border-t border-border/40">
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <ListChecks className="size-3" />
-                    Progress
-                  </label>
-                  <Controller name="progress" control={control} render={({ field }) => (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="1"
-                          value={field.value ?? 0}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                          className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-muted [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110"
-                        />
-                        <span className="text-sm font-semibold tabular-nums min-w-[3ch] text-right">{field.value ?? 0}%</span>
-                      </div>
-                      <div className="flex justify-between text-[10px] text-muted-foreground/60">
-                        <span>0%</span>
-                        <span>50%</span>
-                        <span>100%</span>
-                      </div>
-                    </div>
-                  )} />
-                </div>
+
               </div>
             </div>
           </div>
@@ -804,15 +801,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 </div>
                 Basic Information
               </div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${formValues.progress ?? 0}%` }}
-                  />
-                </div>
-                <span className="text-sm font-semibold tabular-nums">{formValues.progress ?? 0}%</span>
-              </div>
+
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                 <ReviewRow icon={Hash} label="Order ID" value={formValues.orderId || "Auto-generated"} />
                 <ReviewRow icon={Layout} label="Project Name" value={formValues.projectName} />
@@ -873,7 +862,33 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       </div>
       </div>
 
+      {duplicateWarning && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800/30 bg-amber-50/80 dark:bg-amber-900/10 p-4 sm:p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+              <AlertCircle className="size-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="space-y-1 min-w-0">
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Duplicate Order ID Warning</h3>
+              <p className="text-xs text-amber-700/80 dark:text-amber-400/80">
+                Order ID <strong className="text-amber-800 dark:text-amber-300">{duplicateWarning.orderId}</strong> already has <strong className="text-amber-800 dark:text-amber-300">{duplicateWarning.count} project(s)</strong>. Do you want to create another project with the same Order ID?
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={handleCancelDuplicate} disabled={submitting} className="h-8 text-xs">
+              Cancel
+            </Button>
+            <Button type="button" variant="default" size="sm" onClick={handleConfirmDuplicate} disabled={submitting} className="h-8 text-xs gap-1">
+              {submitting && <Loader2 className="size-3 animate-spin" />}
+              Create Anyway
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Buttons */}
+      {!duplicateWarning && (
       <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2 pt-3 sm:pt-4 border-t border-border/50 shrink-0 px-1">
         <div className="flex items-center gap-1.5 sm:gap-2">
           {step > 0 && (
@@ -911,6 +926,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
           )}
         </div>
       </div>
+      )}
     </form>
   )
 }
