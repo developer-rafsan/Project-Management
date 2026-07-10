@@ -12,16 +12,16 @@ export const metadata = {
     "A modern system for managing your projects efficiently.",
   manifest: "/manifest.webmanifest",
   icons: {
-    apple: [
-      { url: "/logo-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/logo-512x512.png", sizes: "512x512", type: "image/png" },
-    ],
+    apple: { url: "/apple-icon-180x180.png", sizes: "180x180", type: "image/png" },
     icon: { url: "/favicon.png", type: "image/png" },
   },
   other: {
     "theme-color": "#000000",
     "mobile-web-app-capable": "yes",
     "application-name": "Project Manager",
+    "msapplication-TileColor": "#000000",
+    "msapplication-TileImage": "/logo-192x192.png",
+    "msapplication-config": "none",
   },
 }
 
