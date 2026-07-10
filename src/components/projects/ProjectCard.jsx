@@ -53,6 +53,12 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction, select
   const [loadingPassword, setLoadingPassword] = useState(false)
   const [passwordChecked, setPasswordChecked] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
+  const [globalFiverrFee, setGlobalFiverrFee] = useState(true)
+
+  useEffect(() => {
+    const saved = localStorage.getItem("fiverrFeeEnabled")
+    setGlobalFiverrFee(saved !== "false")
+  }, [])
 
   const timerRef = useRef(null)
   const movedRef = useRef(false)
@@ -150,8 +156,13 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction, select
                 {copied === "title" ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
               </button>
               {project.price ? (
-                <span className="text-xs font-bold text-emerald-500 bg-emerald-500/15 rounded-md px-1.5 py-0.5 ring-1 ring-emerald-500/20">
-                  ${project.price.toFixed(2)}
+                <span className="inline-flex flex-col items-start leading-tight font-semibold text-emerald-500 bg-emerald-500/15 rounded-md px-1.5 py-0.5 ring-1 ring-emerald-500/20 min-w-[48px]">
+                  <span className="text-[10px]">${project.price.toFixed(2)}</span>
+                  {globalFiverrFee && (
+                    <span className={`text-[7px] font-medium ${project.fiverrFeeEnabled !== false ? "text-orange-500" : "text-muted-foreground/50"}`}>
+                      {project.fiverrFeeEnabled !== false ? "Fiverr Fee" : "No Fiverr Fee"}
+                    </span>
+                  )}
                 </span>
               ) : null}
             </div>

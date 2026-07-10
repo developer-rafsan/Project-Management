@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useTheme } from "@/components/layout/ThemeProvider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,7 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { Sun, Moon, List, LayoutGrid } from "lucide-react"
+import { getSettings, updateSettings } from "@/actions/settingsActions"
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
@@ -20,19 +21,33 @@ export default function SettingsPage() {
   const [fiverrFeeEnabled, setFiverrFeeEnabled] = useState(true)
 
   useEffect(() => {
-    const savedView = localStorage.getItem("projectViewMode")
-    if (savedView === "list" || savedView === "grid") setViewMode(savedView)
+    getSettings()
+      .then((data) => {
+        setViewMode(data.viewMode)
+        setMonthStartDay(data.monthStartDay)
+        setFiverrFeeEnabled(data.fiverrFeeEnabled)
+        localStorage.setItem("projectViewMode", data.viewMode)
+        localStorage.setItem("monthStartDay", String(data.monthStartDay))
+        localStorage.setItem("fiverrFeeEnabled", String(data.fiverrFeeEnabled))
+      })
+      .catch(() => {
+        const savedView = localStorage.getItem("projectViewMode")
+        if (savedView === "list" || savedView === "grid") setViewMode(savedView)
+        const savedDay = localStorage.getItem("monthStartDay")
+        if (savedDay) setMonthStartDay(Number(savedDay))
+        const savedFiverrFee = localStorage.getItem("fiverrFeeEnabled")
+        if (savedFiverrFee !== null) setFiverrFeeEnabled(savedFiverrFee === "true")
+      })
+  }, [])
 
-    const savedDay = localStorage.getItem("monthStartDay")
-    if (savedDay) setMonthStartDay(Number(savedDay))
-
-    const savedFiverrFee = localStorage.getItem("fiverrFeeEnabled")
-    if (savedFiverrFee !== null) setFiverrFeeEnabled(savedFiverrFee === "true")
+  const syncToApi = useCallback((data) => {
+    updateSettings(data).catch(() => {})
   }, [])
 
   const handleViewModeChange = (mode) => {
     setViewMode(mode)
     localStorage.setItem("projectViewMode", mode)
+    syncToApi({ viewMode: mode })
   }
 
   const handleMonthStartDayChange = (e) => {
@@ -40,6 +55,7 @@ export default function SettingsPage() {
     if (val >= 1 && val <= 28) {
       setMonthStartDay(val)
       localStorage.setItem("monthStartDay", String(val))
+      syncToApi({ monthStartDay: val })
     }
   }
 
@@ -47,6 +63,7 @@ export default function SettingsPage() {
     const next = !fiverrFeeEnabled
     setFiverrFeeEnabled(next)
     localStorage.setItem("fiverrFeeEnabled", String(next))
+    syncToApi({ fiverrFeeEnabled: next })
   }
 
   return (

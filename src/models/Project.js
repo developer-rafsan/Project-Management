@@ -61,6 +61,10 @@ const projectSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    fiverrFeeEnabled: {
+      type: Boolean,
+      default: true,
+    },
     progress: {
       type: Number,
       default: 0,

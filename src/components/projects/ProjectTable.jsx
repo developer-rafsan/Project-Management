@@ -98,6 +98,12 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
   const startSerial = (page - 1) * pageSize + 1
   const [copied, setCopied] = useState({})
   const [pwData, setPwData] = useState({})
+  const [globalFiverrFee, setGlobalFiverrFee] = useState(true)
+
+  useEffect(() => {
+    const saved = localStorage.getItem("fiverrFeeEnabled")
+    setGlobalFiverrFee(saved !== "false")
+  }, [])
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "-"
@@ -252,7 +258,7 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
         <span className="hidden md:block">Website</span>
         <span>Status</span>
         <span className="hidden md:block">Priority</span>
-        <span className="hidden lg:block text-right">Price</span>
+        <span className="hidden lg:block">Price</span>
         <span className="text-center hidden lg:block">Progress</span>
         <span></span>
       </div>
@@ -309,7 +315,14 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                     <Badge variant="outline" className={`text-[11px] font-medium px-2 py-0 ${priorityStyles[project.priority] || ""}`}>{project.priority}</Badge>
                   )}
                   {Number(project.price) ? (
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-md px-1.5 py-0.5">${Number(project.price).toFixed(2)}</span>
+                    <span className="inline-flex flex-col items-start leading-tight font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-md px-1.5 py-0.5 min-w-[52px]">
+                      <span className="text-[11px]">${Number(project.price).toFixed(2)}</span>
+                      {globalFiverrFee && (
+                        <span className={`text-[8px] font-medium ${project.fiverrFeeEnabled !== false ? "text-orange-500" : "text-muted-foreground/50"}`}>
+                          {project.fiverrFeeEnabled !== false ? "Fiverr Fee" : "No Fiverr Fee"}
+                        </span>
+                      )}
+                    </span>
                   ) : null}
                 </div>
                 <div className="text-xs text-muted-foreground mb-1.5">
@@ -396,10 +409,17 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                   <Badge variant="outline" className={`text-xs font-medium px-2 py-0.5 ${priorityStyles[project.priority] || ""}`}>{project.priority}</Badge>
                 )}
               </div>
-              <div className="hidden lg:block text-sm text-right">
+              <div className="hidden lg:flex flex-col items-start gap-0.5">
                 {Number(project.price) ? (
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-md px-1.5 py-0.5">${Number(project.price).toFixed(2)}</span>
-                ) : <span className="text-muted-foreground">-</span>}
+                  <>
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-md px-1.5 py-0.5">${Number(project.price).toFixed(2)}</span>
+                    {globalFiverrFee && (
+                      <span className={`text-[9px] font-medium ${project.fiverrFeeEnabled !== false ? "text-orange-500" : "text-muted-foreground/50"}`}>
+                        {project.fiverrFeeEnabled !== false ? "Fiverr Fee" : "No Fiverr Fee"}
+                      </span>
+                    )}
+                  </>
+                ) : <span className="text-sm text-muted-foreground">-</span>}
               </div>
               <div className="hidden lg:block text-sm text-right">
                 <span className="font-medium tabular-nums text-muted-foreground">{project.progress ?? 0}%</span>

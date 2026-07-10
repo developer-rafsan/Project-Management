@@ -18,6 +18,15 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
+    viewMode: {
+      type: String,
+      enum: ['list', 'grid'],
+      default: 'list',
+    },
+    fiverrFeeEnabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

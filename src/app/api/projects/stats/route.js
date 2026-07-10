@@ -45,7 +45,7 @@ export async function GET(request) {
     }
 
     const allProjects = await Project.find(dbFilter)
-      .select('_id status price startDate createdAt currentMonth currentYear')
+      .select('_id status price startDate createdAt currentMonth currentYear fiverrFeeEnabled')
       .lean();
 
     let filtered = allProjects;
@@ -60,7 +60,7 @@ export async function GET(request) {
       })
     }
 
-    const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, revisionProjects, statusMap, priceMap, dayMap } = filtered.reduce((acc, p) => {
+    const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, revisionProjects, statusMap, priceMap, dayMap, feeEnabledDelivered } = filtered.reduce((acc, p) => {
       acc.totalProjects++
       if (p.status === 'In Progress') acc.runningProjects++
       if (p.status === 'Delivered') acc.completedProjects++
@@ -71,13 +71,16 @@ export async function GET(request) {
         acc.statusMap[p.status] = (acc.statusMap[p.status] || 0) + 1
         acc.priceMap[p.status] = (acc.priceMap[p.status] || 0) + (p.price || 0)
       }
+      if (p.status === 'Delivered' && p.fiverrFeeEnabled !== false) {
+        acc.feeEnabledDelivered += (p.price || 0)
+      }
       if (p.startDate) {
         const d = new Date(p.startDate)
         const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
         acc.dayMap[key] = (acc.dayMap[key] || 0) + 1
       }
       return acc
-    }, { totalProjects: 0, runningProjects: 0, completedProjects: 0, pendingProjects: 0, onHoldProjects: 0, revisionProjects: 0, statusMap: {}, priceMap: {}, dayMap: {} })
+    }, { totalProjects: 0, runningProjects: 0, completedProjects: 0, pendingProjects: 0, onHoldProjects: 0, revisionProjects: 0, statusMap: {}, priceMap: {}, dayMap: {}, feeEnabledDelivered: 0 })
 
     const statusGrouped = Object.entries(statusMap).map(([key, count]) => ({ _id: key, count }))
     const priceByStatus = Object.entries(priceMap).map(([key, total]) => ({ _id: key, total }))
@@ -116,6 +119,7 @@ export async function GET(request) {
       onHold: onHoldProjects,
       revision: revisionProjects,
       priceByStatus,
+      feeEnabledDelivered,
       recentProjects,
       recentUpdates,
       chartData: {

@@ -92,8 +92,9 @@ export default function DashboardPage() {
           const cancelled = priceMap["Cancelled"] || 0
           const total = Object.values(priceMap).reduce((a, b) => a + b, 0)
           const inProgress = total - delivered - cancelled
-          const feeEnabled = localStorage.getItem("fiverrFeeEnabled") !== "false"
-          const fee = feeEnabled ? delivered * 0.2 : 0
+          const feeEnabledDelivered = data.feeEnabledDelivered || 0
+          const globalFiverrFee = localStorage.getItem("fiverrFeeEnabled") !== "false"
+          const fee = globalFiverrFee ? feeEnabledDelivered * 0.2 : 0
           setRevenueData({ total, delivered, inProgress, cancelled, fee, net: delivered - fee })
 
           if (dateRange?.from && dateRange?.to) {

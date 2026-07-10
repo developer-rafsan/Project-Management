@@ -35,6 +35,8 @@ import {
   ArrowUpDown,
   Hash,
   Check,
+  Percent,
+  Landmark,
   ChevronRight,
   ChevronLeft,
   AlertCircle,
@@ -170,9 +172,22 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [step, setStep] = useState(0)
+  const [globalFiverrFee, setGlobalFiverrFee] = useState(true)
+  const [fiverrFeeEnabled, setFiverrFeeEnabled] = useState(true)
   const { data: session } = useSession()
 
   const isEditing = !!initialData
+
+  useEffect(() => {
+    const saved = localStorage.getItem("fiverrFeeEnabled")
+    const global = saved !== "false"
+    setGlobalFiverrFee(global)
+    if (isEditing && initialData?.fiverrFeeEnabled !== undefined) {
+      setFiverrFeeEnabled(initialData.fiverrFeeEnabled)
+    } else {
+      setFiverrFeeEnabled(global)
+    }
+  }, [isEditing, initialData?.fiverrFeeEnabled])
 
   const {
     register,
@@ -227,6 +242,10 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
 
   const handlePrev = () => setStep(s => Math.max(s - 1, 0))
 
+  const handleFiverrFeeToggle = () => {
+    setFiverrFeeEnabled(prev => !prev)
+  }
+
   useEffect(() => {
     if (isEditing && initialData?._id) {
       getProjectPassword(initialData._id)
@@ -274,6 +293,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         websitePassword: data.websitePassword || undefined,
         assignee: isEditing ? (initialData?.assignee?._id || initialData?.assignee) : session?.user?.id,
         orderId: data.orderId || undefined,
+        fiverrFeeEnabled,
       }
 
       let result
@@ -661,6 +681,47 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                   </div>
                 </div>
               </div>
+              {globalFiverrFee && (
+                <>
+                  <div className="flex items-center justify-between rounded-lg border bg-card p-3">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-medium">Fiverr Fee (20%)</span>
+                      <p className="text-[10px] text-muted-foreground/60">Deduct 20% Fiverr fee from price</p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={fiverrFeeEnabled}
+                      onClick={handleFiverrFeeToggle}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                        fiverrFeeEnabled ? "bg-primary" : "bg-input"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-0 transition-transform duration-200 ${
+                          fiverrFeeEnabled ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {fiverrFeeEnabled && formValues.price && Number(formValues.price) > 0 && (
+                    <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Price</span>
+                        <span className="font-medium">${Number(formValues.price).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Fiverr Fee (20%)</span>
+                        <span className="font-medium text-orange-500">-${(Number(formValues.price) * 0.2).toFixed(2)}</span>
+                      </div>
+                      <div className="border-t border-border/40 pt-1.5 flex items-center justify-between text-xs">
+                        <span className="font-semibold text-muted-foreground">Net Revenue</span>
+                        <span className="font-semibold text-green-500">${(Number(formValues.price) * 0.8).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3 sm:space-y-3.5">
               <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -783,6 +844,12 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                 <ReviewRow icon={Calendar} label="Start Date" value={formValues.startDate ? new Date(formValues.startDate).toLocaleDateString() : "Today"} />
                 <ReviewRow icon={DollarSign} label="Price" value={formValues.price ? `$${formValues.price}` : "—"} />
+                {fiverrFeeEnabled && formValues.price && Number(formValues.price) > 0 && (
+                  <>
+                    <ReviewRow icon={Percent} label="Fiverr Fee (20%)" value={`-$${(Number(formValues.price) * 0.2).toFixed(2)}`} />
+                    <ReviewRow icon={Landmark} label="Net Revenue" value={`$${(Number(formValues.price) * 0.8).toFixed(2)}`} />
+                  </>
+                )}
                 <ReviewRow icon={Tag} label="Tags" value={formValues.tags || "—"} />
                 <ReviewRow icon={FileText} label="Description" value={formValues.description || "—"} />
               </div>

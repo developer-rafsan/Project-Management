@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,6 +43,7 @@ import {
   Plus,
   Pencil,
   X,
+  Percent,
 } from "lucide-react"
 import { updateProject } from "@/actions/projectActions"
 
@@ -684,17 +685,28 @@ export function ProjectLinksCard({ project, onUpdate }) {
 export function ProjectMetaCard({ project, onUpdate }) {
   const [editOpen, setEditOpen] = useState(false)
   const [price, setPrice] = useState("")
+  const [fiverrFeeEnabled, setFiverrFeeEnabled] = useState(true)
+  const [globalFiverrFee, setGlobalFiverrFee] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem("fiverrFeeEnabled")
+    setGlobalFiverrFee(saved !== "false")
+  }, [])
 
   const handleOpen = () => {
     setPrice(String(project.price || ""))
+    setFiverrFeeEnabled(project.fiverrFeeEnabled !== false)
     setEditOpen(true)
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      const updated = await updateProject(project._id, { price: Number(price) || 0 })
+      const updated = await updateProject(project._id, {
+        price: Number(price) || 0,
+        fiverrFeeEnabled: globalFiverrFee ? fiverrFeeEnabled : false,
+      })
       onUpdate?.(updated)
       setEditOpen(false)
       toast.success("Price updated")
@@ -717,6 +729,12 @@ export function ProjectMetaCard({ project, onUpdate }) {
         <InfoRow icon={DollarSign} label="Price">
           <span className="text-sm font-medium">
             {Number(project.price) ? `$${Number(project.price).toFixed(2)}` : "-"}
+          </span>
+        </InfoRow>
+        <SectionDivider />
+        <InfoRow icon={Percent} label="Fiverr Fee">
+          <span className={`text-sm font-medium ${project.fiverrFeeEnabled !== false ? "text-orange-500" : "text-muted-foreground"}`}>
+            {project.fiverrFeeEnabled !== false ? "20%" : "Off"}
           </span>
         </InfoRow>
         <SectionDivider />
@@ -745,11 +763,34 @@ export function ProjectMetaCard({ project, onUpdate }) {
             <DialogTitle>Edit Price</DialogTitle>
             <DialogDescription>Update project price</DialogDescription>
           </DialogHeader>
-          <div className="py-2">
+          <div className="py-2 space-y-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Price ($)</label>
               <Input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
             </div>
+            {globalFiverrFee && (
+              <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-medium">Fiverr Fee (20%)</span>
+                  <p className="text-[10px] text-muted-foreground/60">Apply to this project</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={fiverrFeeEnabled}
+                  onClick={() => setFiverrFeeEnabled(!fiverrFeeEnabled)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                    fiverrFeeEnabled ? "bg-primary" : "bg-input"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-0 transition-transform duration-200 ${
+                      fiverrFeeEnabled ? "translate-x-4" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>

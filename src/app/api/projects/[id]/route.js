@@ -89,7 +89,7 @@ export async function PATCH(request, { params }) {
       'orderId', 'projectName', 'websiteUrl',
       'websiteUsername', 'cms', 'priority', 'status',
       'assignee', 'startDate', 'tags', 'description', 'price',
-      'progress', 'additionalWebsites', 'figmaLinks', 'referenceLinks', 'currentMonth', 'currentYear',
+      'progress', 'additionalWebsites', 'figmaLinks', 'referenceLinks', 'currentMonth', 'currentYear', 'fiverrFeeEnabled',
     ];
 
     for (const field of fields) {

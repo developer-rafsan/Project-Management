@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import Sidebar from "@/components/layout/Sidebar"
 import Navbar from "@/components/layout/Navbar"
+import { getSettings, syncSettingsToLocalStorage } from "@/actions/settingsActions"
 
 export default function DashboardLayout({ children }) {
   const { data: session, status } = useSession()
@@ -18,6 +19,13 @@ export default function DashboardLayout({ children }) {
       router.replace("/login")
     }
   }, [status, router])
+
+  useEffect(() => {
+    if (status !== "authenticated") return
+    getSettings()
+      .then((data) => syncSettingsToLocalStorage(data))
+      .catch(() => {})
+  }, [status])
 
   if (status === "loading") {
     return (

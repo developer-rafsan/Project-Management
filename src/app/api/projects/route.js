@@ -69,7 +69,7 @@ export async function GET(request) {
 
     const [projects, total] = await Promise.all([
       Project.find(filter)
-        .select('orderId projectName websiteUrl websiteUsername websitePassword status priority cms price progress additionalWebsites figmaLinks referenceLinks startDate createdAt currentMonth currentYear assignee tags createdBy')
+        .select('orderId projectName websiteUrl websiteUsername websitePassword status priority cms price progress additionalWebsites figmaLinks referenceLinks startDate createdAt currentMonth currentYear assignee tags createdBy fiverrFeeEnabled')
         .sort(sort).skip(skip).limit(limit).lean(),
       Project.countDocuments(filter),
     ]);
@@ -120,6 +120,7 @@ export async function POST(request) {
       referenceLinks,
       currentMonth,
       currentYear,
+      fiverrFeeEnabled,
     } = body;
 
     let generatedOrderId = orderId;
@@ -170,6 +171,7 @@ export async function POST(request) {
       currentMonth: currentMonth || now.getMonth() + 1,
       currentYear: currentYear || now.getFullYear(),
       createdBy: session.user.id,
+      fiverrFeeEnabled: fiverrFeeEnabled !== undefined ? fiverrFeeEnabled : true,
     };
 
     const project = await Project.create(projectData);
