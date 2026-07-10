@@ -1,14 +1,16 @@
 "use client"
 
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
 import Sidebar from "@/components/layout/Sidebar"
 import Navbar from "@/components/layout/Navbar"
 
 export default function DashboardLayout({ children }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
@@ -33,7 +35,17 @@ export default function DashboardLayout({ children }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-y-auto hide-scrollbar p-4 sm:p-6">
-          {children}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
           <footer className="mt-8 border-t border-border pt-4 pb-2 text-center text-xs text-muted-foreground">
             Crafted by{" "}
             <span className="font-medium text-primary">NanoPiCode</span>

@@ -87,15 +87,15 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-4 pb-8 sm:pb-0">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between animate-fade-in-up stagger-1">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Notes</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
             {notes.length} {notes.length === 1 ? "note" : "notes"}
           </p>
         </div>
-        <Button onClick={openCreate} className="w-full sm:w-auto">
+        <Button onClick={openCreate} className="w-full sm:w-auto active:scale-95 transition-transform">
           <Plus className="size-4" />
           Add Note
         </Button>
@@ -104,7 +104,7 @@ export default function NotesPage() {
       {loading ? (
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-28 sm:h-32 rounded-xl border bg-card p-4 animate-pulse">
+            <div key={i} className={`h-28 sm:h-32 rounded-xl border bg-card p-4 animate-pulse ${i > 1 ? 'hidden sm:block' : ''} ${i > 2 ? 'hidden lg:block' : ''}`}>
               <div className="h-5 w-3/4 mb-3 rounded bg-muted" />
               <div className="h-4 w-full mb-2 rounded bg-muted" />
               <div className="h-4 w-2/3 rounded bg-muted" />
@@ -124,9 +124,9 @@ export default function NotesPage() {
           {notes.map((note) => (
             <div
               key={note._id}
-              className="group relative rounded-xl border bg-card p-4 hover:shadow-md transition-shadow"
+              className="group relative rounded-xl border bg-card p-4 hover:shadow-md transition-all active:scale-[0.98]"
             >
-              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="icon-sm"

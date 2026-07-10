@@ -238,24 +238,26 @@ export default function ProjectsPage() {
                 setSelectMode(true)
               }
             }}
-            className={`shrink-0 gap-2 cursor-pointer transition-all ${selectMode ? "bg-primary/90 hover:bg-primary shadow-sm" : ""}`}
+            className={`shrink-0 gap-2 cursor-pointer transition-all active:scale-95 ${selectMode ? "bg-primary/90 hover:bg-primary shadow-sm" : ""}`}
           >
             {selectMode ? <X className="size-4" /> : <ListChecks className="size-4" />}
-            <span>{selectMode ? "Bulk action" : "Bulk action"}</span>
+            <span className="hidden sm:inline">{selectMode ? "Bulk action" : "Bulk action"}</span>
+            <span className="sm:hidden">{selectMode ? "Bulk" : "Bulk"}</span>
           </Button>
           {!selectMode && (
             <>
               <Button
                 variant="outline"
                 onClick={() => setShareListOpen(true)}
-                className="shrink-0 gap-2 cursor-pointer border-dashed hover:border-primary/50"
+                className="shrink-0 gap-2 cursor-pointer border-dashed hover:border-primary/50 active:scale-95 transition-transform"
               >
                 <Link2 className="size-4" />
-                <span>Share</span>
+                <span className="hidden sm:inline">Share</span>
               </Button>
-              <Button onClick={() => setCreateOpen(true)} className="shrink-0 gap-2 cursor-pointer shadow-sm">
+              <Button onClick={() => setCreateOpen(true)} className="shrink-0 gap-2 cursor-pointer shadow-sm active:scale-95 transition-transform">
                 <Plus className="size-4" />
-                <span>New Project</span>
+                <span className="hidden sm:inline">New Project</span>
+                <span className="sm:hidden">New</span>
               </Button>
             </>
           )}
@@ -264,7 +266,7 @@ export default function ProjectsPage() {
 
       <div className="rounded-xl border bg-card p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex-1 min-w-0 w-full">
+          <div className="flex-1 min-w-0 w-full overflow-x-auto hide-scrollbar">
             <ProjectFilters
               filters={filters}
               onFilterChange={handleFilterChange}
@@ -405,35 +407,35 @@ export default function ProjectsPage() {
       </div>
 
       {selectedIds.length > 0 && selectMode && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/5 to-transparent px-4 py-3 shadow-sm">
-          <span className="text-sm font-semibold text-foreground min-w-[5rem]">{selectedIds.length} selected</span>
-          <div className="h-5 w-px bg-border/60" />
-          <Button variant="secondary" size="sm" onClick={() => { setBulkStatusValue("Pending"); setBulkStatusOpen(true) }} className="gap-1.5 h-8 text-xs font-medium cursor-pointer shadow-sm">
-            <ArrowLeftRight className="size-3.5" /> Status
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/5 to-transparent px-3 sm:px-4 py-3 shadow-sm">
+          <span className="text-xs sm:text-sm font-semibold text-foreground min-w-[4rem] sm:min-w-[5rem]">{selectedIds.length} selected</span>
+          <div className="h-5 w-px bg-border/60 hidden sm:block" />
+          <Button variant="secondary" size="xs" onClick={() => { setBulkStatusValue("Pending"); setBulkStatusOpen(true) }} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium cursor-pointer shadow-sm">
+            <ArrowLeftRight className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Status</span>
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => { setBulkTransferMonth(""); setBulkTransferYear(""); setBulkTransferOpen(true) }} className="gap-1.5 h-8 text-xs font-medium cursor-pointer shadow-sm">
-            <CalendarArrowUp className="size-3.5" /> Transfer
+          <Button variant="secondary" size="xs" onClick={() => { setBulkTransferMonth(""); setBulkTransferYear(""); setBulkTransferOpen(true) }} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium cursor-pointer shadow-sm">
+            <CalendarArrowUp className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Transfer</span>
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setBulkTransferToOpen(true)} className="gap-1.5 h-8 text-xs font-medium cursor-pointer shadow-sm">
-            <UserRoundPlus className="size-3.5" /> Transfer to
+          <Button variant="secondary" size="xs" onClick={() => setBulkTransferToOpen(true)} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium cursor-pointer shadow-sm">
+            <UserRoundPlus className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Transfer to</span>
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setBulkDeleteOpen(true)} className="gap-1.5 h-8 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer shadow-sm">
-            <Trash2 className="size-3.5" /> Delete
+          <Button variant="secondary" size="xs" onClick={() => setBulkDeleteOpen(true)} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer shadow-sm">
+            <Trash2 className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Delete</span>
           </Button>
         </div>
       )}
 
       {loading ? (
         viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-44 w-full rounded-xl" />
+              <div key={i} className={`h-40 sm:h-44 rounded-xl bg-muted animate-pulse ${i > 1 ? 'hidden sm:block' : ''} ${i > 2 ? 'hidden lg:block' : ''}`} />
             ))}
           </div>
         ) : (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-lg" />
+              <div key={i} className="h-12 sm:h-14 w-full rounded-lg bg-muted animate-pulse" />
             ))}
           </div>
         )
@@ -447,13 +449,15 @@ export default function ProjectsPage() {
           </Button>
         </div>
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {paginated.map((project, idx) => (
-            <ProjectCard key={project._id} project={project} index={(page - 1) * PAGE_SIZE + idx + 1} onAction={handleCardAction} selected={selectedIds.includes(project._id)} selectionMode={selectMode} onSelect={() => setSelectedIds(prev => prev.includes(project._id) ? prev.filter(id => id !== project._id) : [...prev, project._id])} />
+            <div key={project._id} className="animate-fade-in-up" style={{ animationDelay: `${(idx % 6) * 0.06}s` }}>
+              <ProjectCard project={project} index={(page - 1) * PAGE_SIZE + idx + 1} onAction={handleCardAction} selected={selectedIds.includes(project._id)} selectionMode={selectMode} onSelect={() => setSelectedIds(prev => prev.includes(project._id) ? prev.filter(id => id !== project._id) : [...prev, project._id])} />
+            </div>
           ))}
         </div>
       ) : (
-        <ProjectTable projects={paginated} page={page} pageSize={PAGE_SIZE} onAction={handleCardAction} selectedIds={selectedIds} onSelectionChange={setSelectedIds} selectMode={selectMode} />
+        <div className="animate-fade-in-up"><ProjectTable projects={paginated} page={page} pageSize={PAGE_SIZE} onAction={handleCardAction} selectedIds={selectedIds} onSelectionChange={setSelectedIds} selectMode={selectMode} /></div>
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />

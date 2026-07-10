@@ -7,9 +7,9 @@ const inter = Inter({
 })
 
 export const metadata = {
-  title: "NanoPiCode - Project Management System",
+  title: "Project Manager",
   description:
-    "A modern project management system for managing your projects efficiently.",
+    "A modern system for managing your projects efficiently.",
   manifest: "/manifest.webmanifest",
   other: {
     "theme-color": "#000000",
@@ -19,12 +19,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.className} suppressHydrationWarning>
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="NanoPiCode" />
-        <link rel="apple-touch-icon" href="/icon-192x192.png" />
-      </head>
+  <head>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Project Manager" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+  </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         <Providers>{children}</Providers>
       </body>

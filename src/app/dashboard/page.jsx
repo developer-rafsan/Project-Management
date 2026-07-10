@@ -92,7 +92,8 @@ export default function DashboardPage() {
           const cancelled = priceMap["Cancelled"] || 0
           const total = Object.values(priceMap).reduce((a, b) => a + b, 0)
           const inProgress = total - delivered - cancelled
-          const fee = delivered * 0.2
+          const feeEnabled = localStorage.getItem("fiverrFeeEnabled") !== "false"
+          const fee = feeEnabled ? delivered * 0.2 : 0
           setRevenueData({ total, delivered, inProgress, cancelled, fee, net: delivered - fee })
 
           if (dateRange?.from && dateRange?.to) {
@@ -222,35 +223,35 @@ export default function DashboardPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />
+              <div key={i} className={`h-20 sm:h-24 rounded-xl bg-muted animate-pulse ${i > 1 ? 'hidden sm:block' : ''} ${i > 2 ? 'hidden lg:block' : ''}`} />
             ))}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-[72px] rounded-xl bg-muted animate-pulse" />
+              <div key={i} className={`h-[68px] sm:h-[72px] rounded-xl bg-muted animate-pulse ${i > 1 ? 'hidden sm:block' : ''} ${i > 2 ? 'hidden lg:block' : ''} ${i > 4 ? 'hidden xl:block' : ''}`} />
             ))}
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="h-[300px] rounded-xl bg-muted animate-pulse" />
-            <div className="h-[300px] rounded-xl bg-muted animate-pulse" />
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+            <div className="h-[260px] sm:h-[300px] rounded-xl bg-muted animate-pulse" />
+            <div className="h-[260px] sm:h-[300px] rounded-xl bg-muted animate-pulse" />
           </div>
-          <div className="h-[200px] rounded-xl bg-muted animate-pulse" />
-          <div className="h-[200px] rounded-xl bg-muted animate-pulse" />
+          <div className="h-[180px] sm:h-[200px] rounded-xl bg-muted animate-pulse" />
+          <div className="h-[180px] sm:h-[200px] rounded-xl bg-muted animate-pulse" />
         </div>
       ) : (
-        <>
-          <StatsCards stats={stats} />
-          <RevenueSummary data={revenueData} highlight="net" />
-          <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="animate-fade-in-up stagger-1"><StatsCards stats={stats} /></div>
+          <div className="animate-fade-in-up stagger-2"><RevenueSummary data={revenueData} highlight="net" showFiverrFee={localStorage.getItem("fiverrFeeEnabled") !== "false"} /></div>
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 animate-fade-in-up stagger-3">
             <StatusChart data={chartData} />
             <MonthlyProgressChart data={monthlyData} />
           </div>
-          <RecentProjects projects={recentProjects} />
-          <RecentUpdates updates={recentUpdates} />
-        </>
+          <div className="animate-fade-in-up stagger-4"><RecentProjects projects={recentProjects} /></div>
+          <div className="animate-fade-in-up stagger-5"><RecentUpdates updates={recentUpdates} /></div>
+        </div>
       )}
     </div>
   )

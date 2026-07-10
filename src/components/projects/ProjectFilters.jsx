@@ -50,13 +50,13 @@ export default function ProjectFilters({ filters = {}, onFilterChange, onSearch 
           placeholder="Search projects..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="pl-8"
+          className="pl-8 h-9 sm:h-8"
         />
       </div>
 
-      <div className="flex gap-1.5 min-w-0 overflow-x-auto">
+      <div className="flex gap-1.5 min-w-0 overflow-x-auto hide-scrollbar pb-0.5">
         <Select value={filters.status || ""} onValueChange={(v) => handleFilterChange("status", v)}>
-          <SelectTrigger className="w-[120px] h-8">
+          <SelectTrigger className="w-[115px] sm:w-[120px] h-9 sm:h-8 text-xs sm:text-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -67,7 +67,7 @@ export default function ProjectFilters({ filters = {}, onFilterChange, onSearch 
         </Select>
 
         <Select value={filters.priority || ""} onValueChange={(v) => handleFilterChange("priority", v)}>
-          <SelectTrigger className="w-[120px] h-8">
+          <SelectTrigger className="w-[115px] sm:w-[120px] h-9 sm:h-8 text-xs sm:text-sm">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -78,7 +78,7 @@ export default function ProjectFilters({ filters = {}, onFilterChange, onSearch 
         </Select>
 
         <Select value={filters.cms || ""} onValueChange={(v) => handleFilterChange("cms", v)}>
-          <SelectTrigger className="w-[120px] h-8">
+          <SelectTrigger className="w-[115px] sm:w-[120px] h-9 sm:h-8 text-xs sm:text-sm">
             <SelectValue placeholder="CMS" />
           </SelectTrigger>
           <SelectContent>
@@ -89,7 +89,7 @@ export default function ProjectFilters({ filters = {}, onFilterChange, onSearch 
         </Select>
 
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 shrink-0 h-8">
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 shrink-0 h-9 sm:h-8">
             <X className="size-4" />
             <span className="hidden sm:inline">Clear</span>
           </Button>

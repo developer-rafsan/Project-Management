@@ -12,12 +12,17 @@ const cards = [
   { key: "net", label: "Net Revenue", icon: Landmark, color: "text-green-500", bg: "bg-green-500/10" },
 ]
 
-export default function RevenueSummary({ data, highlight }) {
+export default function RevenueSummary({ data, highlight, showFiverrFee = true }) {
   if (!data) return null
 
+  const visibleCards = cards.filter((item) => {
+    if (item.key === "fee") return showFiverrFee
+    return true
+  })
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-      {cards.map((item) => {
+    <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${showFiverrFee ? "xl:grid-cols-6" : "xl:grid-cols-5"}`}>
+      {visibleCards.map((item) => {
         const Icon = item.icon
         const val = data[item.key] ?? 0
         const isHighlighted = highlight === item.key

@@ -83,6 +83,7 @@ export async function PATCH(request, { params }) {
     }
 
     const updates = {};
+    let unsetPassword = false;
 
     const fields = [
       'orderId', 'projectName', 'websiteUrl',
@@ -105,6 +106,8 @@ export async function PATCH(request, { params }) {
 
     if (body.websitePassword) {
       updates.websitePassword = encrypt(body.websitePassword);
+    } else if (body.websitePassword === '') {
+      unsetPassword = true;
     }
 
     if (updates.additionalWebsites) {
@@ -163,8 +166,9 @@ export async function PATCH(request, { params }) {
       return String(incoming ?? '') !== String(existing != null ? existing : '');
     });
 
-    if (hasGeneralChanges || Object.keys(updates).length > 0) {
+    if (hasGeneralChanges || Object.keys(updates).length > 0 || unsetPassword) {
       existingProject.set(updates);
+      if (unsetPassword) existingProject.websitePassword = undefined;
       await existingProject.save();
     }
 

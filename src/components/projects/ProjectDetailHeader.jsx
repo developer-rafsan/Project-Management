@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   ChevronRight,
-  Pencil,
   Copy as DuplicateIcon,
   Trash2,
   CalendarArrowUp,
@@ -83,7 +82,6 @@ export function ProjectActions({
   project,
   actionLoading,
   onStatusClick,
-  onEdit,
   onDuplicate,
   onTransfer,
   onTransferAssignee,
@@ -95,10 +93,6 @@ export function ProjectActions({
       <Button variant="outline" size="sm" onClick={onStatusClick}>
         <ArrowLeftRight className="size-3.5" />
         Status
-      </Button>
-      <Button variant="outline" size="sm" onClick={onEdit}>
-        <Pencil className="size-3.5" />
-        Edit
       </Button>
       <Button variant="outline" size="sm" onClick={onShare}>
         <LinkIcon className="size-3.5" />

@@ -16,9 +16,9 @@ export default function LoginClient() {
             <div className="rounded-xl bg-emerald-500/20 p-2.5 sm:p-3">
               <Kanban className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-400" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">NanoPiCode</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Project Manager</h1>
           </div>
-          <p className="text-xs sm:text-sm text-zinc-400">Project Management System</p>
+          <p className="text-xs sm:text-sm text-zinc-400">A modern system for managing your projects efficiently</p>
         </div>
 
         <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-xl">
@@ -49,7 +49,7 @@ export default function LoginClient() {
         </div>
 
         <p className="text-center text-xs text-zinc-400">
-          Manage your projects efficiently with NanoPiCode
+          Manage your projects efficiently with Project Manager
         </p>
       </div>
     </div>

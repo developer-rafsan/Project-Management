@@ -24,10 +24,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { version } from "../../../package.json"
+import pkg from "../../../package.json"
+const version = pkg.version
 import { useNotifications } from "./NotificationProvider"
 
 import Link from "next/link"
+import { SheetClose } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import {
   Menu,
@@ -68,11 +70,13 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [selectedNotif, setSelectedNotif] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [logoutOpen, setLogoutOpen] = useState(false)
   const searchInputRef = useRef(null)
   const notifRef = useRef(null)
   const bellRef = useRef(null)
+  const menuTriggerRef = useRef(null)
   const dispatch = useDispatch()
 
   useEffect(() => {
@@ -90,6 +94,11 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [notifOpen])
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [pathname])
+
   const projects = useSelector((s) => s.projects?.items || [])
 
   const title =
@@ -127,8 +136,8 @@ export default function Navbar() {
   const recentNotifs = notifications.slice(0, 20)
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl sm:px-6">
-      <Sheet>
+    <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b border-border bg-background/80 px-3 sm:px-6 backdrop-blur-xl safe-area-top">
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "lg:hidden")}>
           <Menu className="h-5 w-5" />
         </SheetTrigger>
@@ -140,7 +149,7 @@ export default function Navbar() {
               </div>
               <div>
                 <SheetTitle className="text-base font-bold text-white">
-                  NanoPiCode
+                  Project Manager
                 </SheetTitle>
                 <p className="text-[10px] text-zinc-500 leading-tight">Project Manager</p>
               </div>
@@ -158,7 +167,7 @@ export default function Navbar() {
                     return (
                       <button
                         key="logout"
-                        onClick={() => setLogoutOpen(true)}
+                        onClick={() => { setLogoutOpen(true); setMenuOpen(false) }}
                         className="group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
                       >
                         <Icon className="h-4 w-4 shrink-0" />
@@ -167,8 +176,8 @@ export default function Navbar() {
                     )
                   }
 
-                  return (
-                    <Link key={item.href} href={item.href}>
+                    return (
+                      <Link key={item.href} href={item.href}>
                       <div
                         className={cn(
                           "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
@@ -192,7 +201,7 @@ export default function Navbar() {
               </nav>
             </div>
             <div className="border-t border-white/10 px-3 pb-3 pt-2">
-              <p className="text-[10px] font-medium text-emerald-400/70 text-center uppercase">NanoPiCode V{version}</p>
+              <p className="text-[10px] font-medium text-emerald-400/70 text-center uppercase">Project Manager V{version}</p>
             </div>
           </div>
         </SheetContent>
@@ -223,22 +232,22 @@ export default function Navbar() {
         </DialogContent>
       </Dialog>
 
-      <h1 className="text-lg font-semibold">{title}</h1>
+      <h1 className="text-base sm:text-lg font-semibold truncate">{title}</h1>
 
-      <div className="ml-auto flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground cursor-pointer"
-          aria-label="Search"
-          onClick={() => {
-            setSearchQuery("")
-            setSearchOpen(true)
-            setTimeout(() => searchInputRef.current?.focus(), 100)
-          }}
-        >
-          <Search className="h-5 w-5" />
-        </Button>
+      <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground cursor-pointer active:scale-90 transition-transform"
+            aria-label="Search"
+            onClick={() => {
+              setSearchQuery("")
+              setSearchOpen(true)
+              setTimeout(() => searchInputRef.current?.focus(), 100)
+            }}
+          >
+            <Search className="h-5 w-5" />
+          </Button>
 
         <div className="relative">
           <button
@@ -260,7 +269,7 @@ export default function Navbar() {
             </div>
           </button>
           {notifOpen && (
-            <div ref={notifRef} className="absolute right-0 top-full mt-2 z-50 w-88 rounded-xl border bg-card shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-200">
+            <div ref={notifRef} className="fixed sm:absolute right-2 sm:right-0 top-16 sm:top-full sm:mt-2 z-50 w-[calc(100vw-1rem)] sm:w-88 max-w-sm rounded-xl border bg-card shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-200">
                 <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                   <div className="flex items-center gap-2">
                     <Bell className="size-4 text-primary" />

@@ -9,7 +9,8 @@ import { clearProjects } from "@/lib/features/projectSlice"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { version } from "../../../package.json"
+import pkg from "../../../package.json"
+const version = pkg.version
 import {
   Dialog,
   DialogContent,
@@ -49,8 +50,8 @@ export default function Sidebar({ isOpen, onToggle }) {
             <Kanban className="h-5 w-5 text-emerald-500" />
           </div>
           <div>
-            <span className="text-base font-bold text-foreground">NanoPiCode</span>
-            <p className="text-[10px] text-muted-foreground leading-tight">Project Manager</p>
+            <span className="text-base font-bold text-foreground">Project Manager</span>
+            <p className="text-[10px] text-muted-foreground leading-tight">NanoPiCode</p>
           </div>
         </Link>
         <button
@@ -109,7 +110,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       </div>
 
       <div className="border-t border-border px-3 pb-3 pt-2">
-        <p className="text-[10px] font-medium text-primary/70 text-center uppercase">NanoPiCode V{version}</p>
+        <p className="text-[10px] font-medium text-primary/70 text-center uppercase">Project Manager V{version}</p>
       </div>
 
       <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>

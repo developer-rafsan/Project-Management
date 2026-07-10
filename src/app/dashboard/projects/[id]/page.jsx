@@ -17,13 +17,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FileText } from "lucide-react"
-import ProjectForm from "@/components/projects/ProjectForm"
 import MonthTransferDialog from "@/components/projects/MonthTransferDialog"
 import TransferAssigneeDialog from "@/components/projects/TransferAssigneeDialog"
 import Notes from "@/components/projects/Notes"
 import { ProjectBreadcrumbs, ProjectTitle, ProjectActions } from "@/components/projects/ProjectDetailHeader"
 import ShareDialog from "@/components/projects/ShareDialog"
-import ProgressDialog from "@/components/projects/ProgressDialog"
+
 import { ProjectTimeline } from "@/components/projects/ProjectTimeline"
 import {
   ProjectDetailsCard,
@@ -53,26 +52,23 @@ export default function ProjectDetailPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [additionalPasswords, setAdditionalPasswords] = useState({})
-  const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
-    if (editOpen || deleteOpen) {
+    if (deleteOpen) {
       document.body.style.overflow = "hidden"
     } else {
       document.body.style.overflow = ""
     }
     return () => { document.body.style.overflow = "" }
-  }, [editOpen, deleteOpen])
+  }, [deleteOpen])
   const [transferOpen, setTransferOpen] = useState(false)
   const [transferAssigneeOpen, setTransferAssigneeOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("")
   const [statusNote, setStatusNote] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
-  const [progressOpen, setProgressOpen] = useState(false)
-  const [progressLoading, setProgressLoading] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -101,14 +97,6 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
-
-  const handleEditSuccess = async (updatedProject) => {
-    setProject(updatedProject)
-    dispatch(updateProjectInStore(updatedProject))
-    setEditOpen(false)
-    const freshActivities = await getProjectActivities(params.id)
-    setActivities(freshActivities || [])
-  }
 
   const handleDuplicate = async () => {
     if (!project) return
@@ -174,6 +162,17 @@ export default function ProjectDetailPage() {
     }
   }
 
+  const handleWebsiteUpdate = useCallback((updated, newPassword, extraPwMap) => {
+    setProject(updated)
+    dispatch(updateProjectInStore(updated))
+    if (newPassword !== undefined && newPassword !== null) {
+      setDecryptedPassword(newPassword)
+      if (newPassword) setShowPassword(true)
+      else setShowPassword(false)
+    }
+    if (extraPwMap) setAdditionalPasswords(extraPwMap)
+  }, [])
+
   const handleTogglePassword = useCallback(async () => {
     if (showPassword) {
       setShowPassword(false)
@@ -234,30 +233,31 @@ export default function ProjectDetailPage() {
   const passwordDisplay = decryptedPassword || null
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <ProjectBreadcrumbs projectName={project.projectName} />
+    <div className="space-y-4 sm:space-y-6 pb-8 sm:pb-0">
+      <div className="animate-fade-in-up stagger-1"><ProjectBreadcrumbs projectName={project.projectName} /></div>
 
-      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start justify-between gap-3 sm:gap-4">
-        <div className="min-w-0 flex-1">
-          <ProjectTitle project={project} />
+      <div className="animate-fade-in-up stagger-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <ProjectTitle project={project} />
+          </div>
+          <ProjectActions
+            project={project}
+            actionLoading={actionLoading}
+            onStatusClick={() => {
+              setNewStatus(project.status)
+              setStatusOpen(true)
+            }}
+            onDuplicate={handleDuplicate}
+            onTransfer={() => setTransferOpen(true)}
+            onTransferAssignee={() => setTransferAssigneeOpen(true)}
+            onDelete={() => setDeleteOpen(true)}
+            onShare={() => setShareOpen(true)}
+          />
         </div>
-        <ProjectActions
-          project={project}
-          actionLoading={actionLoading}
-          onStatusClick={() => {
-            setNewStatus(project.status)
-            setStatusOpen(true)
-          }}
-          onEdit={() => setEditOpen(true)}
-          onDuplicate={handleDuplicate}
-          onTransfer={() => setTransferOpen(true)}
-          onTransferAssignee={() => setTransferAssigneeOpen(true)}
-          onDelete={() => setDeleteOpen(true)}
-          onShare={() => setShareOpen(true)}
-        />
       </div>
 
-      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3 animate-fade-in-up stagger-3">
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {project.description && (
             <div className="rounded-xl border bg-card p-4 sm:p-5">
@@ -281,34 +281,20 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className="space-y-4 sm:space-y-6">
-          <ProjectDetailsCard project={project} onProgressClick={() => setProgressOpen(true)} />
+          <ProjectDetailsCard project={project} onUpdate={(updated) => { setProject(updated); dispatch(updateProjectInStore(updated)) }} />
           <ProjectWebsiteCard
             project={project}
             passwordDisplay={passwordDisplay}
             showPassword={showPassword}
             onTogglePassword={handleTogglePassword}
             additionalPasswords={additionalPasswords}
+            onUpdate={handleWebsiteUpdate}
           />
-          <ProjectLinksCard project={project} />
-          <ProjectMetaCard project={project} />
+          <ProjectLinksCard project={project} onUpdate={(updated) => { setProject(updated); dispatch(updateProjectInStore(updated)) }} />
+          <ProjectMetaCard project={project} onUpdate={(updated) => { setProject(updated); dispatch(updateProjectInStore(updated)) }} />
           <ProjectTagsCard tags={project.tags} />
         </div>
       </div>
-
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto p-3 sm:p-4">
-          <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
-            <DialogDescription>Update project details</DialogDescription>
-          </DialogHeader>
-          <ProjectForm
-            key={editOpen ? project._id : "closed"}
-            initialData={project}
-            onSuccess={handleEditSuccess}
-            onCancel={() => setEditOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
@@ -354,28 +340,6 @@ export default function ProjectDetailPage() {
         onClose={() => setTransferAssigneeOpen(false)}
         onSuccess={() => {
           setTransferAssigneeOpen(false)
-        }}
-      />
-
-      <ProgressDialog
-        open={progressOpen}
-        onOpenChange={setProgressOpen}
-        projectName={project.projectName}
-        currentProgress={project.progress ?? 0}
-        actionLoading={progressLoading}
-        onConfirm={async (value) => {
-          setProgressLoading(true)
-          try {
-            const updated = await updateProject(project._id, { progress: value })
-            setProject(updated)
-            dispatch(updateProjectInStore(updated))
-            toast.success("Progress updated")
-            setProgressOpen(false)
-          } catch (err) {
-            toast.error(err.message || "Failed to update progress")
-          } finally {
-            setProgressLoading(false)
-          }
         }}
       />
 

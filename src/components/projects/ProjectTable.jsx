@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, memo, useRef, useCallback } from "react"
+import { useState, memo, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -265,9 +265,9 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
             className={cn(
               "rounded-xl border bg-card transition-all",
               isSelected
-                ? "border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                ? "border-primary/60 bg-primary/10 shadow-md ring-2 ring-primary/30 opacity-100 scale-[1.01]"
                 : selectMode
-                  ? "hover:border-primary/30 hover:shadow-sm cursor-pointer active:scale-[0.99]"
+                  ? "opacity-70 hover:opacity-100 hover:border-primary/30 hover:shadow-sm cursor-pointer active:scale-[0.99] transition-all"
                   : "hover:border-primary/30 hover:shadow-sm"
             )}
           >
@@ -360,7 +360,7 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
             {/* Desktop layout */}
             <div
               className={cn(
-                "hidden sm:grid grid-cols-[36px_minmax(0,1fr)_110px_70px] md:grid-cols-[36px_minmax(0,1fr)_1fr_120px_100px_80px] lg:grid-cols-[36px_1fr_1fr_130px_110px_100px_80px_36px] items-center gap-4 px-4 sm:px-6 py-3",
+                "hidden sm:grid grid-cols-[36px_minmax(0,1fr)_110px_70px] md:grid-cols-[36px_minmax(0,1fr)_1fr_120px_100px_80px] lg:grid-cols-[36px_1fr_1fr_130px_110px_100px_80px_36px] items-center gap-4 px-4 sm:px-6 py-3 transition-all duration-200",
                 selectMode ? "cursor-pointer" : ""
               )}
               onClick={() => {
