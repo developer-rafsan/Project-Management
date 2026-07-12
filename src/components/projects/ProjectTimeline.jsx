@@ -1,7 +1,7 @@
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CalendarArrowUp, UserRoundPlus, ArrowLeftRight, Plus, Pencil } from "lucide-react"
+import { CalendarArrowUp, UserRoundPlus, ArrowLeftRight, Plus, Pencil, Trash2 } from "lucide-react"
 
 const statusColors = {
   Pending: "bg-yellow-500",
@@ -90,6 +90,16 @@ function getActivityConfig(activity) {
         user: activity.performedBy || null,
         description: activity.description || null,
         note: activity.note || null,
+      }
+    case "project_deleted":
+      return {
+        dotColor: "bg-red-500",
+        dotIcon: Trash2,
+        icon: <Trash2 className="size-3.5 text-muted-foreground" />,
+        title: "Project Deleted",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
       }
     default:
       return {

@@ -44,6 +44,9 @@ import {
   Pencil,
   X,
   Percent,
+  Building2,
+  Server,
+  Trash2,
 } from "lucide-react"
 import { updateProject } from "@/actions/projectActions"
 
@@ -792,6 +795,396 @@ export function ProjectMetaCard({ project, onUpdate }) {
               </div>
             )}
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+const PROVIDER_OPTIONS = [
+  "Namecheap", "GoDaddy", "Google Domains", "Cloudflare",
+  "Hostinger", "SiteGround", "Bluehost", "DreamHost",
+  "Name.com", "IONOS", "OVHcloud", "Gandi.net",
+]
+
+const HOSTING_OPTIONS = [
+  "Hostinger", "SiteGround", "Bluehost", "DreamHost",
+  "Cloudways", "WP Engine", "Kinsta", "Flywheel",
+  "DigitalOcean", "AWS", "Vercel", "Netlify",
+]
+
+function ProviderSelect({ value, options, onChange, placeholder = "Select" }) {
+  const isOther = value && !options.includes(value)
+  return (
+    <div className="space-y-1.5">
+      <select
+        className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        value={isOther ? "other" : value}
+        onChange={(e) => onChange(e.target.value === "other" ? "" : e.target.value)}
+      >
+        <option value="" disabled>{placeholder}</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+        <option value="other">Other</option>
+      </select>
+      {isOther && (
+        <Input
+          placeholder="Type provider name"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="mt-1"
+        />
+      )}
+    </div>
+  )
+}
+
+export function ProjectDomainCard({ project, domainPasswords = {}, hostingPasswords = {}, onUpdate }) {
+  const [editOpen, setEditOpen] = useState(false)
+  const [linked, setLinked] = useState(project.domainHostingLinked ?? false)
+  const [form, setForm] = useState({ linked: false, domains: [], hosting: [] })
+  const [saving, setSaving] = useState(false)
+  const [showDomainPw, setShowDomainPw] = useState({})
+  const [showHostingPw, setShowHostingPw] = useState({})
+  const [removing, setRemoving] = useState(null)
+
+  const handleRemoveDomain = async (i) => {
+    const remaining = (project.domains || []).filter((_, idx) => idx !== i)
+    setRemoving(`d-${i}`)
+    try {
+      const updated = await updateProject(project._id, { domains: remaining })
+      onUpdate?.(updated)
+    } catch (err) {
+      toast.error("Failed to remove domain")
+    } finally {
+      setRemoving(null)
+    }
+  }
+
+  const handleRemoveHosting = async (i) => {
+    const remaining = (project.hosting || []).filter((_, idx) => idx !== i)
+    setRemoving(`h-${i}`)
+    try {
+      const updated = await updateProject(project._id, { hosting: remaining })
+      onUpdate?.(updated)
+    } catch (err) {
+      toast.error("Failed to remove hosting")
+    } finally {
+      setRemoving(null)
+    }
+  }
+
+  const emptyDomain = () => ({ url: "", provider: "", password: "" })
+  const emptyHosting = () => ({ provider: "", password: "" })
+
+  const handleOpen = () => {
+    const projectDomains = project.domains?.length > 0
+      ? project.domains.map((d, i) => ({ url: d.url || "", provider: d.provider || "", password: domainPasswords[i] || "" }))
+      : project.domainUrl ? [{ url: project.domainUrl || "", provider: project.domainProvider || "", password: "" }] : [emptyDomain()]
+
+    const projectHosting = project.hosting?.length > 0
+      ? project.hosting.map((h, i) => ({ provider: h.provider || "", password: hostingPasswords[i] || "" }))
+      : [emptyHosting()]
+
+    setLinked(project.domainHostingLinked ?? false)
+    setForm({ linked: project.domainHostingLinked ?? false, domains: projectDomains, hosting: projectHosting })
+    setEditOpen(true)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const payload = { domainHostingLinked: form.linked }
+      const filterNonEmpty = (arr) => arr.filter((item) => item.url || item.provider || item.password)
+
+      if (form.linked) {
+        const d = form.domains[0] || emptyDomain()
+        payload.domains = [{ url: d.url, provider: d.provider, password: d.password }]
+        const h = form.hosting[0] || emptyHosting()
+        payload.hosting = [{ provider: d.provider || h.provider, password: d.password || h.password }]
+      } else {
+        payload.domains = filterNonEmpty(form.domains)
+        payload.hosting = filterNonEmpty(form.hosting)
+      }
+
+      const updated = await updateProject(project._id, payload)
+      onUpdate?.(updated)
+      setEditOpen(false)
+      toast.success("Domain & Hosting updated")
+    } catch (err) {
+      toast.error(err.message || "Failed to update")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const addDomain = () => setForm({ ...form, domains: [...form.domains, emptyDomain()] })
+  const removeDomain = (i) => setForm({ ...form, domains: form.domains.filter((_, idx) => idx !== i) })
+  const updateDomain = (i, field, val) => {
+    const d = [...form.domains]
+    d[i] = { ...d[i], [field]: val }
+    setForm({ ...form, domains: d })
+  }
+
+  const addHosting = () => setForm({ ...form, hosting: [...form.hosting, emptyHosting()] })
+  const removeHosting = (i) => setForm({ ...form, hosting: form.hosting.filter((_, idx) => idx !== i) })
+  const updateHosting = (i, field, val) => {
+    const h = [...form.hosting]
+    h[i] = { ...h[i], [field]: val }
+    setForm({ ...form, hosting: h })
+  }
+
+  const hasData = project.domains?.length > 0 || project.hosting?.length > 0 || project.domainUrl
+
+  return (
+    <div className="rounded-xl border bg-card p-5 group">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Domain & Hosting</h2>
+        {hasData && (
+          <Button variant="ghost" size="icon-xs" onClick={handleOpen}>
+            <Pencil className="size-3" />
+          </Button>
+        )}
+      </div>
+      {hasData ? (
+        <>
+      <div className="divide-y divide-border/50">
+        {(project.domains?.length > 0 ? project.domains : (project.domainUrl ? [{ url: project.domainUrl, provider: project.domainProvider }] : [])).map((d, i) => (
+          <div key={`d-${i}`} className="relative">
+            {i > 0 && <SectionDivider />}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <InfoRow icon={Globe} label={`Domain${project.domains?.length > 1 ? ` ${i + 1}` : ""}`}>
+                  {d.url ? (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="text-sm truncate">{d.url}</span>
+                      <CopyButton text={d.url} />
+                    </div>
+                  ) : <span className="text-sm text-muted-foreground">-</span>}
+                </InfoRow>
+                <SectionDivider />
+                <InfoRow icon={Building2} label="Provider">
+                  <span className="text-sm">{d.provider || <span className="text-muted-foreground">-</span>}</span>
+                </InfoRow>
+                {domainPasswords[i] && (
+                  <>
+                    <SectionDivider />
+                    <InfoRow icon={Lock} label="Password">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-mono">
+                          {showDomainPw[i] ? domainPasswords[i] : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
+                        </span>
+                        <Button variant="ghost" size="icon-xs" onClick={() => setShowDomainPw({ ...showDomainPw, [i]: !showDomainPw[i] })}>
+                          {showDomainPw[i] ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                        </Button>
+                        {typeof domainPasswords[i] === "string" && <CopyButton text={domainPasswords[i]} />}
+                      </div>
+                    </InfoRow>
+                  </>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="opacity-0 group-hover:opacity-100 shrink-0 mt-1 text-muted-foreground hover:text-destructive"
+                onClick={() => handleRemoveDomain(i)}
+                disabled={removing === `d-${i}`}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        ))}
+        {(project.hosting?.length > 0 ? project.hosting : []).map((h, i) => (
+          <div key={`h-${i}`} className="relative">
+            <SectionDivider />
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <InfoRow icon={Server} label={`Hosting${project.hosting?.length > 1 ? ` ${i + 1}` : ""}`}>
+                  <span className="text-sm">{h.provider || <span className="text-muted-foreground">-</span>}</span>
+                </InfoRow>
+                {hostingPasswords[i] && (
+                  <>
+                    <SectionDivider />
+                    <InfoRow icon={Lock} label="Password">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-mono">
+                          {showHostingPw[i] ? hostingPasswords[i] : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
+                        </span>
+                        <Button variant="ghost" size="icon-xs" onClick={() => setShowHostingPw({ ...showHostingPw, [i]: !showHostingPw[i] })}>
+                          {showHostingPw[i] ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                        </Button>
+                        {typeof hostingPasswords[i] === "string" && <CopyButton text={hostingPasswords[i]} />}
+                      </div>
+                    </InfoRow>
+                  </>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="opacity-0 group-hover:opacity-100 shrink-0 mt-1 text-muted-foreground hover:text-destructive"
+                onClick={() => handleRemoveHosting(i)}
+                disabled={removing === `h-${i}`}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-border/50 pt-3 mt-1">
+        <Button variant="outline" size="sm" className="w-full" onClick={handleOpen}>
+          <Plus className="size-3 mr-1" /> Add
+        </Button>
+      </div>
+      </>
+      ) : (
+        <Button variant="outline" className="w-full justify-start gap-2 py-2.5" onClick={handleOpen}>
+          <Plus className="size-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Add Domain / Hosting</span>
+        </Button>
+      )}
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Domain & Hosting</DialogTitle>
+            <DialogDescription>Manage domain and hosting access information</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 mb-4">
+            <span className="text-sm font-medium">Same provider for both</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.linked}
+              onClick={() => setForm({ ...form, linked: !form.linked })}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${form.linked ? "bg-primary" : "bg-input"}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${form.linked ? "translate-x-4" : "translate-x-0"}`} />
+            </button>
+          </div>
+
+          <div className="space-y-4 py-2">
+            {form.linked ? (
+              <div className="space-y-3 rounded-lg border p-4">
+                <h3 className="text-sm font-semibold">Domain & Hosting (Combined)</h3>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Domain URL</label>
+                  <Input
+                    placeholder="example.com"
+                    value={form.domains[0]?.url || ""}
+                    onChange={(e) => updateDomain(0, "url", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Provider</label>
+                  <ProviderSelect
+                    value={form.domains[0]?.provider || ""}
+                    options={PROVIDER_OPTIONS}
+                    onChange={(v) => updateDomain(0, "provider", v)}
+                    placeholder="Select provider"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Password</label>
+                  <Input
+                    type="password"
+                    placeholder="Account password"
+                    value={form.domains[0]?.password || ""}
+                    onChange={(e) => updateDomain(0, "password", e.target.value)}
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Domains</h3>
+                    <Button variant="outline" size="sm" onClick={addDomain}><Plus className="size-3 mr-1" />Add</Button>
+                  </div>
+                  {form.domains.map((d, i) => (
+                    <div key={i} className="space-y-3 rounded-lg border p-4 relative">
+                      <button
+                        onClick={() => removeDomain(i)}
+                        className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="size-4" />
+                      </button>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">Domain URL</label>
+                        <Input
+                          placeholder="example.com"
+                          value={d.url}
+                          onChange={(e) => updateDomain(i, "url", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">Provider</label>
+                        <ProviderSelect
+                          value={d.provider}
+                          options={PROVIDER_OPTIONS}
+                          onChange={(v) => updateDomain(i, "provider", v)}
+                          placeholder="Select provider"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">Password</label>
+                        <Input
+                          type="password"
+                          placeholder="Account password"
+                          value={d.password}
+                          onChange={(e) => updateDomain(i, "password", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Hosting</h3>
+                    <Button variant="outline" size="sm" onClick={addHosting}><Plus className="size-3 mr-1" />Add</Button>
+                  </div>
+                  {form.hosting.map((h, i) => (
+                    <div key={i} className="space-y-3 rounded-lg border p-4 relative">
+                      <button
+                        onClick={() => removeHosting(i)}
+                        className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="size-4" />
+                      </button>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">Provider</label>
+                        <ProviderSelect
+                          value={h.provider}
+                          options={HOSTING_OPTIONS}
+                          onChange={(v) => updateHosting(i, "provider", v)}
+                          placeholder="Select hosting provider"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">Password</label>
+                        <Input
+                          type="password"
+                          placeholder="Account password"
+                          value={h.password}
+                          onChange={(e) => updateHosting(i, "password", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>

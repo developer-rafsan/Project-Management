@@ -9,7 +9,7 @@ const activitySchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['status_change', 'month_transfer', 'person_transfer', 'project_created', 'project_updated'],
+      enum: ['status_change', 'month_transfer', 'person_transfer', 'project_created', 'project_updated', 'project_deleted'],
       required: true,
     },
     performedBy: {

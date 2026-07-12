@@ -50,10 +50,13 @@ const cards = [
 ]
 
 export default function StatsCards({ stats }) {
+  const formatNum = (n) => String(n ?? 0).padStart(2, "0")
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+    <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
       {cards.map((card, i) => {
         const Icon = card.icon
+        const val = formatNum(stats[card.key])
         return (
           <motion.div
             key={card.key}
@@ -61,16 +64,16 @@ export default function StatsCards({ stats }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1, duration: 0.4 }}
           >
-            <Card>
-              <CardContent className="flex items-center gap-4 p-4">
+            <Card size="sm" className="max-h-[100px] py-0 transition-all duration-200 hover:shadow-md hover:shadow-black/5 hover:-translate-y-0.5">
+              <CardContent className="flex flex-col items-center gap-1.5 p-2 text-center sm:flex-row sm:items-center sm:gap-3 sm:p-4 sm:text-left">
                 <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-lg ${card.bg}`}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl sm:h-9 sm:w-9 ${card.bg} ring-1 ring-inset ring-black/5`}
                 >
-                  <Icon className={`h-6 w-6 ${card.color}`} />
+                  <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${card.color}`} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats[card.key] ?? 0}</p>
-                  <p className="text-xs text-muted-foreground">{card.label}</p>
+                  <p className="text-lg font-bold sm:text-xl">{val}</p>
+                  <p className="text-[10px] font-semibold text-foreground/80 sm:text-[11px]">{card.label}</p>
                 </div>
               </CardContent>
             </Card>

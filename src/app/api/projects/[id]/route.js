@@ -89,7 +89,10 @@ export async function PATCH(request, { params }) {
       'orderId', 'projectName', 'websiteUrl',
       'websiteUsername', 'cms', 'priority', 'status',
       'assignee', 'startDate', 'tags', 'description', 'price',
-      'progress', 'additionalWebsites', 'figmaLinks', 'referenceLinks', 'currentMonth', 'currentYear', 'fiverrFeeEnabled',
+      'progress', 'additionalWebsites', 'figmaLinks', 'referenceLinks',
+      'currentMonth', 'currentYear', 'fiverrFeeEnabled',
+      'domainUrl', 'domainProvider',
+      'domainHostingLinked', 'domains', 'hosting',
     ];
 
     for (const field of fields) {
@@ -114,6 +117,20 @@ export async function PATCH(request, { params }) {
       updates.additionalWebsites = updates.additionalWebsites.map(ws => ({
         ...ws,
         password: ws.password ? encrypt(ws.password) : {},
+      }));
+    }
+
+    if (updates.domains) {
+      updates.domains = updates.domains.map(d => ({
+        ...d,
+        password: d.password ? encrypt(d.password) : {},
+      }));
+    }
+
+    if (updates.hosting) {
+      updates.hosting = updates.hosting.map(h => ({
+        ...h,
+        password: h.password ? encrypt(h.password) : {},
       }));
     }
 
@@ -184,11 +201,38 @@ export async function PATCH(request, { params }) {
     }
 
     if (hasGeneralChanges) {
+      const changedLabels = generalFieldKeys
+        .filter(key => {
+          if (body[key] === undefined) return false;
+          const existing = existingProject[key];
+          const incoming = body[key];
+          if (key === 'startDate') return new Date(incoming).getTime() !== new Date(existing).getTime();
+          if (key === 'price') return Number(incoming) !== Number(existing);
+          if (key === 'tags') {
+            const a = (Array.isArray(incoming) ? incoming : []).sort().join(',');
+            const b = (Array.isArray(existing) ? existing : []).sort().join(',');
+            return a !== b;
+          }
+          if (key === 'assignee') {
+            const eId = existing?._id?.toString() || existing?.toString() || '';
+            const iId = incoming?.toString() || '';
+            return eId !== iId;
+          }
+          return String(incoming ?? '') !== String(existing != null ? existing : '');
+        })
+        .map(k => ({
+          orderId: 'Order ID', projectName: 'Name', websiteUrl: 'Website', websiteUsername: 'Username',
+          cms: 'CMS', priority: 'Priority', assignee: 'Assignee', startDate: 'Start Date',
+          tags: 'Tags', description: 'Description', price: 'Price', progress: 'Progress',
+          additionalWebsites: 'Additional Websites', figmaLinks: 'Figma Links', referenceLinks: 'Reference Links',
+          fiverrFeeEnabled: 'Fiverr Fee',
+        }[k] || k));
+
       await Activity.create({
         project: id,
         type: 'project_updated',
         performedBy: session.user.id,
-        description: 'Project details updated',
+        description: changedLabels.length > 0 ? `Updated: ${changedLabels.join(', ')}` : 'Project details updated',
       });
     }
 
@@ -226,10 +270,19 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const projectName = project.projectName;
+
     await Promise.all([
       Project.findByIdAndDelete(id),
-      Activity.deleteMany({ project: id }),
+      Activity.deleteMany({ project: id, type: { $ne: 'project_deleted' } }),
     ]);
+
+    await Activity.create({
+      project: id,
+      type: 'project_deleted',
+      performedBy: session.user.id,
+      description: `Deleted project "${projectName}"`,
+    });
 
     return NextResponse.json({ message: 'Project deleted successfully' });
   } catch (error) {

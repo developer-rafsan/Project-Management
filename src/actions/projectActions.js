@@ -56,6 +56,11 @@ export async function getProjectPassword(projectId) {
   return handleResponse(response);
 }
 
+export async function getDomainPassword(projectId) {
+  const response = await fetch(`/api/projects/${projectId}/domain-password`);
+  return handleResponse(response);
+}
+
 export async function getAdditionalPasswords(projectId) {
   const response = await fetch(`/api/projects/${projectId}/additional-passwords`);
   return handleResponse(response);
@@ -99,8 +104,8 @@ export async function deleteNote(projectId, noteId) {
 }
 
 export async function getStats(params = {}) {
-  const query = buildQueryString(params);
-  const url = query ? `${BASE_URL}/stats?${query}` : `${BASE_URL}/stats`;
-  const response = await fetch(url);
+  const query = buildQueryString({ ...params, _t: Date.now() });
+  const url = query ? `${BASE_URL}/stats?${query}` : `${BASE_URL}/stats?_t=${Date.now()}`;
+  const response = await fetch(url, { cache: 'no-store' });
   return handleResponse(response);
 }

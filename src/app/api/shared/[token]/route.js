@@ -194,11 +194,33 @@ export async function PATCH(request, { params }) {
     });
 
     if (hasGeneralChanges) {
+      const changedLabels = generalFieldKeys
+        .filter(key => {
+          if (body[key] === undefined) return false;
+          const existing = existingProject[key];
+          const incoming = body[key];
+          if (key === 'startDate') return new Date(incoming).getTime() !== new Date(existing).getTime();
+          if (key === 'price') return Number(incoming) !== Number(existing);
+          if (key === 'tags') {
+            const a = (Array.isArray(incoming) ? incoming : []).sort().join(',');
+            const b = (Array.isArray(existing) ? existing : []).sort().join(',');
+            return a !== b;
+          }
+          return String(incoming ?? '') !== String(existing != null ? existing : '');
+        })
+        .map(k => ({
+          orderId: 'Order ID', projectName: 'Name', websiteUrl: 'Website', websiteUsername: 'Username',
+          cms: 'CMS', priority: 'Priority', startDate: 'Start Date', tags: 'Tags',
+          description: 'Description', price: 'Price', progress: 'Progress',
+          additionalWebsites: 'Additional Websites', figmaLinks: 'Figma Links', referenceLinks: 'Reference Links',
+          fiverrFeeEnabled: 'Fiverr Fee',
+        }[k] || k));
+
       await Activity.create({
         project: projectId,
         type: 'project_updated',
         performedBy: share.createdBy,
-        description: 'Project details updated via shared link',
+        description: changedLabels.length > 0 ? `Updated: ${changedLabels.join(', ')}` : 'Project details updated via shared link',
       });
     }
 
