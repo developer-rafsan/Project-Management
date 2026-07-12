@@ -75,18 +75,15 @@ const projectSchema = new mongoose.Schema(
       username: { type: String, default: '' },
       password: { type: { iv: String, encryptedData: String }, default: {} },
     }],
-    domainUrl: { type: String, default: '' },
-    domainProvider: { type: String, default: '' },
-    domainPassword: { type: { iv: String, encryptedData: String }, default: {} },
-    domainHostingLinked: { type: Boolean, default: false },
-    domains: [{
-      url: { type: String, default: '' },
+    domainHosting: [{
       provider: { type: String, default: '' },
+      domainUrl: { type: String, default: '' },
+      email: { type: String, default: '' },
       password: { type: { iv: String, encryptedData: String }, default: {} },
-    }],
-    hosting: [{
-      provider: { type: String, default: '' },
-      password: { type: { iv: String, encryptedData: String }, default: {} },
+      hostingProvider: { type: String, default: '' },
+      hostingEmail: { type: String, default: '' },
+      hostingPassword: { type: { iv: String, encryptedData: String }, default: {} },
+      sameAccount: { type: Boolean, default: false },
     }],
     figmaLinks: [{
       url: { type: String, default: '' },

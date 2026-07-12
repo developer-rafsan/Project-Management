@@ -25,6 +25,7 @@ import {
 import {
   Globe,
   Lock,
+  Mail,
   User,
   Tag,
   DollarSign,
@@ -32,6 +33,7 @@ import {
   Clock,
   Hash,
   ArrowUpDown,
+  Check,
   ListChecks,
   Layout,
   ExternalLink,
@@ -47,6 +49,7 @@ import {
   Building2,
   Server,
   Trash2,
+  ChevronUp,
 } from "lucide-react"
 import { updateProject } from "@/actions/projectActions"
 
@@ -305,140 +308,194 @@ export function ProjectDetailsCard({ project, onUpdate }) {
 
 export function ProjectWebsiteCard({ project, passwordDisplay, showPassword, onTogglePassword, additionalPasswords = {}, onUpdate }) {
   const [editOpen, setEditOpen] = useState(false)
-  const [form, setForm] = useState({})
+  const [editingIndex, setEditingIndex] = useState(null)
+  const [form, setForm] = useState({ url: '', username: '', password: '' })
   const [saving, setSaving] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
-  const handleOpen = () => {
-    const hasSite = project.websiteUrl || project.websiteUsername || passwordDisplay
+  const extraSites = project.additionalWebsites || []
+
+  const allSites = []
+  if (project.websiteUrl || project.websiteUsername || passwordDisplay) {
+    allSites.push({
+      url: project.websiteUrl || '',
+      username: project.websiteUsername || '',
+      password: passwordDisplay || '',
+      showPw: showPassword,
+      onTogglePw: onTogglePassword,
+    })
+  }
+  extraSites.forEach((site, i) => {
+    allSites.push({
+      url: site.url || '',
+      username: site.username || '',
+      password: additionalPasswords[i] || '',
+    })
+  })
+
+  const hasWebsite = allSites.length > 0
+
+  const handleAdd = () => {
+    setEditingIndex(null)
+    setForm({ url: '', username: '', password: '' })
+    setEditOpen(true)
+    setShowAll(false)
+  }
+
+  const handleEdit = (idx) => {
+    const site = allSites[idx]
+    setEditingIndex(idx)
     setForm({
-      websiteUrl: project.websiteUrl || "",
-      websiteUsername: project.websiteUsername || "",
-      websitePassword: passwordDisplay || "",
-      showMainWebsite: hasSite,
-      extraSites: project.additionalWebsites?.map((s, i) => ({ url: s.url || "", username: s.username || "", password: additionalPasswords[i] || "" })) || [],
+      url: site.url || '',
+      username: site.username || '',
+      password: site.password || '',
     })
     setEditOpen(true)
+  }
+
+  const handleDelete = async (idx) => {
+    setConfirmDelete(idx)
+    try {
+      if (idx === 0) {
+        const payload = { websiteUrl: '', websiteUsername: '', websitePassword: '' }
+        const updated = await updateProject(project._id, payload)
+        onUpdate?.(updated, '', {})
+      } else {
+        const updatedExtra = extraSites.filter((_, i) => i !== idx - 1)
+        const newPwMap = {}
+        extraSites.forEach((s, i) => {
+          if (i !== idx - 1) {
+            const newIdx = i < idx - 1 ? i : i - 1
+            if (additionalPasswords[i]) newPwMap[newIdx] = additionalPasswords[i]
+          }
+        })
+        const updated = await updateProject(project._id, { additionalWebsites: updatedExtra })
+        onUpdate?.(updated, passwordDisplay, newPwMap)
+      }
+      toast.success("Deleted")
+    } catch {
+      toast.error("Failed to delete")
+    } finally {
+      setConfirmDelete(null)
+    }
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      const payload = {
-        websiteUrl: form.websiteUrl,
-        websiteUsername: form.websiteUsername,
+      let updated
+      if (editingIndex === null) {
+        if (!project.websiteUrl && !project.websiteUsername && !passwordDisplay) {
+          const payload = { websiteUrl: form.url, websiteUsername: form.username }
+          if (form.password) payload.websitePassword = form.password
+          updated = await updateProject(project._id, payload)
+          onUpdate?.(updated, form.password || '', {})
+        } else {
+          const updatedExtra = [...extraSites, { url: form.url, username: form.username, password: form.password || '' }]
+          updated = await updateProject(project._id, { additionalWebsites: updatedExtra })
+          const pwMap = {}
+          if (form.password) pwMap[extraSites.length] = form.password
+          onUpdate?.(updated, passwordDisplay, { ...additionalPasswords, ...pwMap })
+        }
+      } else if (editingIndex === 0) {
+        const payload = { websiteUrl: form.url, websiteUsername: form.username }
+        if (form.password) payload.websitePassword = form.password
+        updated = await updateProject(project._id, payload)
+        onUpdate?.(updated, form.password || '', additionalPasswords)
+      } else {
+        const updatedExtra = [...extraSites]
+        updatedExtra[editingIndex - 1] = { url: form.url, username: form.username, password: form.password || '' }
+        updated = await updateProject(project._id, { additionalWebsites: updatedExtra })
+        const pwMap = { ...additionalPasswords }
+        if (form.password) pwMap[editingIndex - 1] = form.password
+        onUpdate?.(updated, passwordDisplay, pwMap)
       }
-      if (form.websitePassword || form.showMainWebsite === false) payload.websitePassword = form.websitePassword || ""
-      payload.additionalWebsites = form.extraSites.filter((s) => s.url).map((s) => ({ url: s.url, username: s.username, password: s.password || "" }))
-      const updated = await updateProject(project._id, payload)
-      const extraPwMap = {}
-      form.extraSites.forEach((s, i) => { if (s.password) extraPwMap[i] = s.password })
-      onUpdate?.(updated, form.showMainWebsite === false ? "" : form.websitePassword || null, extraPwMap)
       setEditOpen(false)
-      toast.success("Website updated")
+      toast.success(editingIndex === null ? "Website added" : "Website updated")
     } catch (err) {
-      toast.error(err.message || "Failed to update")
+      toast.error(err.message || "Failed to save")
     } finally {
       setSaving(false)
     }
   }
 
-  const hasWebsite = project.websiteUrl || project.websiteUsername || passwordDisplay || project.additionalWebsites?.length > 0
-
   const cardContent = hasWebsite ? (
     <div className="rounded-xl border bg-card p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Website</h2>
-        <Button variant="ghost" size="icon-xs" onClick={handleOpen}>
-          <Pencil className="size-3" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Globe className="size-4 text-muted-foreground" />
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Websites</h2>
+        </div>
+        <Button variant="ghost" size="icon" onClick={handleAdd} className="size-7">
+          <Plus className="size-3.5" />
         </Button>
       </div>
-      <div className="divide-y divide-border/50">
-        <InfoRow icon={Globe} label="URL">
-          {project.websiteUrl ? (
-            <div className="flex items-center gap-1 min-w-0">
-              <a
-                href={project.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline truncate"
-              >
-                {project.websiteUrl}
-              </a>
-              <CopyButton text={project.websiteUrl} />
-              <a
-                href={project.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(buttonVariants({ variant: "ghost", size: "icon-xs" }))}
-              >
-                <ExternalLink className="size-3" />
-              </a>
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">-</span>
-          )}
-        </InfoRow>
-        <SectionDivider />
-        <InfoRow icon={User} label="Username">
-          {project.websiteUsername ? (
-            <div className="flex items-center gap-1">
-              <span className="text-sm">{project.websiteUsername}</span>
-              <CopyButton text={project.websiteUsername} />
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">-</span>
-          )}
-        </InfoRow>
-        <SectionDivider />
-        <InfoRow icon={Lock} label="Password">
-          {passwordDisplay ? (
-            <div className="flex items-center gap-1">
-              <span className="text-sm font-mono">
-                {showPassword ? passwordDisplay : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-              </span>
-              <Button variant="ghost" size="icon-xs" onClick={onTogglePassword}>
-                {showPassword ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-              </Button>
-              {typeof passwordDisplay === "string" && <CopyButton text={passwordDisplay} />}
-            </div>
-          ) : null}
-        </InfoRow>
-        {project.additionalWebsites?.length > 0 && (
-          <>
-            <SectionDivider />
-            <InfoRow icon={Plus} label="Extra Sites">
-              <div className="space-y-2 w-full">
-                {project.additionalWebsites.map((site, i) => (
-                  <div key={i} className="rounded-lg border bg-muted/30 p-2 sm:p-2.5 space-y-1.5">
-                    <div className="flex items-center gap-1 min-w-0">
-                      <Globe className="size-3 shrink-0 text-muted-foreground" />
-                      {site.url ? (
-                        <a href={site.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate flex-1 min-w-0">{site.url}</a>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                      {site.url && <CopyButton text={site.url} />}
-                      {site.url && (
-                        <a href={site.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground/50 hover:text-muted-foreground shrink-0">
-                          <ExternalLink className="size-3" />
-                        </a>
-                      )}
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
-                      {site.username && (
-                        <div className="flex items-center gap-1 min-w-0">
-                          <User className="size-3 shrink-0 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground truncate">{site.username}</span>
-                          <CopyButton text={site.username} />
-                        </div>
-                      )}
-                      <AdditionalPasswordItem password={additionalPasswords[i]} />
-                    </div>
-                  </div>
-                ))}
+      <div className="space-y-3">
+        {(showAll ? allSites : allSites.slice(0, 1)).map((site, i) => (
+          <div key={i} className="group rounded-xl border border-border/60 bg-card overflow-hidden transition-shadow hover:shadow-sm">
+            <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-muted/20 border-b border-border/40">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="size-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                  <Globe className="size-3.5 text-primary" />
+                </div>
+                {site.url ? (
+                  <a href={site.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary hover:underline truncate">{site.url}</a>
+                ) : (
+                  <span className="text-xs text-muted-foreground italic">No URL</span>
+                )}
               </div>
-            </InfoRow>
-          </>
+              <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon-xs" onClick={() => handleEdit(i)}>
+                  <Pencil className="size-3" />
+                </Button>
+                <Button variant="ghost" size="icon-xs" onClick={() => setConfirmDelete(i)}>
+                  <Trash2 className="size-3" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="size-3.5 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground text-xs font-medium w-[68px] shrink-0">Username</span>
+                {site.username ? (
+                  <><span className="truncate">{site.username}</span><CopyButton text={site.username} /></>
+                ) : (
+                  <span className="text-muted-foreground/50 text-xs italic">Not set</span>
+                )}
+              </div>
+              {site.password && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Lock className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground text-xs font-medium w-[68px] shrink-0">Password</span>
+                  {'showPw' in site ? (
+                    <>
+                      <span className="font-mono truncate text-[13px]">{site.showPw ? site.password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}</span>
+                      <button onClick={site.onTogglePw} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                        {site.showPw ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                      </button>
+                      <CopyButton text={site.password} />
+                    </>
+                  ) : (
+                    <SitePassword password={site.password} />
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {allSites.length > 1 && (
+          <button onClick={() => setShowAll(!showAll)} className="w-full text-xs text-muted-foreground hover:text-foreground py-2 transition-colors flex items-center justify-center gap-1.5 hover:bg-muted/30 rounded-lg border border-dashed border-border/60">
+            {!showAll ? (
+              <><span className="size-1 rounded-full bg-muted-foreground/40" />
+                <span className="size-1 rounded-full bg-muted-foreground/40" />
+                <span className="size-1 rounded-full bg-muted-foreground/40" />
+                <span className="ml-1.5 font-medium">{allSites.length - 1} more</span></>
+            ) : (
+              <><ChevronUp className="size-3.5" />
+                <span className="font-medium">Show less</span></>
+            )}
+          </button>
         )}
       </div>
     </div>
@@ -449,10 +506,10 @@ export function ProjectWebsiteCard({ project, passwordDisplay, showPassword, onT
           <Globe className="size-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold">Website</h2>
+          <h2 className="text-sm font-semibold">Websites</h2>
           <p className="text-xs text-muted-foreground">No website added yet</p>
         </div>
-        <Button variant="default" size="sm" onClick={handleOpen} className="gap-1.5 h-8 text-xs shrink-0 shadow-sm">
+        <Button variant="default" size="sm" onClick={handleAdd} className="gap-1.5 h-8 text-xs shrink-0 shadow-sm">
           <Plus className="size-3.5" /> Add Website
         </Button>
       </div>
@@ -463,62 +520,23 @@ export function ProjectWebsiteCard({ project, passwordDisplay, showPassword, onT
     <>
       {cardContent}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{hasWebsite ? "Edit Website" : "Add Website"}</DialogTitle>
-            <DialogDescription>{hasWebsite ? "Update website credentials &amp; extra sites" : "Add a main website and optional additional sites"}</DialogDescription>
+            <DialogTitle>{editingIndex === null ? "Add Website" : "Edit Website"}</DialogTitle>
+            <DialogDescription>{editingIndex === null ? "Add a new website" : "Update website details"}</DialogDescription>
           </DialogHeader>
-           <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Main Website</label>
-              {(form.websiteUrl || form.websiteUsername || form.websitePassword) && (
-                <Button variant="ghost" size="icon-xs" onClick={() => setForm({ ...form, websiteUrl: "", websiteUsername: "", websitePassword: "", showMainWebsite: false })} title="Remove main website">
-                  <X className="size-3" />
-                </Button>
-              )}
-              {!form.showMainWebsite && !form.websiteUrl && !form.websiteUsername && !form.websitePassword && (
-                <Button variant="ghost" size="icon-xs" onClick={() => setForm({ ...form, showMainWebsite: true })} title="Add main website">
-                  <Plus className="size-3" />
-                </Button>
-              )}
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">URL</label>
+              <Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} className="h-9 text-sm bg-background" />
             </div>
-            {(form.showMainWebsite || form.websiteUrl || form.websiteUsername || form.websitePassword) && (
-              <>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">URL</label>
-                  <Input value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })} className="h-9 text-sm bg-background" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Username</label>
-                  <Input value={form.websiteUsername} onChange={(e) => setForm({ ...form, websiteUsername: e.target.value })} className="h-9 text-sm bg-background" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Password</label>
-                  <Input value={form.websitePassword} onChange={(e) => setForm({ ...form, websitePassword: e.target.value })} placeholder="Current password" className="h-9 text-sm bg-background" />
-                </div>
-              </>
-            )}
-            <div className="pt-2 border-t">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Extra Sites</label>
-                <Button variant="ghost" size="icon-xs" onClick={() => setForm({ ...form, extraSites: [...form.extraSites, { url: "", username: "" }] })}>
-                  <Plus className="size-3" />
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {form.extraSites?.map((site, i) => (
-                  <div key={i} className="rounded-lg border bg-muted/30 p-2.5 space-y-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <Input value={site.url} onChange={(e) => { const n = [...form.extraSites]; n[i] = { ...n[i], url: e.target.value }; setForm({ ...form, extraSites: n }) }} placeholder="URL" className="h-8 text-xs flex-1" />
-                      <Button variant="ghost" size="icon-xs" onClick={() => setForm({ ...form, extraSites: form.extraSites.filter((_, j) => j !== i) })}>
-                        <X className="size-3" />
-                      </Button>
-                    </div>
-                    <Input value={site.username} onChange={(e) => { const n = [...form.extraSites]; n[i] = { ...n[i], username: e.target.value }; setForm({ ...form, extraSites: n }) }} placeholder="Username (optional)" className="h-8 text-xs" />
-                    <Input value={site.password} onChange={(e) => { const n = [...form.extraSites]; n[i] = { ...n[i], password: e.target.value }; setForm({ ...form, extraSites: n }) }} placeholder="Password (optional)" className="h-8 text-xs" />
-                  </div>
-                ))}
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Username</label>
+              <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="h-9 text-sm bg-background" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Password</label>
+              <Input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Current password" className="h-9 text-sm bg-background" />
             </div>
           </div>
           <DialogFooter>
@@ -527,24 +545,34 @@ export function ProjectWebsiteCard({ project, passwordDisplay, showPassword, onT
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={confirmDelete !== null} onOpenChange={() => setConfirmDelete(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Website?</DialogTitle>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => handleDelete(confirmDelete)}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
 
-function AdditionalPasswordItem({ password }) {
+function SitePassword({ password }) {
   const [show, setShow] = useState(false)
   if (!password) return null
   return (
-    <div className="flex items-center gap-1 min-w-0">
-      <Lock className="size-3 shrink-0 text-muted-foreground" />
-      <span className="text-xs font-mono truncate max-w-20 sm:max-w-none">
-        {show ? password : "\u2022\u2022\u2022\u2022\u2022\u2022"}
-      </span>
-      <button onClick={() => setShow(!show)} className="text-muted-foreground/50 hover:text-muted-foreground cursor-pointer shrink-0">
-        {show ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+    <>
+      <span className="font-mono truncate text-[13px]">{show ? password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}</span>
+      <button onClick={() => setShow(!show)} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+        {show ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
       </button>
-      <CopyButton text={password} />
-    </div>
+      {typeof password === "string" && <CopyButton text={password} />}
+    </>
   )
 }
 
@@ -844,353 +872,432 @@ function ProviderSelect({ value, options, onChange, placeholder = "Select" }) {
   )
 }
 
-export function ProjectDomainCard({ project, domainPasswords = {}, hostingPasswords = {}, onUpdate }) {
-  const [editOpen, setEditOpen] = useState(false)
-  const [linked, setLinked] = useState(project.domainHostingLinked ?? false)
-  const [form, setForm] = useState({ linked: false, domains: [], hosting: [] })
+export function ProjectDomainCard({ project, domainHostingPasswords = {}, onUpdate }) {
+  const [entryOpen, setEntryOpen] = useState(false)
+  const [editingInfo, setEditingInfo] = useState(null)
+  const [entryForm, setEntryForm] = useState({ linked: false, url: "", provider: "", email: "", password: "", hProvider: "", hEmail: "", hPassword: "" })
   const [saving, setSaving] = useState(false)
-  const [showDomainPw, setShowDomainPw] = useState({})
-  const [showHostingPw, setShowHostingPw] = useState({})
+  const [showPw, setShowPw] = useState({})
+  const [showHPw, setShowHPw] = useState({})
   const [removing, setRemoving] = useState(null)
+  const [showAll, setShowAll] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(null)
+  const [showEntryPw, setShowEntryPw] = useState(false)
+  const [showEntryHPw, setShowEntryHPw] = useState(false)
 
-  const handleRemoveDomain = async (i) => {
-    const remaining = (project.domains || []).filter((_, idx) => idx !== i)
-    setRemoving(`d-${i}`)
+  const oldDomain = project.domains?.[0] || (project.domainUrl ? { url: project.domainUrl, provider: project.domainProvider } : null)
+  const list = project.domainHosting?.length > 0
+    ? project.domainHosting
+    : oldDomain
+      ? [{
+          provider: oldDomain.provider || '',
+          domainUrl: oldDomain.url || '',
+          email: oldDomain.email || '',
+          password: '',
+          hostingProvider: project.hosting?.[0]?.provider || '',
+          hostingEmail: project.hosting?.[0]?.email || '',
+          hostingPassword: '',
+          sameAccount: !!oldDomain.linked,
+        }]
+      : []
+  const pw = domainHostingPasswords
+
+  const handleRemove = async (idx) => {
+    setRemoving(idx)
     try {
-      const updated = await updateProject(project._id, { domains: remaining })
-      onUpdate?.(updated)
-    } catch (err) {
-      toast.error("Failed to remove domain")
-    } finally {
-      setRemoving(null)
-    }
-  }
-
-  const handleRemoveHosting = async (i) => {
-    const remaining = (project.hosting || []).filter((_, idx) => idx !== i)
-    setRemoving(`h-${i}`)
-    try {
-      const updated = await updateProject(project._id, { hosting: remaining })
-      onUpdate?.(updated)
-    } catch (err) {
-      toast.error("Failed to remove hosting")
-    } finally {
-      setRemoving(null)
-    }
-  }
-
-  const emptyDomain = () => ({ url: "", provider: "", password: "" })
-  const emptyHosting = () => ({ provider: "", password: "" })
-
-  const handleOpen = () => {
-    const projectDomains = project.domains?.length > 0
-      ? project.domains.map((d, i) => ({ url: d.url || "", provider: d.provider || "", password: domainPasswords[i] || "" }))
-      : project.domainUrl ? [{ url: project.domainUrl || "", provider: project.domainProvider || "", password: "" }] : [emptyDomain()]
-
-    const projectHosting = project.hosting?.length > 0
-      ? project.hosting.map((h, i) => ({ provider: h.provider || "", password: hostingPasswords[i] || "" }))
-      : [emptyHosting()]
-
-    setLinked(project.domainHostingLinked ?? false)
-    setForm({ linked: project.domainHostingLinked ?? false, domains: projectDomains, hosting: projectHosting })
-    setEditOpen(true)
-  }
-
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      const payload = { domainHostingLinked: form.linked }
-      const filterNonEmpty = (arr) => arr.filter((item) => item.url || item.provider || item.password)
-
-      if (form.linked) {
-        const d = form.domains[0] || emptyDomain()
-        payload.domains = [{ url: d.url, provider: d.provider, password: d.password }]
-        const h = form.hosting[0] || emptyHosting()
-        payload.hosting = [{ provider: d.provider || h.provider, password: d.password || h.password }]
-      } else {
-        payload.domains = filterNonEmpty(form.domains)
-        payload.hosting = filterNonEmpty(form.hosting)
-      }
-
+      const payload = { domainHosting: list.filter((_, i) => i !== idx) }
       const updated = await updateProject(project._id, payload)
       onUpdate?.(updated)
-      setEditOpen(false)
-      toast.success("Domain & Hosting updated")
+      toast.success("Deleted")
+    } catch {
+      toast.error("Failed to delete")
+    } finally {
+      setRemoving(null)
+      setConfirmRemove(null)
+    }
+  }
+
+  const resetEntryForm = (linked = false) => {
+    setEntryForm({ linked, url: "", provider: "", email: "", password: "", hProvider: "", hEmail: "", hPassword: "" })
+    setShowEntryPw(false)
+    setShowEntryHPw(false)
+  }
+
+  const handleAddNew = () => {
+    setEditingInfo(null)
+    resetEntryForm(false)
+    setEntryOpen(true)
+  }
+
+  const handleEdit = (idx) => {
+    const e = list[idx]
+    const p = pw[idx] || {}
+    setEditingInfo({ idx })
+    setEntryForm({
+      linked: e.sameAccount,
+      url: e.domainUrl || "",
+      provider: e.provider || "",
+      email: e.email || "",
+      password: p.password || "",
+      hProvider: e.hostingProvider || "",
+      hEmail: e.hostingEmail || "",
+      hPassword: p.hostingPassword || "",
+    })
+    setShowEntryPw(false)
+    setShowEntryHPw(false)
+    setEntryOpen(true)
+  }
+
+  const handleEntrySave = async () => {
+    const f = entryForm
+    if (!f.url && !f.provider && !f.email && !f.password && !f.hProvider && !f.hEmail && !f.hPassword) {
+      toast.error("Please fill in at least one field")
+      return
+    }
+    setSaving(true)
+    try {
+      let updatedList = [...list]
+      const entry = f.linked
+        ? {
+            provider: f.provider,
+            domainUrl: f.url,
+            email: f.email,
+            password: f.password,
+            hostingProvider: f.provider,
+            hostingEmail: f.email,
+            hostingPassword: f.password,
+            sameAccount: true,
+          }
+        : {
+            provider: f.provider,
+            domainUrl: f.url,
+            email: f.email,
+            password: f.password,
+            hostingProvider: f.hProvider,
+            hostingEmail: f.hEmail,
+            hostingPassword: f.hPassword,
+            sameAccount: false,
+          }
+      if (editingInfo) {
+        updatedList[editingInfo.idx] = entry
+      } else {
+        updatedList.push(entry)
+      }
+      const updated = await updateProject(project._id, { domainHosting: updatedList })
+      onUpdate?.(updated)
+      setEntryOpen(false)
+      toast.success(editingInfo ? "Entry updated" : "Entry added")
     } catch (err) {
-      toast.error(err.message || "Failed to update")
+      toast.error(err.message || "Failed to save")
     } finally {
       setSaving(false)
     }
   }
 
-  const addDomain = () => setForm({ ...form, domains: [...form.domains, emptyDomain()] })
-  const removeDomain = (i) => setForm({ ...form, domains: form.domains.filter((_, idx) => idx !== i) })
-  const updateDomain = (i, field, val) => {
-    const d = [...form.domains]
-    d[i] = { ...d[i], [field]: val }
-    setForm({ ...form, domains: d })
-  }
+  const hasData = list.length > 0
 
-  const addHosting = () => setForm({ ...form, hosting: [...form.hosting, emptyHosting()] })
-  const removeHosting = (i) => setForm({ ...form, hosting: form.hosting.filter((_, idx) => idx !== i) })
-  const updateHosting = (i, field, val) => {
-    const h = [...form.hosting]
-    h[i] = { ...h[i], [field]: val }
-    setForm({ ...form, hosting: h })
-  }
+  const EntryCard = ({ e, i, p }) => {
+    const confirmKey = i
+    const canMerge = e.sameAccount
+    return (
+      <div className="group rounded-xl border border-border/60 bg-card overflow-hidden transition-shadow hover:shadow-sm">
+        <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-muted/20 border-b border-border/40">
+          <div className="flex items-center gap-2">
+            <div className="size-7 rounded-md bg-primary/10 flex items-center justify-center">
+              <Globe className="size-3.5 text-primary" />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-foreground/80">Domain & Hosting</span>
+          </div>
+          <div className="flex items-center gap-0.5">
+            {confirmRemove === confirmKey ? (
+              <div className="flex items-center gap-1">
+                <button onClick={() => handleRemove(i)} disabled={removing === i} className="size-7 rounded-md bg-destructive/10 flex items-center justify-center hover:bg-destructive/20 transition-colors" title="Confirm">
+                  <Check className="size-3.5 text-destructive" />
+                </button>
+                <button onClick={() => setConfirmRemove(null)} className="size-7 rounded-md bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors" title="Cancel">
+                  <X className="size-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleEdit(i)} className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" title="Edit">
+                  <Pencil className="size-3.5" />
+                </button>
+                <button onClick={() => setConfirmRemove(confirmKey)} className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete">
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
-  const hasData = project.domains?.length > 0 || project.hosting?.length > 0 || project.domainUrl
-
-  return (
-    <div className="rounded-xl border bg-card p-5 group">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Domain & Hosting</h2>
-        {hasData && (
-          <Button variant="ghost" size="icon-xs" onClick={handleOpen}>
-            <Pencil className="size-3" />
-          </Button>
+        {canMerge ? (
+          <div className="p-4 space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="size-5 rounded bg-blue-500/10 flex items-center justify-center">
+                  <Globe className="size-3 text-blue-500" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Domain</span>
+              </div>
+              <div className="ml-7 space-y-1.5">
+                <DataRow label="URL" value={e.domainUrl} copy={e.domainUrl} />
+              </div>
+            </div>
+            <div className="border-t border-border/40" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="size-5 rounded bg-emerald-500/10 flex items-center justify-center">
+                  <Server className="size-3 text-emerald-500" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Hosting</span>
+              </div>
+              <div className="ml-7 space-y-1.5">
+                <DataRow label="Pro." value={e.provider} />
+                <DataRow label="Email" value={e.email} />
+                {p.password && <PwRow label="PW" pw={p.password} show={showPw[i]} onToggle={() => setShowPw({ ...showPw, [i]: !showPw[i] })} />}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="size-5 rounded bg-blue-500/10 flex items-center justify-center">
+                  <Globe className="size-3 text-blue-500" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Domain</span>
+              </div>
+              <div className="ml-7 space-y-1.5">
+                <DataRow label="URL" value={e.domainUrl} copy={e.domainUrl} />
+                <DataRow label="Pro." value={e.provider} />
+                <DataRow label="Email" value={e.email} />
+                {p.password && <PwRow label="PW" pw={p.password} show={showPw[i]} onToggle={() => setShowPw({ ...showPw, [i]: !showPw[i] })} />}
+              </div>
+            </div>
+            <div className="border-t border-border/40" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="size-5 rounded bg-emerald-500/10 flex items-center justify-center">
+                  <Server className="size-3 text-emerald-500" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Hosting</span>
+              </div>
+              <div className="ml-7 space-y-1.5">
+                <DataRow label="Pro." value={e.hostingProvider} />
+                <DataRow label="Email" value={e.hostingEmail} />
+                {p.hostingPassword && <PwRow label="PW" pw={p.hostingPassword} show={showHPw[i]} onToggle={() => setShowHPw({ ...showHPw, [i]: !showHPw[i] })} />}
+              </div>
+            </div>
+          </div>
         )}
       </div>
-      {hasData ? (
-        <>
-      <div className="divide-y divide-border/50">
-        {(project.domains?.length > 0 ? project.domains : (project.domainUrl ? [{ url: project.domainUrl, provider: project.domainProvider }] : [])).map((d, i) => (
-          <div key={`d-${i}`} className="relative">
-            {i > 0 && <SectionDivider />}
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <InfoRow icon={Globe} label={`Domain${project.domains?.length > 1 ? ` ${i + 1}` : ""}`}>
-                  {d.url ? (
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span className="text-sm truncate">{d.url}</span>
-                      <CopyButton text={d.url} />
-                    </div>
-                  ) : <span className="text-sm text-muted-foreground">-</span>}
-                </InfoRow>
-                <SectionDivider />
-                <InfoRow icon={Building2} label="Provider">
-                  <span className="text-sm">{d.provider || <span className="text-muted-foreground">-</span>}</span>
-                </InfoRow>
-                {domainPasswords[i] && (
-                  <>
-                    <SectionDivider />
-                    <InfoRow icon={Lock} label="Password">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-mono">
-                          {showDomainPw[i] ? domainPasswords[i] : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-                        </span>
-                        <Button variant="ghost" size="icon-xs" onClick={() => setShowDomainPw({ ...showDomainPw, [i]: !showDomainPw[i] })}>
-                          {showDomainPw[i] ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-                        </Button>
-                        {typeof domainPasswords[i] === "string" && <CopyButton text={domainPasswords[i]} />}
-                      </div>
-                    </InfoRow>
-                  </>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      {hasData && (
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Globe className="size-4 text-muted-foreground" />
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Domain & Hosting</h2>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleAddNew} className="h-7 text-xs gap-1">
+            <Plus className="size-3" /> Add
+          </Button>
+        </div>
+      )}
+      {hasData ? (() => {
+        const total = list.length
+        const collapsed = !showAll && total > 1
+        const shownItems = collapsed ? list.slice(0, 1) : list
+        return (
+          <div className="space-y-3">
+            {shownItems.map((e, i) => (
+              <EntryCard key={i} e={e} i={i} p={pw[i] || {}} />
+            ))}
+            {total > 1 && (
+              <button onClick={() => setShowAll(!showAll)} className="w-full text-xs text-muted-foreground hover:text-foreground py-2 transition-colors flex items-center justify-center gap-1.5 hover:bg-muted/30 rounded-lg border border-dashed border-border/60">
+                {collapsed ? (
+                  <><span className="size-1 rounded-full bg-muted-foreground/40" />
+                    <span className="size-1 rounded-full bg-muted-foreground/40" />
+                    <span className="size-1 rounded-full bg-muted-foreground/40" />
+                    <span className="ml-1.5 font-medium">{total - 1} more</span></>
+                ) : (
+                  <><ChevronUp className="size-3.5" />
+                    <span className="font-medium">Show less</span></>
                 )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="opacity-0 group-hover:opacity-100 shrink-0 mt-1 text-muted-foreground hover:text-destructive"
-                onClick={() => handleRemoveDomain(i)}
-                disabled={removing === `d-${i}`}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
+              </button>
+            )}
+          </div>
+        )
+      })() : (
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-9 rounded-lg border bg-muted/50 flex items-center justify-center shrink-0">
+              <Globe className="size-4.5 text-muted-foreground" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Domain & Hosting</p>
+              <p className="text-xs text-muted-foreground truncate">No domain & hosting added yet</p>
             </div>
           </div>
-        ))}
-        {(project.hosting?.length > 0 ? project.hosting : []).map((h, i) => (
-          <div key={`h-${i}`} className="relative">
-            <SectionDivider />
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <InfoRow icon={Server} label={`Hosting${project.hosting?.length > 1 ? ` ${i + 1}` : ""}`}>
-                  <span className="text-sm">{h.provider || <span className="text-muted-foreground">-</span>}</span>
-                </InfoRow>
-                {hostingPasswords[i] && (
-                  <>
-                    <SectionDivider />
-                    <InfoRow icon={Lock} label="Password">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-mono">
-                          {showHostingPw[i] ? hostingPasswords[i] : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-                        </span>
-                        <Button variant="ghost" size="icon-xs" onClick={() => setShowHostingPw({ ...showHostingPw, [i]: !showHostingPw[i] })}>
-                          {showHostingPw[i] ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-                        </Button>
-                        {typeof hostingPasswords[i] === "string" && <CopyButton text={hostingPasswords[i]} />}
-                      </div>
-                    </InfoRow>
-                  </>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="opacity-0 group-hover:opacity-100 shrink-0 mt-1 text-muted-foreground hover:text-destructive"
-                onClick={() => handleRemoveHosting(i)}
-                disabled={removing === `h-${i}`}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="border-t border-border/50 pt-3 mt-1">
-        <Button variant="outline" size="sm" className="w-full" onClick={handleOpen}>
-          <Plus className="size-3 mr-1" /> Add
-        </Button>
-      </div>
-      </>
-      ) : (
-        <Button variant="outline" className="w-full justify-start gap-2 py-2.5" onClick={handleOpen}>
-          <Plus className="size-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Add Domain / Hosting</span>
-        </Button>
+          <Button onClick={handleAddNew} className="shrink-0">
+            <Plus className="size-4 mr-1.5" /> Add
+          </Button>
+        </div>
       )}
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={entryOpen} onOpenChange={(v) => { if (!v) setEntryOpen(false) }}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Domain & Hosting</DialogTitle>
-            <DialogDescription>Manage domain and hosting access information</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="size-7 rounded-md bg-primary/10 flex items-center justify-center">
+                {entryForm.linked ? <Globe className="size-4 text-primary" /> : <Globe className="size-4 text-primary" />}
+              </div>
+              <span>{editingInfo ? "Edit Entry" : "New Entry"}</span>
+            </DialogTitle>
+            <DialogDescription>Add your domain and hosting account information</DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 mb-4">
-            <span className="text-sm font-medium">Same provider for both</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={form.linked}
-              onClick={() => setForm({ ...form, linked: !form.linked })}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${form.linked ? "bg-primary" : "bg-input"}`}
-            >
-              <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${form.linked ? "translate-x-4" : "translate-x-0"}`} />
+          <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3.5 py-2.5 mb-1">
+            <div className="flex items-center gap-2.5">
+              <div className={`size-4 rounded-sm border-2 flex items-center justify-center transition-colors ${entryForm.linked ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
+                {entryForm.linked && <Check className="size-3 text-primary-foreground" />}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium leading-tight">Same account for both</span>
+                <span className="text-[11px] text-muted-foreground">Domain & hosting use identical login</span>
+              </div>
+            </div>
+            <button type="button" role="switch" aria-checked={entryForm.linked}
+              onClick={() => setEntryForm({ ...entryForm, linked: !entryForm.linked })}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${entryForm.linked ? "bg-primary" : "bg-input"}`}>
+              <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform ring-0 transition duration-200 ${entryForm.linked ? "translate-x-4" : "translate-x-0"}`} />
             </button>
           </div>
 
-          <div className="space-y-4 py-2">
-            {form.linked ? (
-              <div className="space-y-3 rounded-lg border p-4">
-                <h3 className="text-sm font-semibold">Domain & Hosting (Combined)</h3>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Domain URL</label>
-                  <Input
-                    placeholder="example.com"
-                    value={form.domains[0]?.url || ""}
-                    onChange={(e) => updateDomain(0, "url", e.target.value)}
-                  />
+          <div className="space-y-3 py-1">
+            {entryForm.linked ? (
+              <div className="rounded-lg border border-border/60 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="size-5 rounded bg-primary/10 flex items-center justify-center">
+                    <Globe className="size-3 text-primary" />
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Shared Account</span>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Provider</label>
-                  <ProviderSelect
-                    value={form.domains[0]?.provider || ""}
-                    options={PROVIDER_OPTIONS}
-                    onChange={(v) => updateDomain(0, "provider", v)}
-                    placeholder="Select provider"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Password</label>
-                  <Input
-                    type="password"
-                    placeholder="Account password"
-                    value={form.domains[0]?.password || ""}
-                    onChange={(e) => updateDomain(0, "password", e.target.value)}
-                  />
-                </div>
+                <FormField label="Provider">
+                  <ProviderSelect value={entryForm.provider} options={PROVIDER_OPTIONS} onChange={(v) => setEntryForm({ ...entryForm, provider: v })} placeholder="Select provider" />
+                </FormField>
+                <FormField label="Domain URL">
+                  <Input placeholder="example.com" value={entryForm.url} onChange={(e) => setEntryForm({ ...entryForm, url: e.target.value })} />
+                </FormField>
+                <FormField label="User ID / Email">
+                  <Input placeholder="user@example.com" value={entryForm.email} onChange={(e) => setEntryForm({ ...entryForm, email: e.target.value })} />
+                </FormField>
+                <FormField label="Password">
+                  <PwInput value={entryForm.password} onChange={(v) => setEntryForm({ ...entryForm, password: v })} show={showEntryPw} onToggle={() => setShowEntryPw(!showEntryPw)} placeholder="Account password" />
+                </FormField>
               </div>
             ) : (
               <>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold">Domains</h3>
-                    <Button variant="outline" size="sm" onClick={addDomain}><Plus className="size-3 mr-1" />Add</Button>
-                  </div>
-                  {form.domains.map((d, i) => (
-                    <div key={i} className="space-y-3 rounded-lg border p-4 relative">
-                      <button
-                        onClick={() => removeDomain(i)}
-                        className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="size-4" />
-                      </button>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium">Domain URL</label>
-                        <Input
-                          placeholder="example.com"
-                          value={d.url}
-                          onChange={(e) => updateDomain(i, "url", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium">Provider</label>
-                        <ProviderSelect
-                          value={d.provider}
-                          options={PROVIDER_OPTIONS}
-                          onChange={(v) => updateDomain(i, "provider", v)}
-                          placeholder="Select provider"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium">Password</label>
-                        <Input
-                          type="password"
-                          placeholder="Account password"
-                          value={d.password}
-                          onChange={(e) => updateDomain(i, "password", e.target.value)}
-                        />
-                      </div>
+                <div className="rounded-lg border border-blue-200/50 dark:border-blue-900/30 bg-blue-500/[0.02] p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="size-5 rounded bg-blue-500/10 flex items-center justify-center">
+                      <Globe className="size-3 text-blue-500" />
                     </div>
-                  ))}
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Domain</span>
+                  </div>
+                  <FormField label="Domain URL">
+                    <Input placeholder="example.com" value={entryForm.url} onChange={(e) => setEntryForm({ ...entryForm, url: e.target.value })} />
+                  </FormField>
+                  <FormField label="Provider">
+                    <ProviderSelect value={entryForm.provider} options={PROVIDER_OPTIONS} onChange={(v) => setEntryForm({ ...entryForm, provider: v })} placeholder="Select provider" />
+                  </FormField>
+                  <FormField label="User ID / Email">
+                    <Input placeholder="user@example.com" value={entryForm.email} onChange={(e) => setEntryForm({ ...entryForm, email: e.target.value })} />
+                  </FormField>
+                  <FormField label="Password">
+                    <PwInput value={entryForm.password} onChange={(v) => setEntryForm({ ...entryForm, password: v })} show={showEntryPw} onToggle={() => setShowEntryPw(!showEntryPw)} placeholder="Account password" />
+                  </FormField>
                 </div>
-
-                <div className="border-t pt-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold">Hosting</h3>
-                    <Button variant="outline" size="sm" onClick={addHosting}><Plus className="size-3 mr-1" />Add</Button>
-                  </div>
-                  {form.hosting.map((h, i) => (
-                    <div key={i} className="space-y-3 rounded-lg border p-4 relative">
-                      <button
-                        onClick={() => removeHosting(i)}
-                        className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="size-4" />
-                      </button>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium">Provider</label>
-                        <ProviderSelect
-                          value={h.provider}
-                          options={HOSTING_OPTIONS}
-                          onChange={(v) => updateHosting(i, "provider", v)}
-                          placeholder="Select hosting provider"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium">Password</label>
-                        <Input
-                          type="password"
-                          placeholder="Account password"
-                          value={h.password}
-                          onChange={(e) => updateHosting(i, "password", e.target.value)}
-                        />
-                      </div>
+                <div className="rounded-lg border border-emerald-200/50 dark:border-emerald-900/30 bg-emerald-500/[0.02] p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="size-5 rounded bg-emerald-500/10 flex items-center justify-center">
+                      <Server className="size-3 text-emerald-500" />
                     </div>
-                  ))}
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Hosting</span>
+                  </div>
+                  <FormField label="Provider">
+                    <ProviderSelect value={entryForm.hProvider} options={HOSTING_OPTIONS} onChange={(v) => setEntryForm({ ...entryForm, hProvider: v })} placeholder="Select hosting provider" />
+                  </FormField>
+                  <FormField label="User ID / Email">
+                    <Input placeholder="user@example.com" value={entryForm.hEmail} onChange={(e) => setEntryForm({ ...entryForm, hEmail: e.target.value })} />
+                  </FormField>
+                  <FormField label="Password">
+                    <PwInput value={entryForm.hPassword} onChange={(v) => setEntryForm({ ...entryForm, hPassword: v })} show={showEntryHPw} onToggle={() => setShowEntryHPw(!showEntryHPw)} placeholder="Account password" />
+                  </FormField>
                 </div>
               </>
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+          <DialogFooter className="gap-2 pt-2">
+            <Button variant="outline" onClick={() => setEntryOpen(false)} disabled={saving} className="flex-1">Cancel</Button>
+            <Button onClick={handleEntrySave} disabled={saving} className="flex-1">{saving ? "Saving..." : editingInfo ? "Update" : "Add"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function DataRow({ label, value, copy }) {
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <span className="text-[11px] font-medium text-muted-foreground w-8 shrink-0">{label}</span>
+      {value ? (
+        <div className="flex items-center gap-1 min-w-0 flex-1">
+          <span className="truncate">{value}</span>
+          {copy && <CopyButton text={copy} />}
+        </div>
+      ) : <span className="text-muted-foreground/50 text-xs">-</span>}
+    </div>
+  )
+}
+
+function PwRow({ label, pw, show, onToggle }) {
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <span className="text-[11px] font-medium text-muted-foreground w-8 shrink-0">{label}</span>
+      <span className="font-mono truncate text-[13px]">
+        {show ? pw : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
+      </span>
+      <button onClick={onToggle} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+        {show ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+      </button>
+      {typeof pw === "string" && <CopyButton text={pw} />}
+    </div>
+  )
+}
+
+function FormField({ label, children }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function PwInput({ value, onChange, show, onToggle, placeholder }) {
+  return (
+    <div className="relative">
+      <Input type={show ? "text" : "password"} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} className="pr-9" />
+      <button type="button" onClick={onToggle} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+        {show ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+      </button>
     </div>
   )
 }

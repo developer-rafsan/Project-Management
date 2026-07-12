@@ -54,8 +54,7 @@ export default function ProjectDetailPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [additionalPasswords, setAdditionalPasswords] = useState({})
-  const [domainPasswords, setDomainPasswords] = useState({})
-  const [hostingPasswords, setHostingPasswords] = useState({})
+  const [domainHostingPasswords, setDomainHostingPasswords] = useState({})
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
 
@@ -82,21 +81,16 @@ export default function ProjectDetailPage() {
         getProjectActivities(params.id),
         getProjectPassword(params.id).catch(() => ({ password: "" })),
         getAdditionalPasswords(params.id).catch(() => ({ passwords: [] })),
-        getDomainPassword(params.id).catch(() => ({ domainPasswords: [], hostingPasswords: [] })),
+        getDomainPassword(params.id).catch(() => ({ domainHostingPasswords: [] })),
       ])
       setProject(projectData)
       setActivities(activitiesData || [])
       setDecryptedPassword(passwordData.password || null)
-      const dpMap = {}
-      const hpMap = {}
-      for (const item of domainPwData.domainPasswords || []) {
-        dpMap[item.index] = item.password
+      const dhMap = {}
+      for (const item of domainPwData.domainHostingPasswords || []) {
+        dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
       }
-      for (const item of domainPwData.hostingPasswords || []) {
-        hpMap[item.index] = item.password
-      }
-      setDomainPasswords(dpMap)
-      setHostingPasswords(hpMap)
+      setDomainHostingPasswords(dhMap)
       const pwMap = {}
       for (const item of additionalPwData.passwords || []) {
         pwMap[item.index] = item.password
@@ -195,13 +189,10 @@ export default function ProjectDetailPage() {
   const handleDomainUpdate = useCallback(async (updated) => {
     setProject(updated)
     dispatch(updateProjectInStore(updated))
-    const pwData = await getDomainPassword(params.id).catch(() => ({ domainPasswords: [], hostingPasswords: [] }))
-    const dpMap = {}
-    const hpMap = {}
-    for (const item of pwData.domainPasswords || []) dpMap[item.index] = item.password
-    for (const item of pwData.hostingPasswords || []) hpMap[item.index] = item.password
-    setDomainPasswords(dpMap)
-    setHostingPasswords(hpMap)
+    const pwData = await getDomainPassword(params.id).catch(() => ({ domainHostingPasswords: [] }))
+    const dhMap = {}
+    for (const item of pwData.domainHostingPasswords || []) dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
+    setDomainHostingPasswords(dhMap)
     await refreshActivities()
   }, [refreshActivities, params.id])
 
@@ -324,8 +315,7 @@ export default function ProjectDetailPage() {
           />
           <ProjectDomainCard
             project={project}
-            domainPasswords={domainPasswords}
-            hostingPasswords={hostingPasswords}
+            domainHostingPasswords={domainHostingPasswords}
             onUpdate={handleDomainUpdate}
           />
           <ProjectLinksCard project={project} onUpdate={async (updated) => { setProject(updated); dispatch(updateProjectInStore(updated)); await refreshActivities() }} />

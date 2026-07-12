@@ -15,7 +15,7 @@ export async function GET(request, { params }) {
     await connectDB();
 
     const { id } = await params;
-    const project = await Project.findById(id).select('domains hosting domainPassword createdBy assignee').lean();
+    const project = await Project.findById(id).select('domainHosting createdBy assignee').lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -37,17 +37,13 @@ export async function GET(request, { params }) {
       return '';
     };
 
-    const domainPasswords = (project.domains || []).map((d, idx) => ({
+    const domainHostingPasswords = (project.domainHosting || []).map((e, idx) => ({
       index: idx,
-      password: decryptPw(d.password),
+      password: decryptPw(e.password),
+      hostingPassword: decryptPw(e.hostingPassword),
     }));
 
-    const hostingPasswords = (project.hosting || []).map((h, idx) => ({
-      index: idx,
-      password: decryptPw(h.password),
-    }));
-
-    return NextResponse.json({ domainPasswords, hostingPasswords });
+    return NextResponse.json({ domainHostingPasswords });
   } catch (error) {
     console.error('GET /api/projects/[id]/domain-password error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

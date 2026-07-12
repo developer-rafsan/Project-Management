@@ -91,8 +91,7 @@ export async function PATCH(request, { params }) {
       'assignee', 'startDate', 'tags', 'description', 'price',
       'progress', 'additionalWebsites', 'figmaLinks', 'referenceLinks',
       'currentMonth', 'currentYear', 'fiverrFeeEnabled',
-      'domainUrl', 'domainProvider',
-      'domainHostingLinked', 'domains', 'hosting',
+      'domainHosting',
     ];
 
     for (const field of fields) {
@@ -114,23 +113,21 @@ export async function PATCH(request, { params }) {
     }
 
     if (updates.additionalWebsites) {
-      updates.additionalWebsites = updates.additionalWebsites.map(ws => ({
-        ...ws,
-        password: ws.password ? encrypt(ws.password) : {},
-      }));
+      if (Array.isArray(updates.additionalWebsites) && updates.additionalWebsites.length === 0) {
+        updates.additionalWebsites = undefined;
+      } else {
+        updates.additionalWebsites = updates.additionalWebsites.map(ws => ({
+          ...ws,
+          password: ws.password && typeof ws.password === 'string' ? encrypt(ws.password) : (ws.password || {}),
+        }));
+      }
     }
 
-    if (updates.domains) {
-      updates.domains = updates.domains.map(d => ({
-        ...d,
-        password: d.password ? encrypt(d.password) : {},
-      }));
-    }
-
-    if (updates.hosting) {
-      updates.hosting = updates.hosting.map(h => ({
-        ...h,
-        password: h.password ? encrypt(h.password) : {},
+    if (updates.domainHosting) {
+      updates.domainHosting = updates.domainHosting.map(e => ({
+        ...e,
+        password: e.password && typeof e.password === 'string' ? encrypt(e.password) : (e.password || {}),
+        hostingPassword: e.hostingPassword && typeof e.hostingPassword === 'string' ? encrypt(e.hostingPassword) : (e.hostingPassword || {}),
       }));
     }
 
