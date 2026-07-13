@@ -18,14 +18,10 @@ import {
 } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import {
-  Eye,
-  EyeOff,
   Copy,
   RefreshCw,
   Loader2,
   Globe,
-  Lock,
-  User,
   Tag,
   DollarSign,
   FileText,
@@ -50,9 +46,6 @@ import { createProject, updateProject, getProjectPassword } from "@/actions/proj
 const schema = z.object({
   orderId: z.string().optional(),
   projectName: z.string().min(2, "Project name must be at least 2 characters"),
-  websiteUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  websiteUsername: z.string().optional(),
-  websitePassword: z.string().optional(),
   cms: z.string().min(1, "CMS is required"),
   customCms: z.string().optional(),
   priority: z.string().min(1, "Priority is required"),
@@ -62,6 +55,7 @@ const schema = z.object({
   tags: z.string().optional(),
   price: z.string().optional(),
   additionalWebsites: z.array(z.object({
+    name: z.string().optional(),
     url: z.string().optional(),
     username: z.string().optional(),
     password: z.string().optional(),
@@ -159,7 +153,7 @@ function ReviewSection({ title, icon: Icon, children }) {
 }
 
 const STEPS = [
-  { title: "Basic Info", description: "Project name, order ID, website", icon: Globe },
+  { title: "Basic Info", description: "Project name, order ID, websites", icon: Globe },
   { title: "Classification", description: "CMS, priority, status", icon: ListChecks },
   { title: "Details", description: "Date, pricing, tags, description", icon: FileText },
   { title: "Review", description: "Review all information", icon: Check },
@@ -169,7 +163,6 @@ const stepIcons = [Globe, ListChecks, FileText, Check]
 
 export default function ProjectForm({ initialData = null, onSuccess, onCancel }) {
   const [submitting, setSubmitting] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
   const [step, setStep] = useState(0)
   const [globalFiverrFee, setGlobalFiverrFee] = useState(true)
   const [fiverrFeeEnabled, setFiverrFeeEnabled] = useState(true)
@@ -190,6 +183,21 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
     }
   }, [isEditing, initialData?.fiverrFeeEnabled])
 
+  const getInitialWebsites = () => {
+    if (initialData?.additionalWebsites?.length > 0) {
+      return initialData.additionalWebsites;
+    }
+    if (initialData?.websiteUrl) {
+      return [{
+        name: 'Main Website',
+        url: initialData.websiteUrl || '',
+        username: initialData.websiteUsername || '',
+        password: typeof initialData?.websitePassword === "string" ? initialData.websitePassword : "",
+      }];
+    }
+    return [];
+  };
+
   const {
     register,
     handleSubmit,
@@ -203,9 +211,6 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
     defaultValues: {
       orderId: initialData?.orderId || "",
       projectName: initialData?.projectName || "",
-      websiteUrl: initialData?.websiteUrl || "",
-      websiteUsername: initialData?.websiteUsername || "",
-      websitePassword: typeof initialData?.websitePassword === "string" ? initialData.websitePassword : "",
       cms: initialData?.cms
         ? CMS_OPTIONS.includes(initialData.cms) ? initialData.cms : "Other"
         : "",
@@ -217,7 +222,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       tags: initialData?.tags?.join(", ") || "",
       price: initialData?.price ? String(initialData.price) : "",
 
-      additionalWebsites: initialData?.additionalWebsites || [],
+      additionalWebsites: getInitialWebsites(),
       figmaLinks: initialData?.figmaLinks || [],
       referenceLinks: initialData?.referenceLinks || [],
     },
@@ -228,7 +233,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   const { fields: refFields, append: appendRef, remove: removeRef } = useFieldArray({ control, name: "referenceLinks" })
 
   const stepFields = [
-    ['orderId', 'projectName', 'websiteUrl', 'websiteUsername', 'websitePassword'],
+    ['orderId', 'projectName'],
     ['cms', 'customCms', 'priority', 'status'],
     ['startDate', 'price', 'tags', 'description'],
     [],
@@ -252,7 +257,10 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       getProjectPassword(initialData._id)
         .then((res) => {
           if (res.password) {
-            setValue("websitePassword", res.password, { shouldValidate: false })
+            const current = watch("additionalWebsites");
+            if (current?.length > 0) {
+              setValue("additionalWebsites.0.password", res.password, { shouldValidate: false });
+            }
           }
         })
         .catch((err) => console.error("Failed to fetch password:", err))
@@ -260,22 +268,24 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   }, [isEditing, initialData?._id, setValue])
 
   const formValues = watch()
-  const websitePassword = watch("websitePassword")
 
   const copyPassword = useCallback(async () => {
-    if (!websitePassword) return
+    const pw = formValues.additionalWebsites?.[0]?.password
+    if (!pw) return
     try {
-      await navigator.clipboard.writeText(websitePassword)
+      await navigator.clipboard.writeText(pw)
       toast.success("Password copied to clipboard")
     } catch {
       toast.error("Failed to copy password")
     }
-  }, [websitePassword])
+  }, [formValues.additionalWebsites])
 
   const generatePassword = useCallback(() => {
     const pwd = generateStrongPassword()
-    setValue("websitePassword", pwd, { shouldValidate: true })
-  }, [setValue])
+    if (addSiteFields.length > 0) {
+      setValue("additionalWebsites.0.password", pwd, { shouldValidate: true })
+    }
+  }, [setValue, addSiteFields.length])
 
   const onSubmit = async (data, confirmDuplicate = false) => {
     setSubmitting(true)
@@ -288,9 +298,11 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         tags: data.tags
           ? data.tags.split(",").map((t) => t.trim()).filter(Boolean)
           : [],
-        websiteUrl: data.websiteUrl || undefined,
-        websiteUsername: data.websiteUsername || undefined,
-        websitePassword: data.websitePassword || undefined,
+        additionalWebsites: (data.additionalWebsites || []).map(site => ({
+          ...site,
+          name: site.name || '',
+          password: site.password || undefined,
+        })),
         assignee: isEditing ? (initialData?.assignee?._id || initialData?.assignee) : session?.user?.id,
         orderId: data.orderId || undefined,
         fiverrFeeEnabled,
@@ -431,89 +443,46 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3 sm:space-y-3.5">
-              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <Globe className="size-3.5 text-primary" />
-                Website Credentials
-              </div>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <Globe className="size-3" />
-                    Website URL
-                  </label>
-                  <Input {...register("websiteUrl")} placeholder="https://example.com" className="h-9 text-sm bg-background" />
-                  {errors.websiteUrl && (
-                    <p className="flex items-center gap-1 text-xs text-destructive">
-                      <AlertCircle className="size-3 shrink-0" /> {errors.websiteUrl.message}
-                    </p>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <User className="size-3" />
-                      Username
-                    </label>
-                    <Input {...register("websiteUsername")} placeholder="Username" className="h-9 text-sm bg-background" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <Lock className="size-3" />
-                      Password
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1 min-w-0">
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          {...register("websitePassword")}
-                          placeholder="Password"
-                          className="h-9 text-sm bg-background pr-12"
-                        />
-                        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 flex">
-                          <Button type="button" variant="ghost" size="icon-xs" onClick={() => setShowPassword(!showPassword)} tabIndex={-1} className="size-7">
-                            {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                          </Button>
-                          <Button type="button" variant="ghost" size="icon-xs" onClick={copyPassword} tabIndex={-1} className="size-7">
-                            <Copy className="size-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                      <Button type="button" variant="outline" size="icon" onClick={generatePassword} title="Generate strong password" className="shrink-0 size-9">
-                        <RefreshCw className="size-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Additional Websites */}
+            {/* Websites */}
             <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   <Globe className="size-3.5 text-primary" />
-                  Additional Websites
+                  Websites
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendSite({ url: "", username: "", password: "" })} className="gap-1 h-7 text-xs cursor-pointer">
+                <Button type="button" variant="outline" size="sm" onClick={() => appendSite({ name: "", url: "", username: "", password: "" })} className="gap-1 h-7 text-xs cursor-pointer">
                   <Plus className="size-3" /> Add
                 </Button>
               </div>
               {addSiteFields.length === 0 && (
-                <p className="text-xs text-muted-foreground/60">No additional websites</p>
+                <p className="text-xs text-muted-foreground/60">No websites added</p>
               )}
               {addSiteFields.map((field, idx) => (
                 <div key={field.id} className="rounded-lg border bg-card p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">Website #{idx + 1}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-muted-foreground">Site #{idx + 1}</span>
+                      {idx === 0 && (
+                        <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Primary</span>
+                      )}
+                    </div>
                     <Button type="button" variant="ghost" size="icon-xs" onClick={() => removeSite(idx)} className="text-destructive hover:text-destructive cursor-pointer">
                       <Trash2 className="size-3.5" />
                     </Button>
                   </div>
                   <div className="space-y-2">
+                    <Input {...register(`additionalWebsites.${idx}.name`)} placeholder="Site name (e.g., Main Website, Staging)" className="h-8 text-sm bg-background" />
                     <Input {...register(`additionalWebsites.${idx}.url`)} placeholder="https://example.com" className="h-8 text-sm bg-background" />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <Input {...register(`additionalWebsites.${idx}.username`)} placeholder="Username" className="h-8 text-sm bg-background" />
-                      <Input {...register(`additionalWebsites.${idx}.password`)} placeholder="Password" className="h-8 text-sm bg-background" />
+                      <div className="flex gap-1.5">
+                        <Input {...register(`additionalWebsites.${idx}.password`)} placeholder="Password" className="h-8 text-sm bg-background flex-1" />
+                        {idx === 0 && (
+                          <Button type="button" variant="outline" size="icon" onClick={generatePassword} title="Generate strong password" className="shrink-0 size-8">
+                            <RefreshCw className="size-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -805,9 +774,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                 <ReviewRow icon={Hash} label="Order ID" value={formValues.orderId || "Auto-generated"} />
                 <ReviewRow icon={Layout} label="Project Name" value={formValues.projectName} />
-                <ReviewRow icon={Globe} label="Website URL" value={formValues.websiteUrl || "—"} />
-                <ReviewRow icon={User} label="Username" value={formValues.websiteUsername || "—"} />
-                <ReviewRow icon={Lock} label="Password" value={formValues.websitePassword ? "••••••••" : "—"} />
+                <ReviewRow icon={Globe} label="Websites" value={formValues.additionalWebsites?.length ? `${formValues.additionalWebsites.length} site(s)` : "—"} />
               </div>
             </div>
             <div>
@@ -851,10 +818,8 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 Websites &amp; Links
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <ReviewRow icon={Globe} label="Primary URL" value={formValues.websiteUrl || "—"} />
                 <ReviewRow icon={Palette} label="Figma Links" value={formValues.figmaLinks?.length ? `${formValues.figmaLinks.length} link(s)` : "—"} />
                 <ReviewRow icon={Link} label="Reference Sites" value={formValues.referenceLinks?.length ? `${formValues.referenceLinks.length} link(s)` : "—"} />
-                <ReviewRow icon={Globe} label="Extra Sites" value={formValues.additionalWebsites?.length ? `${formValues.additionalWebsites.length} site(s)` : "—"} />
               </div>
             </div>
           </div>

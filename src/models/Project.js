@@ -71,6 +71,7 @@ const projectSchema = new mongoose.Schema(
       max: 100,
     },
     additionalWebsites: [{
+      name: { type: String, default: '' },
       url: { type: String, default: '' },
       username: { type: String, default: '' },
       password: { type: { iv: String, encryptedData: String }, default: {} },

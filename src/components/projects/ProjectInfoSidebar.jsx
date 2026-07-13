@@ -305,31 +305,52 @@ export function ProjectWebsiteCard({ project, passwordDisplay, showPassword, onT
   const [form, setForm] = useState({})
   const [saving, setSaving] = useState(false)
 
+  const allSites = project.additionalWebsites?.length > 0 ? project.additionalWebsites : [];
+  const fallbackUrl = project.websiteUrl || '';
+  const fallbackUsername = project.websiteUsername || '';
+  const hasWebsite = allSites.length > 0 || fallbackUrl || fallbackUsername || passwordDisplay;
+
+  const getVisibleSites = () => {
+    if (allSites.length > 0) {
+      return allSites.map((site, i) => ({
+        name: site.name || (i === 0 ? 'Main Website' : `Site #${i + 1}`),
+        url: site.url || '',
+        username: site.username || '',
+        password: additionalPasswords[i] || null,
+      }));
+    }
+    if (fallbackUrl || fallbackUsername || passwordDisplay) {
+      return [{
+        name: 'Main Website',
+        url: fallbackUrl,
+        username: fallbackUsername,
+        password: passwordDisplay || null,
+      }];
+    }
+    return [];
+  };
+
+  const visibleSites = getVisibleSites();
+
   const handleOpen = () => {
-    const hasSite = project.websiteUrl || project.websiteUsername || passwordDisplay
-    setForm({
-      websiteUrl: project.websiteUrl || "",
-      websiteUsername: project.websiteUsername || "",
-      websitePassword: passwordDisplay || "",
-      showMainWebsite: hasSite,
-      extraSites: project.additionalWebsites?.map((s, i) => ({ url: s.url || "", username: s.username || "", password: additionalPasswords[i] || "" })) || [],
-    })
+    const sites = allSites.length > 0
+      ? allSites.map((s) => ({ name: s.name || '', url: s.url || '', username: s.username || '', password: s.password || '' }))
+      : [{ name: 'Main Website', url: fallbackUrl, username: fallbackUsername, password: passwordDisplay || '' }];
+    setForm({ sites })
     setEditOpen(true)
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
+      const filteredSites = form.sites.filter((s) => s.url || s.name)
       const payload = {
-        websiteUrl: form.websiteUrl,
-        websiteUsername: form.websiteUsername,
+        additionalWebsites: filteredSites.map((s) => ({ name: s.name, url: s.url, username: s.username, password: s.password || undefined })),
       }
-      if (form.websitePassword || form.showMainWebsite === false) payload.websitePassword = form.websitePassword || ""
-      payload.additionalWebsites = form.extraSites.filter((s) => s.url).map((s) => ({ url: s.url, username: s.username, password: s.password || "" }))
       const updated = await updateProject(project._id, payload)
-      const extraPwMap = {}
-      form.extraSites.forEach((s, i) => { if (s.password) extraPwMap[i] = s.password })
-      onUpdate?.(updated, form.showMainWebsite === false ? "" : form.websitePassword || null, extraPwMap)
+      const pwMap = {}
+      filteredSites.forEach((s, i) => { if (s.password) pwMap[i] = s.password })
+      onUpdate?.(updated, filteredSites[0]?.password || null, pwMap)
       setEditOpen(false)
       toast.success("Website updated")
     } catch (err) {
@@ -339,104 +360,71 @@ export function ProjectWebsiteCard({ project, passwordDisplay, showPassword, onT
     }
   }
 
-  const hasWebsite = project.websiteUrl || project.websiteUsername || passwordDisplay || project.additionalWebsites?.length > 0
-
   const cardContent = hasWebsite ? (
     <div className="rounded-xl border bg-card p-5">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Website</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Websites</h2>
         <Button variant="ghost" size="icon-xs" onClick={handleOpen}>
           <Pencil className="size-3" />
         </Button>
       </div>
       <div className="divide-y divide-border/50">
-        <InfoRow icon={Globe} label="URL">
-          {project.websiteUrl ? (
-            <div className="flex items-center gap-1 min-w-0">
-              <a
-                href={project.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline truncate"
-              >
-                {project.websiteUrl}
-              </a>
-              <CopyButton text={project.websiteUrl} />
-              <a
-                href={project.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(buttonVariants({ variant: "ghost", size: "icon-xs" }))}
-              >
-                <ExternalLink className="size-3" />
-              </a>
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">-</span>
-          )}
-        </InfoRow>
-        <SectionDivider />
-        <InfoRow icon={User} label="Username">
-          {project.websiteUsername ? (
-            <div className="flex items-center gap-1">
-              <span className="text-sm">{project.websiteUsername}</span>
-              <CopyButton text={project.websiteUsername} />
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">-</span>
-          )}
-        </InfoRow>
-        <SectionDivider />
-        <InfoRow icon={Lock} label="Password">
-          {passwordDisplay ? (
-            <div className="flex items-center gap-1">
-              <span className="text-sm font-mono">
-                {showPassword ? passwordDisplay : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-              </span>
-              <Button variant="ghost" size="icon-xs" onClick={onTogglePassword}>
-                {showPassword ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-              </Button>
-              {typeof passwordDisplay === "string" && <CopyButton text={passwordDisplay} />}
-            </div>
-          ) : null}
-        </InfoRow>
-        {project.additionalWebsites?.length > 0 && (
-          <>
-            <SectionDivider />
-            <InfoRow icon={Plus} label="Extra Sites">
-              <div className="space-y-2 w-full">
-                {project.additionalWebsites.map((site, i) => (
-                  <div key={i} className="rounded-lg border bg-muted/30 p-2 sm:p-2.5 space-y-1.5">
-                    <div className="flex items-center gap-1 min-w-0">
-                      <Globe className="size-3 shrink-0 text-muted-foreground" />
-                      {site.url ? (
-                        <a href={site.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate flex-1 min-w-0">{site.url}</a>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                      {site.url && <CopyButton text={site.url} />}
-                      {site.url && (
-                        <a href={site.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground/50 hover:text-muted-foreground shrink-0">
-                          <ExternalLink className="size-3" />
-                        </a>
-                      )}
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
-                      {site.username && (
-                        <div className="flex items-center gap-1 min-w-0">
-                          <User className="size-3 shrink-0 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground truncate">{site.username}</span>
-                          <CopyButton text={site.username} />
-                        </div>
-                      )}
-                      <AdditionalPasswordItem password={additionalPasswords[i]} />
-                    </div>
-                  </div>
-                ))}
+        {visibleSites.map((site, idx) => (
+          <div key={idx}>
+            {idx > 0 && <SectionDivider />}
+            <div className="py-1">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Globe className="size-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground truncate">{site.name}</span>
               </div>
-            </InfoRow>
-          </>
-        )}
+              <div className="space-y-1.5 ml-5">
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-10 shrink-0">URL</span>
+                  {site.url ? (
+                    <div className="flex items-center gap-1 min-w-0 flex-1">
+                      <a href={site.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">{site.url}</a>
+                      <CopyButton text={site.url} />
+                      <a href={site.url} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "ghost", size: "icon-xs" }))}>
+                        <ExternalLink className="size-3" />
+                      </a>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-10 shrink-0">User</span>
+                  {site.username ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">{site.username}</span>
+                      <CopyButton text={site.username} />
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider w-10 shrink-0">Pass</span>
+                  {idx === 0 && passwordDisplay ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-mono">
+                        {showPassword ? passwordDisplay : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
+                      </span>
+                      <Button variant="ghost" size="icon-xs" onClick={onTogglePassword}>
+                        {showPassword ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                      </Button>
+                      {typeof passwordDisplay === "string" && <CopyButton text={passwordDisplay} />}
+                    </div>
+                  ) : idx > 0 && site.password ? (
+                    <AdditionalPasswordItem password={site.password} />
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   ) : (
@@ -446,8 +434,8 @@ export function ProjectWebsiteCard({ project, passwordDisplay, showPassword, onT
           <Globe className="size-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold">Website</h2>
-          <p className="text-xs text-muted-foreground">No website added yet</p>
+          <h2 className="text-sm font-semibold">Websites</h2>
+          <p className="text-xs text-muted-foreground">No websites added yet</p>
         </div>
         <Button variant="default" size="sm" onClick={handleOpen} className="gap-1.5 h-8 text-xs shrink-0 shadow-sm">
           <Plus className="size-3.5" /> Add Website
@@ -462,60 +450,33 @@ export function ProjectWebsiteCard({ project, passwordDisplay, showPassword, onT
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{hasWebsite ? "Edit Website" : "Add Website"}</DialogTitle>
-            <DialogDescription>{hasWebsite ? "Update website credentials &amp; extra sites" : "Add a main website and optional additional sites"}</DialogDescription>
+            <DialogTitle>{hasWebsite ? "Edit Websites" : "Add Websites"}</DialogTitle>
+            <DialogDescription>Manage all website credentials</DialogDescription>
           </DialogHeader>
-           <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Main Website</label>
-              {(form.websiteUrl || form.websiteUsername || form.websitePassword) && (
-                <Button variant="ghost" size="icon-xs" onClick={() => setForm({ ...form, websiteUrl: "", websiteUsername: "", websitePassword: "", showMainWebsite: false })} title="Remove main website">
-                  <X className="size-3" />
-                </Button>
-              )}
-              {!form.showMainWebsite && !form.websiteUrl && !form.websiteUsername && !form.websitePassword && (
-                <Button variant="ghost" size="icon-xs" onClick={() => setForm({ ...form, showMainWebsite: true })} title="Add main website">
-                  <Plus className="size-3" />
-                </Button>
-              )}
-            </div>
-            {(form.showMainWebsite || form.websiteUrl || form.websiteUsername || form.websitePassword) && (
-              <>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">URL</label>
-                  <Input value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })} className="h-9 text-sm bg-background" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Username</label>
-                  <Input value={form.websiteUsername} onChange={(e) => setForm({ ...form, websiteUsername: e.target.value })} className="h-9 text-sm bg-background" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Password</label>
-                  <Input value={form.websitePassword} onChange={(e) => setForm({ ...form, websitePassword: e.target.value })} placeholder="Current password" className="h-9 text-sm bg-background" />
-                </div>
-              </>
-            )}
-            <div className="pt-2 border-t">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Extra Sites</label>
-                <Button variant="ghost" size="icon-xs" onClick={() => setForm({ ...form, extraSites: [...form.extraSites, { url: "", username: "" }] })}>
-                  <Plus className="size-3" />
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {form.extraSites?.map((site, i) => (
-                  <div key={i} className="rounded-lg border bg-muted/30 p-2.5 space-y-1.5">
+          <div className="space-y-4 py-2">
+            <div className="space-y-3">
+              {form.sites?.map((site, i) => (
+                <div key={i} className="rounded-lg border bg-muted/30 p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <Input value={site.url} onChange={(e) => { const n = [...form.extraSites]; n[i] = { ...n[i], url: e.target.value }; setForm({ ...form, extraSites: n }) }} placeholder="URL" className="h-8 text-xs flex-1" />
-                      <Button variant="ghost" size="icon-xs" onClick={() => setForm({ ...form, extraSites: form.extraSites.filter((_, j) => j !== i) })}>
-                        <X className="size-3" />
-                      </Button>
+                      <span className="text-xs font-medium text-muted-foreground">Site #{i + 1}</span>
+                      {i === 0 && <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Primary</span>}
                     </div>
-                    <Input value={site.username} onChange={(e) => { const n = [...form.extraSites]; n[i] = { ...n[i], username: e.target.value }; setForm({ ...form, extraSites: n }) }} placeholder="Username (optional)" className="h-8 text-xs" />
-                    <Input value={site.password} onChange={(e) => { const n = [...form.extraSites]; n[i] = { ...n[i], password: e.target.value }; setForm({ ...form, extraSites: n }) }} placeholder="Password (optional)" className="h-8 text-xs" />
+                    <Button variant="ghost" size="icon-xs" onClick={() => setForm({ ...form, sites: form.sites.filter((_, j) => j !== i) })}>
+                      <X className="size-3" />
+                    </Button>
                   </div>
-                ))}
-              </div>
+                  <Input value={site.name} onChange={(e) => { const n = [...form.sites]; n[i] = { ...n[i], name: e.target.value }; setForm({ ...form, sites: n }) }} placeholder="Site name" className="h-8 text-xs" />
+                  <Input value={site.url} onChange={(e) => { const n = [...form.sites]; n[i] = { ...n[i], url: e.target.value }; setForm({ ...form, sites: n }) }} placeholder="URL" className="h-8 text-xs" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input value={site.username} onChange={(e) => { const n = [...form.sites]; n[i] = { ...n[i], username: e.target.value }; setForm({ ...form, sites: n }) }} placeholder="Username" className="h-8 text-xs" />
+                    <Input value={site.password} onChange={(e) => { const n = [...form.sites]; n[i] = { ...n[i], password: e.target.value }; setForm({ ...form, sites: n }) }} placeholder="Password" className="h-8 text-xs" />
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={() => setForm({ ...form, sites: [...(form.sites || []), { name: '', url: '', username: '', password: '' }] })} className="w-full gap-1 h-8 text-xs cursor-pointer">
+                <Plus className="size-3" /> Add Site
+              </Button>
             </div>
           </div>
           <DialogFooter>

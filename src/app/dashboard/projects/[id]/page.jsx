@@ -106,6 +106,7 @@ export default function ProjectDetailPage() {
       const newProject = await createProject({
         ...rest,
         projectName: `${project.projectName} (Copy)`,
+        additionalWebsites: rest.additionalWebsites || [],
       })
       toast.success("Project duplicated")
       router.push(`/dashboard/projects/${newProject._id}`)

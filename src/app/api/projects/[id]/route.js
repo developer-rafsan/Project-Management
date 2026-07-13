@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import { encrypt } from '@/lib/encryption';
+import { migrateProjectWebsiteFields } from '@/lib/migrateWebsiteFields';
 import User from '@/models/User';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
@@ -116,6 +117,8 @@ export async function PATCH(request, { params }) {
         password: ws.password ? encrypt(ws.password) : {},
       }));
     }
+
+    Object.assign(updates, migrateProjectWebsiteFields(updates, existingProject));
 
     const statusChanged = body.status && body.status !== existingProject.status;
 

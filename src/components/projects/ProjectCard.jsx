@@ -213,81 +213,91 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction, select
           </div>
         )}
 
-        {project.websiteUrl && (
+        {(project.additionalWebsites?.[0] || project.websiteUrl) && (
           <div className="rounded-lg border bg-card p-2.5 space-y-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="flex items-center justify-center size-6 rounded-md bg-primary/10 shrink-0">
-                <Globe className="size-3 text-primary" />
-              </div>
-              <a
-                href={project.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline truncate flex-1"
-              >
-                {project.websiteUrl}
-              </a>
-              <div className="flex items-center gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => handleCopy(project.websiteUrl, "url")}
-                  title="Copy URL"
-                  className="opacity-60 hover:opacity-100 transition-opacity"
-                >
-                  {copied === "url" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                </Button>
-                <a
-                  href={project.websiteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(buttonVariants({ variant: "ghost", size: "icon-xs" }), "opacity-60 hover:opacity-100 transition-opacity")}
-                >
-                  <ExternalLink className="size-3" />
-                </a>
-              </div>
-            </div>
-            {(project.additionalWebsites?.length > 0 || project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                {project.additionalWebsites?.length > 0 && <span>{project.additionalWebsites.length} extra</span>}
-                {project.figmaLinks?.length > 0 && <span>{project.figmaLinks.length} figma</span>}
-                {project.referenceLinks?.length > 0 && <span>{project.referenceLinks.length} ref</span>}
-              </div>
-            )}
-            <div className="flex items-center gap-2 flex-wrap">
-              {project.websiteUsername && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1">
-                  <User className="size-3 shrink-0" />
-                  <span className="truncate max-w-20">{project.websiteUsername}</span>
-                  <button onClick={() => handleCopy(project.websiteUsername, "username")} className="hover:text-foreground transition-colors shrink-0">
-                    {copied === "username" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                  </button>
-                </div>
-              )}
-              {password && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1">
-                  <Lock className="size-3 shrink-0" />
-                  <span className="font-mono truncate max-w-16">
-                    {showPwd ? password : "\u2022\u2022\u2022\u2022\u2022\u2022"}
-                  </span>
-                  <button onClick={() => setShowPwd(!showPwd)} className="hover:text-foreground transition-colors shrink-0" title={showPwd ? "Hide" : "Show"}>
-                    {showPwd ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-                  </button>
-                  <button onClick={() => handleCopy(password, "password")} className="hover:text-foreground transition-colors shrink-0" title="Copy Password">
-                    {copied === "password" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-                  </button>
-                </div>
-              )}
-              {!passwordChecked && !loadingPassword && (
-                <button onClick={fetchPassword} className="text-xs text-muted-foreground hover:text-primary bg-muted/50 rounded-md px-2 py-1 transition-colors">
-                  <Lock className="size-3 inline mr-1" />
-                  Show Password
-                </button>
-              )}
-              {loadingPassword && (
-                <div className="h-6 w-24 animate-pulse rounded-md bg-muted" />
-              )}
-            </div>
+            {(() => {
+              const mainSite = project.additionalWebsites?.[0];
+              const siteUrl = mainSite?.url || project.websiteUrl || '';
+              const siteUsername = mainSite?.username || project.websiteUsername || '';
+              const totalSites = project.additionalWebsites?.length || 0;
+              return (
+                <>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center justify-center size-6 rounded-md bg-primary/10 shrink-0">
+                      <Globe className="size-3 text-primary" />
+                    </div>
+                    <a
+                      href={siteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline truncate flex-1"
+                    >
+                      {siteUrl}
+                    </a>
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => handleCopy(siteUrl, "url")}
+                        title="Copy URL"
+                        className="opacity-60 hover:opacity-100 transition-opacity"
+                      >
+                        {copied === "url" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                      </Button>
+                      <a
+                        href={siteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(buttonVariants({ variant: "ghost", size: "icon-xs" }), "opacity-60 hover:opacity-100 transition-opacity")}
+                      >
+                        <ExternalLink className="size-3" />
+                      </a>
+                    </div>
+                  </div>
+                  {(totalSites > 1 || project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      {totalSites > 1 && <span>{totalSites - 1} extra</span>}
+                      {project.figmaLinks?.length > 0 && <span>{project.figmaLinks.length} figma</span>}
+                      {project.referenceLinks?.length > 0 && <span>{project.referenceLinks.length} ref</span>}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {siteUsername && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1">
+                        <User className="size-3 shrink-0" />
+                        <span className="truncate max-w-20">{siteUsername}</span>
+                        <button onClick={() => handleCopy(siteUsername, "username")} className="hover:text-foreground transition-colors shrink-0">
+                          {copied === "username" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                        </button>
+                      </div>
+                    )}
+                    {password && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1">
+                        <Lock className="size-3 shrink-0" />
+                        <span className="font-mono truncate max-w-16">
+                          {showPwd ? password : "\u2022\u2022\u2022\u2022\u2022\u2022"}
+                        </span>
+                        <button onClick={() => setShowPwd(!showPwd)} className="hover:text-foreground transition-colors shrink-0" title={showPwd ? "Hide" : "Show"}>
+                          {showPwd ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                        </button>
+                        <button onClick={() => handleCopy(password, "password")} className="hover:text-foreground transition-colors shrink-0" title="Copy Password">
+                          {copied === "password" ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+                        </button>
+                      </div>
+                    )}
+                    {!passwordChecked && !loadingPassword && (
+                      <button onClick={fetchPassword} className="text-xs text-muted-foreground hover:text-primary bg-muted/50 rounded-md px-2 py-1 transition-colors">
+                        <Lock className="size-3 inline mr-1" />
+                        Show Password
+                      </button>
+                    )}
+                    {loadingPassword && (
+                      <div className="h-6 w-24 animate-pulse rounded-md bg-muted" />
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
         <div className="pt-2">

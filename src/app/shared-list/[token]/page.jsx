@@ -155,7 +155,8 @@ export default function SharedListPage({ params: paramsPromise }) {
         (p) =>
           (p.projectName && p.projectName.toLowerCase().includes(q)) ||
           (p.orderId && p.orderId.toLowerCase().includes(q)) ||
-          (p.websiteUrl && p.websiteUrl.toLowerCase().includes(q))
+          (p.websiteUrl && p.websiteUrl.toLowerCase().includes(q)) ||
+          (p.additionalWebsites?.some(s => s.url && s.url.toLowerCase().includes(q)))
       )
     }
 

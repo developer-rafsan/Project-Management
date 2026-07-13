@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import { encrypt } from '@/lib/encryption';
+import { migrateProjectWebsiteFields } from '@/lib/migrateWebsiteFields';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
 
@@ -57,6 +58,7 @@ export async function GET(request) {
             { orderId: regex },
             { projectName: regex },
             { websiteUrl: regex },
+            { 'additionalWebsites.url': regex },
           ],
         },
       ];
@@ -159,7 +161,7 @@ export async function POST(request) {
     }
 
     const now = new Date();
-    const projectData = {
+    let projectData = {
       orderId: generatedOrderId,
       projectName,
       websiteUrl: websiteUrl || '',
@@ -185,6 +187,8 @@ export async function POST(request) {
       createdBy: session.user.id,
       fiverrFeeEnabled: fiverrFeeEnabled !== undefined ? fiverrFeeEnabled : true,
     };
+
+    projectData = migrateProjectWebsiteFields(projectData);
 
     const project = await Project.create(projectData);
 

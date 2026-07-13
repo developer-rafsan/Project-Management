@@ -111,6 +111,7 @@ export default function ProjectsPage() {
         const newProj = await createProject({
           ...rest,
           projectName: `${project.projectName} (Copy)`,
+          additionalWebsites: rest.additionalWebsites || [],
           websitePassword: pwRes.password || "",
         })
         dispatch(addProject(newProj))
@@ -165,7 +166,8 @@ export default function ProjectsPage() {
         (p) =>
           (p.orderId && p.orderId.toLowerCase().includes(q)) ||
           (p.projectName && p.projectName.toLowerCase().includes(q)) ||
-          (p.websiteUrl && p.websiteUrl.toLowerCase().includes(q))
+          (p.websiteUrl && p.websiteUrl.toLowerCase().includes(q)) ||
+          (p.additionalWebsites?.some(s => s.url && s.url.toLowerCase().includes(q)))
       )
     }
     if (filters.status) {

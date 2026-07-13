@@ -157,22 +157,35 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
     })
   }
 
+  const getMainSite = (project) => {
+    if (project.additionalWebsites?.length > 0) {
+      return project.additionalWebsites[0];
+    }
+    return null;
+  };
+
   const renderWebsite = (project) => {
+    const mainSite = getMainSite(project);
+    const siteUrl = mainSite?.url || project.websiteUrl || '';
+    const siteUsername = mainSite?.username || project.websiteUsername || '';
+    const sitePasswordObj = mainSite?.password || project.websitePassword;
+    const totalSites = project.additionalWebsites?.length || 0;
+
     const pw = pwData[project._id]
-    const hasPassword = project.websitePassword && (
-      project.websitePassword.iv || typeof project.websitePassword === "string"
+    const hasPassword = sitePasswordObj && (
+      sitePasswordObj.iv || typeof sitePasswordObj === "string"
     )
     return (
       <div className="flex flex-col gap-1 min-w-0">
         <div className="flex items-center gap-1">
           <Globe className="size-3 shrink-0 text-muted-foreground" />
-          {project.websiteUrl ? (
+          {siteUrl ? (
             <>
-              <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate cursor-pointer">{project.websiteUrl}</a>
-              <button onClick={(e) => { e.stopPropagation(); handleCopy(project._id, project.websiteUrl, "url") }} className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer">
+              <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate cursor-pointer">{siteUrl}</a>
+              <button onClick={(e) => { e.stopPropagation(); handleCopy(project._id, siteUrl, "url") }} className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer">
                 {copied[`${project._id}-url`] ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
               </button>
-              <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer">
+              <a href={siteUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer">
                 <ExternalLink className="size-3" />
               </a>
             </>
@@ -183,10 +196,10 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
 
         <div className="flex items-center gap-1">
           <User className="size-3 shrink-0 text-muted-foreground" />
-          {project.websiteUsername ? (
+          {siteUsername ? (
             <>
-              <span className="text-xs text-muted-foreground truncate">{project.websiteUsername}</span>
-              <button onClick={(e) => { e.stopPropagation(); handleCopy(project._id, project.websiteUsername, "username") }} className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer">
+              <span className="text-xs text-muted-foreground truncate">{siteUsername}</span>
+              <button onClick={(e) => { e.stopPropagation(); handleCopy(project._id, siteUsername, "username") }} className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer">
                 {copied[`${project._id}-username`] ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
               </button>
             </>
@@ -238,9 +251,9 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
             <span className="text-xs text-muted-foreground">-</span>
           )}
         </div>
-        {(project.additionalWebsites?.length > 0 || project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
+        {(totalSites > 1 || project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            {project.additionalWebsites?.length > 0 && <span>{project.additionalWebsites.length} extra</span>}
+            {totalSites > 1 && <span>{totalSites - 1} extra</span>}
             {project.figmaLinks?.length > 0 && <span>{project.figmaLinks.length} figma</span>}
             {project.referenceLinks?.length > 0 && <span>{project.referenceLinks.length} ref</span>}
           </div>

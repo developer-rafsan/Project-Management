@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectDB } from '@/lib/mongodb';
 import { decrypt, encrypt } from '@/lib/encryption';
+import { migrateProjectWebsiteFields } from '@/lib/migrateWebsiteFields';
 import Share, { cleanupExpiredShares } from '@/models/Share';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
@@ -62,9 +63,13 @@ export async function GET(request, { params }) {
       .lean();
 
     let decryptedPassword = null;
-    if (project.websitePassword?.iv && project.websitePassword?.encryptedData) {
+    let mainPw = project.websitePassword;
+    if (project.additionalWebsites?.length > 0 && project.additionalWebsites[0]?.password?.iv) {
+      mainPw = project.additionalWebsites[0].password;
+    }
+    if (mainPw?.iv && mainPw?.encryptedData) {
       try {
-        decryptedPassword = decrypt(project.websitePassword);
+        decryptedPassword = decrypt(mainPw);
       } catch {
         decryptedPassword = null;
       }
@@ -138,6 +143,8 @@ export async function PATCH(request, { params }) {
     if (body.websitePassword) {
       updates.websitePassword = encrypt(body.websitePassword);
     }
+
+    Object.assign(updates, migrateProjectWebsiteFields(updates, existingProject));
 
     const statusChanged = body.status && body.status !== existingProject.status;
     if (statusChanged) {

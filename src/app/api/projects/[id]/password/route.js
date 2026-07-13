@@ -15,7 +15,7 @@ export async function GET(request, { params }) {
     await connectDB();
 
     const { id } = await params;
-    const project = await Project.findById(id).select('websitePassword createdBy assignee').lean();
+    const project = await Project.findById(id).select('websitePassword additionalWebsites createdBy assignee').lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -28,7 +28,11 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const pw = project.websitePassword;
+    let pw = project.websitePassword;
+
+    if (project.additionalWebsites?.length > 0 && project.additionalWebsites[0]?.password?.iv) {
+      pw = project.additionalWebsites[0].password;
+    }
 
     if (!pw) {
       return NextResponse.json({ password: '' });
