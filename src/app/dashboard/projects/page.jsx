@@ -106,13 +106,12 @@ export default function ProjectsPage() {
       setEditProject(project)
     } else if (action === "duplicate") {
       try {
-        const { _id, createdAt, updatedAt, orderId, transferHistory, __v, websitePassword, ...rest } = project
+        const { _id, createdAt, updatedAt, orderId, transferMonth, __v, owner, ...rest } = project
         const pwRes = await getProjectPassword(project._id).catch(() => ({ password: "" }))
         const newProj = await createProject({
           ...rest,
           projectName: `${project.projectName} (Copy)`,
-          additionalWebsites: rest.additionalWebsites || [],
-          websitePassword: pwRes.password || "",
+          websites: rest.websites || [],
         })
         dispatch(addProject(newProj))
         toast.success("Project duplicated")
@@ -166,8 +165,7 @@ export default function ProjectsPage() {
         (p) =>
           (p.orderId && p.orderId.toLowerCase().includes(q)) ||
           (p.projectName && p.projectName.toLowerCase().includes(q)) ||
-          (p.websiteUrl && p.websiteUrl.toLowerCase().includes(q)) ||
-          (p.additionalWebsites?.some(s => s.url && s.url.toLowerCase().includes(q)))
+          (p.websites?.some(s => s.url && s.url.toLowerCase().includes(q)))
       )
     }
     if (filters.status) {

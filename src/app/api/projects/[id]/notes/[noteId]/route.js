@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
-import Note from '@/models/Note';
+import ProjectNote from '@/models/ProjectNote';
+import Activity from '@/models/Activity';
 
 export async function PATCH(request, { params }) {
   try {
@@ -20,7 +21,7 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    const note = await Note.findById(noteId);
+    const note = await ProjectNote.findById(noteId);
     if (!note) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
@@ -32,9 +33,16 @@ export async function PATCH(request, { params }) {
     note.content = body.content.trim();
     await note.save();
 
-    const populated = await Note.findById(note._id)
+    const populated = await ProjectNote.findById(note._id)
       .populate('createdBy', 'name image')
       .lean();
+
+    await Activity.create({
+      project: note.project,
+      type: 'note_updated',
+      performedBy: session.user.id,
+      description: `Updated a note on the project`,
+    });
 
     return NextResponse.json(populated);
   } catch (error) {
@@ -54,7 +62,7 @@ export async function DELETE(request, { params }) {
 
     const { noteId } = await params;
 
-    const note = await Note.findById(noteId);
+    const note = await ProjectNote.findById(noteId);
     if (!note) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
@@ -63,7 +71,14 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    await Note.findByIdAndDelete(noteId);
+    await Activity.create({
+      project: note.project,
+      type: 'note_deleted',
+      performedBy: session.user.id,
+      description: `Deleted a note from the project`,
+    });
+
+    await ProjectNote.findByIdAndDelete(noteId);
 
     return NextResponse.json({ message: 'Note deleted successfully' });
   } catch (error) {

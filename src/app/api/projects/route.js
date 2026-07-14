@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import { encrypt } from '@/lib/encryption';
-import { migrateProjectWebsiteFields } from '@/lib/migrateWebsiteFields';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
 
@@ -44,8 +43,9 @@ export async function GET(request) {
 
     const ownershipFilter = {
       $or: [
+        { owner: session.user.id },
         { createdBy: session.user.id },
-        { assignee: session.user.id },
+        { 'assignee.user': session.user.id },
       ],
     };
 
@@ -57,8 +57,7 @@ export async function GET(request) {
           $or: [
             { orderId: regex },
             { projectName: regex },
-            { websiteUrl: regex },
-            { 'additionalWebsites.url': regex },
+            { 'websites.url': regex },
           ],
         },
       ];
@@ -71,7 +70,7 @@ export async function GET(request) {
 
     const [projects, total] = await Promise.all([
       Project.find(filter)
-        .select('orderId projectName websiteUrl websiteUsername websitePassword status priority cms price progress additionalWebsites figmaLinks referenceLinks startDate createdAt currentMonth currentYear assignee tags createdBy fiverrFeeEnabled')
+        .select('orderId projectName status priority cms price progress websites figmaLinks referenceLinks startDate createdAt currentMonth currentYear assignee tags createdBy owner fiverrFeeEnabled')
         .sort(sort).skip(skip).limit(limit).lean(),
       Project.countDocuments(filter),
     ]);
@@ -104,9 +103,6 @@ export async function POST(request) {
     const {
       orderId,
       projectName,
-      websiteUrl,
-      websiteUsername,
-      websitePassword,
       cms,
       priority,
       status,
@@ -117,7 +113,7 @@ export async function POST(request) {
       description,
       price,
       progress,
-      additionalWebsites,
+      websites,
       figmaLinks,
       referenceLinks,
       currentMonth,
@@ -155,28 +151,20 @@ export async function POST(request) {
       }
     }
 
-    let encryptedPassword = {};
-    if (websitePassword) {
-      encryptedPassword = encrypt(websitePassword);
-    }
-
     const now = new Date();
     let projectData = {
       orderId: generatedOrderId,
       projectName,
-      websiteUrl: websiteUrl || '',
-      websiteUsername: websiteUsername || '',
-      websitePassword: encryptedPassword,
       cms: cms || 'Other',
       priority: priority || 'Medium',
       status: status || 'Pending',
-      assignee: assignee || session.user.id,
+      assignee: Array.isArray(assignee) ? assignee : [{ user: assignee || session.user.id, percentage: 100 }],
       startDate: startDate ? new Date(startDate) : new Date(),
       tags: tags || [],
       description: description || '',
       price: price ? Number(price) : 0,
       progress: progress !== undefined ? Number(progress) : 0,
-      additionalWebsites: (additionalWebsites || []).map(ws => ({
+      websites: (websites || []).map(ws => ({
         ...ws,
         password: ws.password ? encrypt(ws.password) : {},
       })),
@@ -185,10 +173,9 @@ export async function POST(request) {
       currentMonth: currentMonth || now.getMonth() + 1,
       currentYear: currentYear || now.getFullYear(),
       createdBy: session.user.id,
+      owner: session.user.id,
       fiverrFeeEnabled: fiverrFeeEnabled !== undefined ? fiverrFeeEnabled : true,
     };
-
-    projectData = migrateProjectWebsiteFields(projectData);
 
     const project = await Project.create(projectData);
 
@@ -212,7 +199,7 @@ export async function POST(request) {
       });
     }
 
-    const populated = await Project.findById(project._id).populate('assignee').lean();
+    const populated = await Project.findById(project._id).populate('assignee.user', '_id name email image').lean();
 
     return NextResponse.json(populated, { status: 201 });
   } catch (error) {

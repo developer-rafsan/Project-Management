@@ -43,7 +43,7 @@ export default function SharedTransferAssignee({ project, apiPath, open, onClose
       const res = await fetch(apiPath, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignee: selectedUserId }),
+        body: JSON.stringify({ assignee: [{ user: selectedUserId, percentage: 100 }] }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to transfer")

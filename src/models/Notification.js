@@ -4,7 +4,7 @@ const notificationSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ['assignee_transfer_request', 'assignee_transfer_accepted', 'assignee_transfer_rejected'],
+      enum: ['assignee_transfer_request', 'assignee_transfer_accepted', 'assignee_transfer_rejected', 'assignee_add_request', 'assignee_add_accepted', 'assignee_add_rejected', 'assignee_remove_request', 'assignee_remove_accepted', 'assignee_remove_rejected'],
       required: true,
     },
     from: {
@@ -39,8 +39,16 @@ const notificationSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    percentage: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
+if (mongoose.models.Notification) {
+  mongoose.deleteModel('Notification')
+}
+const Notification = mongoose.model('Notification', notificationSchema)
+export default Notification

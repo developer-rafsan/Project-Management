@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { useDispatch } from "react-redux"
 import { updateProjectInStore } from "@/lib/features/projectSlice"
 import { toast } from "sonner"
@@ -13,6 +14,7 @@ import {
   getProjectActivities,
   getProjectPassword,
   getAdditionalPasswords,
+  getDomainPassword,
 } from "@/actions/projectActions"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -42,6 +44,7 @@ import {
 } from "@/components/ui/dialog"
 
 export default function ProjectDetailPage() {
+  const { data: session } = useSession()
   const router = useRouter()
   const params = useParams()
   const dispatch = useDispatch()
@@ -52,6 +55,7 @@ export default function ProjectDetailPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [additionalPasswords, setAdditionalPasswords] = useState({})
+  const [domainHostingPasswords, setDomainHostingPasswords] = useState({})
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
 
@@ -73,15 +77,21 @@ export default function ProjectDetailPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [projectData, activitiesData, passwordData, additionalPwData] = await Promise.all([
+      const [projectData, activitiesData, passwordData, additionalPwData, domainPwData] = await Promise.all([
         getProject(params.id),
         getProjectActivities(params.id),
         getProjectPassword(params.id).catch(() => ({ password: "" })),
         getAdditionalPasswords(params.id).catch(() => ({ passwords: [] })),
+        getDomainPassword(params.id).catch(() => ({ domainHostingPasswords: [] })),
       ])
       setProject(projectData)
       setActivities(activitiesData || [])
       setDecryptedPassword(passwordData.password || null)
+      const dhMap = {}
+      for (const item of domainPwData.domainHostingPasswords || []) {
+        dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
+      }
+      setDomainHostingPasswords(dhMap)
       const pwMap = {}
       for (const item of additionalPwData.passwords || []) {
         pwMap[item.index] = item.password
@@ -94,6 +104,11 @@ export default function ProjectDetailPage() {
     }
   }, [params.id])
 
+  const refreshActivities = useCallback(async () => {
+    const fresh = await getProjectActivities(params.id)
+    setActivities(fresh || [])
+  }, [params.id])
+
   useEffect(() => {
     fetchData()
   }, [fetchData])
@@ -102,11 +117,11 @@ export default function ProjectDetailPage() {
     if (!project) return
     setActionLoading(true)
     try {
-      const { _id, createdAt, updatedAt, orderId, transferHistory, ...rest } = project
+      const { _id, createdAt, updatedAt, orderId, transferMonth, owner, ...rest } = project
       const newProject = await createProject({
         ...rest,
         projectName: `${project.projectName} (Copy)`,
-        additionalWebsites: rest.additionalWebsites || [],
+        websites: rest.websites || [],
       })
       toast.success("Project duplicated")
       router.push(`/dashboard/projects/${newProject._id}`)
@@ -136,8 +151,7 @@ export default function ProjectDetailPage() {
     setProject(updatedProject)
     dispatch(updateProjectInStore(updatedProject))
     setTransferOpen(false)
-    const freshActivities = await getProjectActivities(params.id)
-    setActivities(freshActivities || [])
+    await refreshActivities()
   }
 
   const handleStatusChange = async () => {
@@ -150,8 +164,7 @@ export default function ProjectDetailPage() {
       })
       setProject(updated)
       dispatch(updateProjectInStore(updated))
-      const freshActivities = await getProjectActivities(params.id)
-      setActivities(freshActivities || [])
+      await refreshActivities()
       setStatusOpen(false)
       setNewStatus("")
       setStatusNote("")
@@ -163,7 +176,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const handleWebsiteUpdate = useCallback((updated, newPassword, extraPwMap) => {
+  const handleWebsiteUpdate = useCallback(async (updated, newPassword, extraPwMap) => {
     setProject(updated)
     dispatch(updateProjectInStore(updated))
     if (newPassword !== undefined && newPassword !== null) {
@@ -172,7 +185,18 @@ export default function ProjectDetailPage() {
       else setShowPassword(false)
     }
     if (extraPwMap) setAdditionalPasswords(extraPwMap)
-  }, [])
+    await refreshActivities()
+  }, [refreshActivities])
+
+  const handleDomainUpdate = useCallback(async (updated) => {
+    setProject(updated)
+    dispatch(updateProjectInStore(updated))
+    const pwData = await getDomainPassword(params.id).catch(() => ({ domainHostingPasswords: [] }))
+    const dhMap = {}
+    for (const item of pwData.domainHostingPasswords || []) dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
+    setDomainHostingPasswords(dhMap)
+    await refreshActivities()
+  }, [refreshActivities, params.id])
 
   const handleTogglePassword = useCallback(async () => {
     if (showPassword) {
@@ -282,7 +306,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className="space-y-4 sm:space-y-6">
-          <ProjectDetailsCard project={project} onUpdate={(updated) => { setProject(updated); dispatch(updateProjectInStore(updated)) }} />
+          <ProjectDetailsCard project={project} onUpdate={async (updated) => { setProject(updated); dispatch(updateProjectInStore(updated)); await refreshActivities() }} />
           <ProjectWebsiteCard
             project={project}
             passwordDisplay={passwordDisplay}
@@ -291,8 +315,14 @@ export default function ProjectDetailPage() {
             additionalPasswords={additionalPasswords}
             onUpdate={handleWebsiteUpdate}
           />
-          <ProjectLinksCard project={project} onUpdate={(updated) => { setProject(updated); dispatch(updateProjectInStore(updated)) }} />
-          <ProjectMetaCard project={project} onUpdate={(updated) => { setProject(updated); dispatch(updateProjectInStore(updated)) }} />
+          <ProjectDomainCard
+            project={project}
+            domainHostingPasswords={domainHostingPasswords}
+            onUpdate={handleDomainUpdate}
+          />
+          <ProjectLinksCard project={project} onUpdate={async (updated) => { setProject(updated); dispatch(updateProjectInStore(updated)); await refreshActivities() }} />
+          <ProjectContributorsCard project={project} sessionUserId={session?.user?.id} onUpdate={async (updated) => { setProject(updated); dispatch(updateProjectInStore(updated)); await refreshActivities() }} />
+          <ProjectMetaCard project={project} sessionUserId={session?.user?.id} onUpdate={async (updated) => { setProject(updated); dispatch(updateProjectInStore(updated)); await refreshActivities() }} />
           <ProjectTagsCard tags={project.tags} />
         </div>
       </div>
@@ -339,8 +369,12 @@ export default function ProjectDetailPage() {
         project={project}
         open={transferAssigneeOpen}
         onClose={() => setTransferAssigneeOpen(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           setTransferAssigneeOpen(false)
+          await refreshActivities()
+          const fresh = await getProject(params.id)
+          setProject(fresh)
+          dispatch(updateProjectInStore(fresh))
         }}
       />
 

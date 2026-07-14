@@ -34,17 +34,38 @@ export async function PATCH(request, { params }) {
       notification.read = true;
 
       if (project) {
-        project.assignee = session.user.id;
-        project.createdBy = session.user.id;
-        if (!project.personTransferHistory) {
-          project.personTransferHistory = [];
+        if (notification.type === 'assignee_add_request') {
+          const pct = notification.percentage || 0;
+          const existing = project.assignee || [];
+          const alreadyAssigned = existing.some(
+            a => (a.user?.toString ? a.user.toString() : a.user) === session.user.id
+          );
+          if (!alreadyAssigned) {
+            project.assignee = [...existing, { user: session.user.id, percentage: pct }];
+          }
+        } else if (notification.type === 'assignee_remove_request') {
+          project.assignee = (project.assignee || []).filter(
+            a => (a.user?.toString ? a.user.toString() : a.user) !== session.user.id
+          );
+        } else {
+          project.assignee = [{ user: session.user.id, percentage: 100 }];
+          project.createdBy = session.user.id;
+          if (!project.personTransfer) {
+            project.personTransfer = [];
+          }
+          project.personTransfer.push({
+            from: notification.from,
+            to: session.user.id,
+            transferDate: new Date(),
+          });
         }
-        project.personTransferHistory.push({
-          from: notification.from,
-          to: session.user.id,
-          transferDate: new Date(),
-        });
         await project.save();
+
+        const desc = notification.type === 'assignee_add_request'
+          ? `Added as assignee with ${notification.percentage || 0}% share`
+          : notification.type === 'assignee_remove_request'
+            ? `Removed from assignees`
+            : `Transferred to ${session.user.name || 'new assignee'}`;
 
         await Activity.create({
           project: notification.project,
@@ -52,19 +73,31 @@ export async function PATCH(request, { params }) {
           performedBy: notification.from,
           fromUser: notification.from,
           toUser: session.user.id,
-          description: `Transferred to ${session.user.name || 'new assignee'}`,
+          description: desc,
         });
       }
 
+      const responseType = notification.type === 'assignee_add_request' ? 'assignee_add_accepted'
+        : notification.type === 'assignee_remove_request' ? 'assignee_remove_accepted'
+        : 'assignee_transfer_accepted';
+      const responseTitle = notification.type === 'assignee_add_request' ? 'Assignee Request Accepted'
+        : notification.type === 'assignee_remove_request' ? 'Remove Request Accepted'
+        : 'Transfer Accepted';
+      const responseMsg = notification.type === 'assignee_add_request'
+        ? `has accepted the assignee request for "${project?.projectName || 'project'}"`
+        : notification.type === 'assignee_remove_request'
+          ? `has accepted removal from "${project?.projectName || 'project'}"`
+          : `has accepted the transfer of "${project?.projectName || 'project'}"`;
+
       await Notification.create({
-        type: 'assignee_transfer_accepted',
-        title: 'Transfer Accepted',
+        type: responseType,
+        title: responseTitle,
         from: session.user.id,
         to: notification.from,
         project: notification.project,
         status: 'accepted',
         read: false,
-        message: `has accepted the transfer of "${project?.projectName || 'project'}"`,
+        message: responseMsg,
       });
 
       await notification.save();
@@ -82,15 +115,27 @@ export async function PATCH(request, { params }) {
       notification.read = true;
       await notification.save();
 
+      const responseType = notification.type === 'assignee_add_request' ? 'assignee_add_rejected'
+        : notification.type === 'assignee_remove_request' ? 'assignee_remove_rejected'
+        : 'assignee_transfer_rejected';
+      const responseTitle = notification.type === 'assignee_add_request' ? 'Assignee Request Rejected'
+        : notification.type === 'assignee_remove_request' ? 'Remove Request Rejected'
+        : 'Transfer Rejected';
+      const responseMsg = notification.type === 'assignee_add_request'
+        ? `has rejected the assignee request for "${project?.projectName || 'project'}"`
+        : notification.type === 'assignee_remove_request'
+          ? `has rejected removal from "${project?.projectName || 'project'}"`
+          : `has rejected the transfer of "${project?.projectName || 'project'}"`;
+
       await Notification.create({
-        type: 'assignee_transfer_rejected',
-        title: 'Transfer Rejected',
+        type: responseType,
+        title: responseTitle,
         from: session.user.id,
         to: notification.from,
         project: notification.project,
         status: 'rejected',
         read: false,
-        message: `has rejected the transfer of "${project?.projectName || 'project'}"`,
+        message: responseMsg,
       });
 
       const updated = await Notification.findById(id)
@@ -110,6 +155,33 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
   } catch (error) {
     console.error('PATCH /api/notifications/[id] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const { id } = await params;
+    const notification = await Notification.findById(id);
+    if (!notification) {
+      return NextResponse.json({ error: 'Notification not found' }, { status: 404 });
+    }
+
+    if (notification.from.toString() !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await Notification.findByIdAndDelete(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /api/notifications/[id] error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

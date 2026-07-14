@@ -15,7 +15,7 @@ export async function GET(request, { params }) {
     await connectDB();
 
     const { id } = await params;
-    const project = await Project.findById(id).select('websites createdBy assignee owner').lean();
+    const project = await Project.findById(id).select('domainHosting createdBy assignee owner').lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -29,26 +29,24 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const passwords = (project.websites || []).map((site, idx) => {
-      const pw = site.password;
-      if (!pw || typeof pw !== 'object') return { index: idx, password: '' };
-
-      if (typeof pw === 'string') return { index: idx, password: pw };
-
+    const decryptPw = (pw) => {
+      if (!pw || typeof pw !== 'object') return '';
+      if (typeof pw === 'string') return pw;
       if (pw?.iv && pw?.encryptedData) {
-        try {
-          return { index: idx, password: decrypt(pw) };
-        } catch {
-          return { index: idx, password: '' };
-        }
+        try { return decrypt(pw); } catch { return ''; }
       }
+      return '';
+    };
 
-      return { index: idx, password: '' };
-    });
+    const domainHostingPasswords = (project.domainHosting || []).map((e, idx) => ({
+      index: idx,
+      password: decryptPw(e.password),
+      hostingPassword: decryptPw(e.hostingPassword),
+    }));
 
-    return NextResponse.json({ passwords });
+    return NextResponse.json({ domainHostingPasswords });
   } catch (error) {
-    console.error('GET /api/projects/[id]/additional-passwords error:', error);
+    console.error('GET /api/projects/[id]/domain-password error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

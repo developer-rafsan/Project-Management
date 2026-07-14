@@ -27,6 +27,24 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    accountType: {
+      type: String,
+      enum: ['single', 'organization'],
+    },
+    phone: { type: String },
+    address: { type: String },
+    profession: { type: String },
+    organizationName: { type: String },
+    organizationEmail: { type: String },
+    organizationPhone: { type: String },
+    organizationAddress: { type: String },
+    organizationWebsite: { type: String },
+    organizationLogo: { type: String },
+    organizationRole: { type: String },
+    setupComplete: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

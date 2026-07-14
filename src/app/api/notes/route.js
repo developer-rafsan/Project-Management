@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
-import SimpleNote from '@/models/SimpleNote';
+import Note from '@/models/Note';
 
 export async function GET() {
   try {
@@ -13,7 +13,7 @@ export async function GET() {
 
     await connectDB();
 
-    const notes = await SimpleNote.find({ createdBy: session.user.id })
+    const notes = await Note.find({ createdBy: session.user.id })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -39,7 +39,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    const note = await SimpleNote.create({
+    const note = await Note.create({
       title: title || '',
       content,
       createdBy: session.user.id,

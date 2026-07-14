@@ -155,8 +155,7 @@ export default function SharedListPage({ params: paramsPromise }) {
         (p) =>
           (p.projectName && p.projectName.toLowerCase().includes(q)) ||
           (p.orderId && p.orderId.toLowerCase().includes(q)) ||
-          (p.websiteUrl && p.websiteUrl.toLowerCase().includes(q)) ||
-          (p.additionalWebsites?.some(s => s.url && s.url.toLowerCase().includes(q)))
+          (p.websites?.some(s => s.url && s.url.toLowerCase().includes(q)))
       )
     }
 
@@ -353,9 +352,9 @@ export default function SharedListPage({ params: paramsPromise }) {
                             <Globe className="size-3" /> {project.cms}
                           </span>
                         )}
-                        {project.assignee?.name && (
+                        {project.assignee?.[0]?.user?.name && (
                           <span className="flex items-center gap-1">
-                            <User className="size-3" /> {project.assignee.name}
+                            <User className="size-3" /> {project.assignee[0].user.name}
                           </span>
                         )}
                         <span>{formatDate(project.startDate)}</span>

@@ -21,7 +21,7 @@ export default function RevenueSummary({ data, highlight, showFiverrFee = true }
   })
 
   return (
-    <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${showFiverrFee ? "xl:grid-cols-6" : "xl:grid-cols-5"}`}>
+    <div className={`grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 ${showFiverrFee ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
       {visibleCards.map((item) => {
         const Icon = item.icon
         const val = data[item.key] ?? 0
@@ -29,21 +29,22 @@ export default function RevenueSummary({ data, highlight, showFiverrFee = true }
         return (
           <Card
             key={item.key}
-            className={
+            size="sm"
+            className={`max-h-[100px] py-0 transition-all duration-200 hover:shadow-md hover:shadow-black/5 hover:-translate-y-0.5 ${
               isHighlighted
-                ? "ring-2 ring-green-500 ring-offset-2 ring-offset-background scale-[1.02] transition-all duration-300"
-                : undefined
-            }
+                ? "ring-2 ring-green-500 ring-offset-2 ring-offset-background"
+                : ""
+            }`}
           >
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.bg}`}>
-                <Icon className={`h-5 w-5 ${item.color}`} />
+            <CardContent className="flex items-center gap-2 p-2 sm:gap-3 sm:p-4">
+              <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl sm:h-9 sm:w-9 ${item.bg} ring-1 ring-inset ring-black/5`}>
+                <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${item.color}`} />
               </div>
-              <div className="min-w-0">
-                <p className={`text-lg font-bold tabular-nums ${isHighlighted ? "text-green-500" : ""}`}>
+              <div className="text-left min-w-0">
+                <p className={`text-base font-bold tabular-nums sm:text-lg ${isHighlighted ? "text-green-500" : ""}`}>
                   ${val.toFixed(2)}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">{item.label}</p>
+                <p className="text-[10px] font-semibold text-foreground/80 truncate sm:text-[11px]">{item.label}</p>
               </div>
             </CardContent>
           </Card>

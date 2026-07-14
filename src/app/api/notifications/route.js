@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 import Notification from '@/models/Notification';
 import Project from '@/models/Project';
 
-export async function GET() {
+export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -14,8 +14,23 @@ export async function GET() {
 
     await connectDB();
 
-    const notifications = await Notification.find({ to: session.user.id })
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get('project');
+    const type = searchParams.get('type');
+    const sent = searchParams.get('sent');
+
+    let filter = {};
+    if (sent) {
+      filter = { from: session.user.id, ...(type ? { type } : {}), ...(projectId ? { project: projectId } : {}) };
+    } else if (projectId) {
+      filter = { project: projectId, from: session.user.id, ...(type ? { type } : {}) };
+    } else {
+      filter = { to: session.user.id };
+    }
+
+    const notifications = await Notification.find(filter)
       .populate('from', '_id name email image')
+      .populate('to', '_id name email image')
       .populate('project', '_id orderId projectName')
       .sort({ createdAt: -1 })
       .lean();
@@ -37,10 +52,15 @@ export async function POST(request) {
     await connectDB();
 
     const body = await request.json();
-    const { to: toUserId, project: projectId, message } = body;
+    const { to: toUserId, project: projectId, message, type, percentage } = body;
 
     if (!toUserId || !projectId) {
       return NextResponse.json({ error: 'Missing required fields: to, project' }, { status: 400 });
+    }
+
+    const notifType = type || 'assignee_transfer_request';
+    if (!['assignee_transfer_request', 'assignee_add_request', 'assignee_remove_request'].includes(notifType)) {
+      return NextResponse.json({ error: 'Invalid notification type' }, { status: 400 });
     }
 
     const project = await Project.findById(projectId);
@@ -50,22 +70,32 @@ export async function POST(request) {
 
     if (
       project.createdBy?.toString() !== session.user.id &&
-      project.assignee?.toString() !== session.user.id
+      !project.assignee?.some(a => a.user?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const notification = await Notification.create({
-      type: 'assignee_transfer_request',
-      title: 'Transfer Request',
+    const notificationData = {
+      type: notifType,
+      title: notifType === 'assignee_add_request' ? 'Assignee Request' : notifType === 'assignee_remove_request' ? 'Remove Request' : 'Transfer Request',
       from: session.user.id,
       to: toUserId,
       project: projectId,
       message: message || '',
-    });
+    };
+
+    if (notifType === 'assignee_add_request' && percentage != null) {
+      if (percentage < 0 || percentage > 100) {
+        return NextResponse.json({ error: 'Percentage must be between 0 and 100' }, { status: 400 });
+      }
+      notificationData.percentage = percentage;
+    }
+
+    const notification = await Notification.create(notificationData);
 
     const populated = await Notification.findById(notification._id)
       .populate('from', '_id name email image')
+      .populate('to', '_id name email image')
       .populate('project', '_id orderId projectName')
       .lean();
 

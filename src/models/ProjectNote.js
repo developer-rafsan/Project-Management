@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
 
-const simpleNoteSchema = new mongoose.Schema(
+const projectNoteSchema = new mongoose.Schema(
   {
-    title: {
-      type: String,
-      default: '',
+    project: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Project',
+      required: true,
     },
     content: {
       type: String,
@@ -19,4 +20,4 @@ const simpleNoteSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.SimpleNote || mongoose.model('SimpleNote', simpleNoteSchema);
+export default mongoose.models.ProjectNote || mongoose.model('ProjectNote', projectNoteSchema);

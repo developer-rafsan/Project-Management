@@ -9,9 +9,10 @@ import {
   Trash2,
   CalendarArrowUp,
   ArrowLeftRight,
-  Circle,
   UserRoundPlus,
+  UserRoundCog,
   Link as LinkIcon,
+  Circle,
 } from "lucide-react"
 
 const statusVariants = {
@@ -85,6 +86,7 @@ export function ProjectActions({
   onDuplicate,
   onTransfer,
   onTransferAssignee,
+  onTransferOwnership,
   onDelete,
   onShare,
 }) {
@@ -109,6 +111,10 @@ export function ProjectActions({
       <Button variant="outline" size="sm" onClick={onTransferAssignee}>
         <UserRoundPlus className="size-3.5" />
         Transfer to
+      </Button>
+      <Button variant="outline" size="sm" onClick={onTransferOwnership}>
+        <UserRoundCog className="size-3.5" />
+        Owner
       </Button>
       <Button variant="destructive" size="sm" onClick={onDelete}>
         <Trash2 className="size-3.5" />

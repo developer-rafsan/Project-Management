@@ -3,11 +3,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectDB } from '@/lib/mongodb';
 import { decrypt, encrypt } from '@/lib/encryption';
-import { migrateProjectWebsiteFields } from '@/lib/migrateWebsiteFields';
 import Share, { cleanupExpiredShares } from '@/models/Share';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
-import Note from '@/models/Note';
+import ProjectNote from '@/models/ProjectNote';
 import User from '@/models/User';
 
 async function validateShare(token) {
@@ -41,7 +40,8 @@ export async function GET(request, { params }) {
     }
 
     const project = await Project.findById(share.project)
-      .populate('assignee', 'name image')
+      .populate('assignee.user', '_id name email image')
+      .populate('owner', '_id name email image')
       .lean();
 
     if (!project) {
@@ -57,19 +57,15 @@ export async function GET(request, { params }) {
       .sort({ createdAt: -1 })
       .lean();
 
-    const notes = await Note.find({ project: share.project })
+    const notes = await ProjectNote.find({ project: share.project })
       .populate('createdBy', 'name image')
       .sort({ createdAt: -1 })
       .lean();
 
     let decryptedPassword = null;
-    let mainPw = project.websitePassword;
-    if (project.additionalWebsites?.length > 0 && project.additionalWebsites[0]?.password?.iv) {
-      mainPw = project.additionalWebsites[0].password;
-    }
-    if (mainPw?.iv && mainPw?.encryptedData) {
+    if (project.websites?.length > 0 && project.websites[0]?.password?.iv) {
       try {
-        decryptedPassword = decrypt(mainPw);
+        decryptedPassword = decrypt(project.websites[0].password);
       } catch {
         decryptedPassword = null;
       }
@@ -77,7 +73,6 @@ export async function GET(request, { params }) {
 
     const safeProject = {
       ...project,
-      websitePassword: undefined,
       decryptedPassword,
       createdBy: createdBy || null,
     };
@@ -122,10 +117,10 @@ export async function PATCH(request, { params }) {
 
     const updates = {};
     const fields = [
-      'orderId', 'projectName', 'websiteUrl',
-      'websiteUsername', 'cms', 'priority', 'status',
+      'orderId', 'projectName', 'cms', 'priority', 'status',
       'startDate', 'tags', 'description', 'price',
       'currentMonth', 'currentYear', 'assignee',
+      'websites', 'domainHosting',
     ];
 
     for (const field of fields) {
@@ -140,11 +135,24 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    if (body.websitePassword) {
-      updates.websitePassword = encrypt(body.websitePassword);
+    if (updates.websites) {
+      if (Array.isArray(updates.websites) && updates.websites.length === 0) {
+        updates.websites = undefined;
+      } else {
+        updates.websites = updates.websites.map(ws => ({
+          ...ws,
+          password: ws.password && typeof ws.password === 'string' ? encrypt(ws.password) : (ws.password || {}),
+        }));
+      }
     }
 
-    Object.assign(updates, migrateProjectWebsiteFields(updates, existingProject));
+    if (updates.domainHosting) {
+      updates.domainHosting = updates.domainHosting.map(e => ({
+        ...e,
+        password: e.password && typeof e.password === 'string' ? encrypt(e.password) : (e.password || {}),
+        hostingPassword: e.hostingPassword && typeof e.hostingPassword === 'string' ? encrypt(e.hostingPassword) : (e.hostingPassword || {}),
+      }));
+    }
 
     const statusChanged = body.status && body.status !== existingProject.status;
     if (statusChanged) {
@@ -201,18 +209,117 @@ export async function PATCH(request, { params }) {
     });
 
     if (hasGeneralChanges) {
+      const changedLabels = generalFieldKeys
+        .filter(key => {
+          if (body[key] === undefined) return false;
+          const existing = existingProject[key];
+          const incoming = body[key];
+          if (key === 'startDate') return new Date(incoming).getTime() !== new Date(existing).getTime();
+          if (key === 'price') return Number(incoming) !== Number(existing);
+          if (key === 'tags') {
+            const a = (Array.isArray(incoming) ? incoming : []).sort().join(',');
+            const b = (Array.isArray(existing) ? existing : []).sort().join(',');
+            return a !== b;
+          }
+          return String(incoming ?? '') !== String(existing != null ? existing : '');
+        })
+        .map(k => ({
+          orderId: 'Order ID', projectName: 'Name',
+          cms: 'CMS', priority: 'Priority', startDate: 'Start Date', tags: 'Tags',
+          description: 'Description', price: 'Price', progress: 'Progress',
+          websites: 'Websites', figmaLinks: 'Figma Links', referenceLinks: 'Reference Links',
+          fiverrFeeEnabled: 'Fiverr Fee',
+        }[k] || k));
+
       await Activity.create({
         project: projectId,
         type: 'project_updated',
         performedBy: share.createdBy,
-        description: 'Project details updated via shared link',
+        description: changedLabels.length > 0 ? `Updated: ${changedLabels.join(', ')}` : 'Project details updated via shared link',
+      });
+    }
+
+    if (body.progress !== undefined && Number(body.progress) !== Number(existingProject.progress)) {
+      await Activity.create({
+        project: projectId,
+        type: 'progress_updated',
+        performedBy: share.createdBy,
+        previousStatus: String(existingProject.progress),
+        newStatus: String(body.progress),
+        description: `Progress updated: ${existingProject.progress}% → ${body.progress}%`,
+      });
+    }
+
+    if (body.price !== undefined && Number(body.price) !== Number(existingProject.price)) {
+      await Activity.create({
+        project: projectId,
+        type: 'price_updated',
+        performedBy: share.createdBy,
+        description: `Price updated: $${Number(existingProject.price).toFixed(2)} → $${Number(body.price).toFixed(2)}`,
+      });
+    }
+
+    if (body.websites !== undefined) {
+      const oldLen = existingProject.websites?.length || 0;
+      const newLen = body.websites?.length || 0;
+      if (newLen > oldLen) {
+        await Activity.create({
+          project: projectId, type: 'website_added', performedBy: share.createdBy,
+          description: `Added a new website`,
+        });
+      } else if (newLen < oldLen) {
+        await Activity.create({
+          project: projectId, type: 'website_removed', performedBy: share.createdBy,
+          description: `Removed a website`,
+        });
+      } else if (newLen === oldLen && newLen > 0) {
+        await Activity.create({
+          project: projectId, type: 'website_updated', performedBy: share.createdBy,
+          description: `Updated website details`,
+        });
+      }
+    }
+
+    if (body.domainHosting !== undefined) {
+      const oldLen = existingProject.domainHosting?.length || 0;
+      const newLen = body.domainHosting?.length || 0;
+      if (newLen > oldLen) {
+        await Activity.create({
+          project: projectId, type: 'domain_added', performedBy: share.createdBy,
+          description: `Added a new domain/hosting entry`,
+        });
+      } else if (newLen < oldLen) {
+        await Activity.create({
+          project: projectId, type: 'domain_removed', performedBy: share.createdBy,
+          description: `Removed a domain/hosting entry`,
+        });
+      } else if (newLen === oldLen && newLen > 0) {
+        await Activity.create({
+          project: projectId, type: 'domain_updated', performedBy: share.createdBy,
+          description: `Updated domain/hosting details`,
+        });
+      }
+    }
+
+    if (body.figmaLinks !== undefined || body.referenceLinks !== undefined) {
+      await Activity.create({
+        project: projectId, type: 'link_updated', performedBy: share.createdBy,
+        description: `Updated project links`,
+      });
+    }
+
+    if (body.tags !== undefined || body.fiverrFeeEnabled !== undefined || body.assignee !== undefined) {
+      await Activity.create({
+        project: projectId, type: 'meta_updated', performedBy: share.createdBy,
+        description: `Updated project metadata`,
       });
     }
 
     await Project.findByIdAndUpdate(projectId, { $set: updates }, { new: true });
 
     const updatedProject = await Project.findById(projectId)
-      .populate('assignee', 'name image')
+      .populate('assignee.user', '_id name email image')
+      .populate('owner', '_id name email image')
       .lean();
 
     return NextResponse.json(updatedProject);

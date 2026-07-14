@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Copy, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 export default function NotesPage() {
@@ -127,6 +127,16 @@ export default function NotesPage() {
               className="group relative rounded-xl border bg-card p-4 hover:shadow-md transition-all active:scale-[0.98]"
             >
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(note.content)
+                    toast.success("Copied to clipboard")
+                  }}
+                >
+                  <Copy className="size-3.5" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon-sm"

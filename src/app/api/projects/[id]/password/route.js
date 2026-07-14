@@ -15,24 +15,21 @@ export async function GET(request, { params }) {
     await connectDB();
 
     const { id } = await params;
-    const project = await Project.findById(id).select('websitePassword additionalWebsites createdBy assignee').lean();
+    const project = await Project.findById(id).select('websites createdBy assignee owner').lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     if (
+      project.owner?.toString() !== session.user.id &&
       project.createdBy?.toString() !== session.user.id &&
-      project.assignee?.toString() !== session.user.id
+      !project.assignee?.some(a => a.user?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    let pw = project.websitePassword;
-
-    if (project.additionalWebsites?.length > 0 && project.additionalWebsites[0]?.password?.iv) {
-      pw = project.additionalWebsites[0].password;
-    }
+    let pw = project.websites?.[0]?.password;
 
     if (!pw) {
       return NextResponse.json({ password: '' });

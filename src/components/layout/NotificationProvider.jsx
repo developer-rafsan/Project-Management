@@ -75,6 +75,12 @@ export function NotificationProvider({ children }) {
     }
   }, [])
 
+  const getActionLabel = (type) => {
+    if (type === "assignee_add_request") return "request"
+    if (type === "assignee_remove_request") return "remove request"
+    return "transfer"
+  }
+
   const acceptTransfer = useCallback(async (notification) => {
     try {
       const res = await fetch(`/api/notifications/${notification._id}`, {
@@ -88,10 +94,10 @@ export function NotificationProvider({ children }) {
         prev.map((n) => (n._id === updated._id ? updated : n))
       )
       setUnreadCount((prev) => Math.max(0, prev - 1))
-      toast.success("Transfer accepted")
+      toast.success(`${getActionLabel(notification.type).charAt(0).toUpperCase() + getActionLabel(notification.type).slice(1)} accepted`)
       fetchNotifications()
     } catch (err) {
-      toast.error(err.message || "Failed to accept transfer")
+      toast.error(err.message || "Failed to accept")
     }
   }, [fetchNotifications])
 
@@ -108,10 +114,10 @@ export function NotificationProvider({ children }) {
         prev.map((n) => (n._id === updated._id ? updated : n))
       )
       setUnreadCount((prev) => Math.max(0, prev - 1))
-      toast.success("Transfer rejected")
+      toast.success(`${getActionLabel(notification.type).charAt(0).toUpperCase() + getActionLabel(notification.type).slice(1)} rejected`)
       fetchNotifications()
     } catch (err) {
-      toast.error(err.message || "Failed to reject transfer")
+      toast.error(err.message || "Failed to reject")
     }
   }, [fetchNotifications])
 

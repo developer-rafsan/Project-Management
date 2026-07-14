@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import { encrypt } from '@/lib/encryption';
-import { migrateProjectWebsiteFields } from '@/lib/migrateWebsiteFields';
 import User from '@/models/User';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
@@ -19,35 +18,36 @@ export async function GET(request, { params }) {
 
     const { id } = await params;
     const project = await Project.findById(id)
-      .populate('assignee')
-      .populate('transferHistory.transferredBy', '_id name email image')
+      .populate('assignee.user', '_id name email image')
+      .populate('owner', '_id name email image')
+      .populate('transferMonth.transferredBy', '_id name email image')
       .lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    if (project.personTransferHistory?.length) {
+    if (project.personTransfer?.length) {
       const ids = new Set();
-      project.personTransferHistory.forEach(e => { if (e.from) ids.add(e.from.toString()); if (e.to) ids.add(e.to.toString()); });
+      project.personTransfer.forEach(e => { if (e.from) ids.add(e.from.toString()); if (e.to) ids.add(e.to.toString()); });
       if (ids.size) {
         const users = await User.find({ _id: { $in: [...ids] } }).select('_id name email image').lean();
         const map = {};
         users.forEach(u => { map[u._id.toString()] = u; });
-        project.personTransferHistory = project.personTransferHistory.map(e => ({
+        project.personTransfer = project.personTransfer.map(e => ({
           ...e,
           from: e.from ? (map[e.from.toString()] || e.from) : e.from,
           to: e.to ? (map[e.to.toString()] || e.to) : e.to,
         }));
       }
     } else {
-      project.personTransferHistory = [];
+      project.personTransfer = [];
     }
 
-    const assigneeId = project.assignee?._id?.toString() || project.assignee?.toString();
     if (
+      project.owner?.toString() !== session.user.id &&
       project.createdBy?.toString() !== session.user.id &&
-      assigneeId !== session.user.id
+      !project.assignee?.some(a => a.user?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -77,20 +77,21 @@ export async function PATCH(request, { params }) {
     }
 
     if (
+      existingProject.owner?.toString() !== session.user.id &&
       existingProject.createdBy?.toString() !== session.user.id &&
-      existingProject.assignee?.toString() !== session.user.id
+      !existingProject.assignee?.some(a => a.user?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const updates = {};
-    let unsetPassword = false;
 
     const fields = [
-      'orderId', 'projectName', 'websiteUrl',
-      'websiteUsername', 'cms', 'priority', 'status',
+      'orderId', 'projectName', 'cms', 'priority', 'status',
       'assignee', 'startDate', 'tags', 'description', 'price',
-      'progress', 'additionalWebsites', 'figmaLinks', 'referenceLinks', 'currentMonth', 'currentYear', 'fiverrFeeEnabled',
+      'progress', 'websites', 'figmaLinks', 'referenceLinks',
+      'currentMonth', 'currentYear', 'fiverrFeeEnabled',
+      'domainHosting',
     ];
 
     for (const field of fields) {
@@ -105,20 +106,24 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    if (body.websitePassword) {
-      updates.websitePassword = encrypt(body.websitePassword);
-    } else if (body.websitePassword === '') {
-      unsetPassword = true;
+    if (updates.websites) {
+      if (Array.isArray(updates.websites) && updates.websites.length === 0) {
+        updates.websites = undefined;
+      } else {
+        updates.websites = updates.websites.map(ws => ({
+          ...ws,
+          password: ws.password && typeof ws.password === 'string' ? encrypt(ws.password) : (ws.password || {}),
+        }));
+      }
     }
 
-    if (updates.additionalWebsites) {
-      updates.additionalWebsites = updates.additionalWebsites.map(ws => ({
-        ...ws,
-        password: ws.password ? encrypt(ws.password) : {},
+    if (updates.domainHosting) {
+      updates.domainHosting = updates.domainHosting.map(e => ({
+        ...e,
+        password: e.password && typeof e.password === 'string' ? encrypt(e.password) : (e.password || {}),
+        hostingPassword: e.hostingPassword && typeof e.hostingPassword === 'string' ? encrypt(e.hostingPassword) : (e.hostingPassword || {}),
       }));
     }
-
-    Object.assign(updates, migrateProjectWebsiteFields(updates, existingProject));
 
     const statusChanged = body.status && body.status !== existingProject.status;
 
@@ -161,17 +166,87 @@ export async function PATCH(request, { params }) {
         const b = (Array.isArray(existing) ? existing : []).sort().join(',');
         return a !== b;
       }
-      if (key === 'assignee') {
-        const eId = existing?._id?.toString() || existing?.toString() || '';
-        const iId = incoming?.toString() || '';
-        return eId !== iId;
-      }
       return String(incoming ?? '') !== String(existing != null ? existing : '');
     });
 
-    if (hasGeneralChanges || Object.keys(updates).length > 0 || unsetPassword) {
+    if (body.progress !== undefined && Number(body.progress) !== Number(existingProject.progress)) {
+      await Activity.create({
+        project: id,
+        type: 'progress_updated',
+        performedBy: session.user.id,
+        previousStatus: String(existingProject.progress),
+        newStatus: String(body.progress),
+        description: `Progress updated: ${existingProject.progress}% → ${body.progress}%`,
+      });
+    }
+
+    if (body.price !== undefined && Number(body.price) !== Number(existingProject.price)) {
+      await Activity.create({
+        project: id,
+        type: 'price_updated',
+        performedBy: session.user.id,
+        description: `Price updated: $${Number(existingProject.price).toFixed(2)} → $${Number(body.price).toFixed(2)}`,
+      });
+    }
+
+    if (body.websites !== undefined) {
+      const oldLen = existingProject.websites?.length || 0;
+      const newLen = body.websites?.length || 0;
+      if (newLen > oldLen) {
+        await Activity.create({
+          project: id, type: 'website_added', performedBy: session.user.id,
+          description: `Added a new website`,
+        });
+      } else if (newLen < oldLen) {
+        await Activity.create({
+          project: id, type: 'website_removed', performedBy: session.user.id,
+          description: `Removed a website`,
+        });
+      } else if (newLen === oldLen && newLen > 0) {
+        await Activity.create({
+          project: id, type: 'website_updated', performedBy: session.user.id,
+          description: `Updated website details`,
+        });
+      }
+    }
+
+    if (body.domainHosting !== undefined) {
+      const oldLen = existingProject.domainHosting?.length || 0;
+      const newLen = body.domainHosting?.length || 0;
+      if (newLen > oldLen) {
+        await Activity.create({
+          project: id, type: 'domain_added', performedBy: session.user.id,
+          description: `Added a new domain/hosting entry`,
+        });
+      } else if (newLen < oldLen) {
+        await Activity.create({
+          project: id, type: 'domain_removed', performedBy: session.user.id,
+          description: `Removed a domain/hosting entry`,
+        });
+      } else if (newLen === oldLen && newLen > 0) {
+        await Activity.create({
+          project: id, type: 'domain_updated', performedBy: session.user.id,
+          description: `Updated domain/hosting details`,
+        });
+      }
+    }
+
+    if (body.figmaLinks !== undefined || body.referenceLinks !== undefined) {
+      await Activity.create({
+        project: id, type: 'link_updated', performedBy: session.user.id,
+        description: `Updated project links`,
+      });
+    }
+
+    if (body.tags !== undefined || body.fiverrFeeEnabled !== undefined || body.assignee !== undefined) {
+      await Activity.create({
+        project: id, type: 'meta_updated', performedBy: session.user.id,
+        description: `Updated project metadata`,
+      });
+    }
+
+    if (hasGeneralChanges || Object.keys(updates).length > 0) {
       existingProject.set(updates);
-      if (unsetPassword) existingProject.websitePassword = undefined;
       await existingProject.save();
     }
 
@@ -187,16 +262,38 @@ export async function PATCH(request, { params }) {
     }
 
     if (hasGeneralChanges) {
+      const changedLabels = generalFieldKeys
+        .filter(key => {
+          if (body[key] === undefined) return false;
+          const existing = existingProject[key];
+          const incoming = body[key];
+          if (key === 'startDate') return new Date(incoming).getTime() !== new Date(existing).getTime();
+          if (key === 'price') return Number(incoming) !== Number(existing);
+          if (key === 'tags') {
+            const a = (Array.isArray(incoming) ? incoming : []).sort().join(',');
+            const b = (Array.isArray(existing) ? existing : []).sort().join(',');
+            return a !== b;
+          }
+          return String(incoming ?? '') !== String(existing != null ? existing : '');
+        })
+        .map(k => ({
+          orderId: 'Order ID', projectName: 'Name',
+          cms: 'CMS', priority: 'Priority', assignee: 'Assignee', startDate: 'Start Date',
+          tags: 'Tags', description: 'Description', price: 'Price', progress: 'Progress',
+          websites: 'Websites', figmaLinks: 'Figma Links', referenceLinks: 'Reference Links',
+          fiverrFeeEnabled: 'Fiverr Fee',
+        }[k] || k));
+
       await Activity.create({
         project: id,
         type: 'project_updated',
         performedBy: session.user.id,
-        description: 'Project details updated',
+        description: changedLabels.length > 0 ? `Updated: ${changedLabels.join(', ')}` : 'Project details updated',
       });
     }
 
     const updatedProject = await Project.findById(id)
-      .populate('assignee')
+      .populate('assignee.user', '_id name email image')
       .lean();
 
     return NextResponse.json(updatedProject);
@@ -223,16 +320,26 @@ export async function DELETE(request, { params }) {
     }
 
     if (
+      project.owner?.toString() !== session.user.id &&
       project.createdBy?.toString() !== session.user.id &&
-      project.assignee?.toString() !== session.user.id
+      !project.assignee?.some(a => a.user?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const projectName = project.projectName;
+
     await Promise.all([
       Project.findByIdAndDelete(id),
-      Activity.deleteMany({ project: id }),
+      Activity.deleteMany({ project: id, type: { $ne: 'project_deleted' } }),
     ]);
+
+    await Activity.create({
+      project: id,
+      type: 'project_deleted',
+      performedBy: session.user.id,
+      description: `Deleted project "${projectName}"`,
+    });
 
     return NextResponse.json({ message: 'Project deleted successfully' });
   } catch (error) {

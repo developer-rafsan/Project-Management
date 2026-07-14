@@ -22,7 +22,7 @@ export async function GET(request, { params }) {
     }
     if (
       project.createdBy?.toString() !== session.user.id &&
-      project.assignee?.toString() !== session.user.id
+      !project.assignee?.some(a => a.user?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

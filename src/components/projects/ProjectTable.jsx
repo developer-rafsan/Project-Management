@@ -2,6 +2,7 @@
 
 import { useState, memo, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -93,12 +94,32 @@ function LongPressHandler({ onLongPress, onClick, children, className, active })
   )
 }
 
+function getSharePercent(project, userId) {
+  if (!userId) return 0
+  const isOwner = project.owner?._id === userId || project.owner?.toString() === userId
+  if (isOwner) {
+    const t = (project.assignee || []).reduce((s, a) => s + (a.percentage || 0), 0)
+    return Math.max(0, 100 - t)
+  }
+  const entry = (project.assignee || []).find(a => (a.user?._id || a.user) === userId)
+  return entry ? (entry.percentage || 0) : 0
+}
+
 const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageSize = 20, onAction, selectedIds = [], onSelectionChange, selectMode = false }) {
+  const { data: session } = useSession()
   const router = useRouter()
   const startSerial = (page - 1) * pageSize + 1
   const [copied, setCopied] = useState({})
   const [pwData, setPwData] = useState({})
   const [globalFiverrFee, setGlobalFiverrFee] = useState(true)
+  const [pendingProjects, setPendingProjects] = useState(new Set())
+
+  useEffect(() => {
+    fetch('/api/notifications?sent=true&type=assignee_add_request')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setPendingProjects(new Set(data.filter(n => n.status === 'pending').map(n => n.project?._id || n.project))))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const saved = localStorage.getItem("fiverrFeeEnabled")
@@ -158,18 +179,18 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
   }
 
   const getMainSite = (project) => {
-    if (project.additionalWebsites?.length > 0) {
-      return project.additionalWebsites[0];
+    if (project.websites?.length > 0) {
+      return project.websites[0];
     }
     return null;
   };
 
   const renderWebsite = (project) => {
     const mainSite = getMainSite(project);
-    const siteUrl = mainSite?.url || project.websiteUrl || '';
-    const siteUsername = mainSite?.username || project.websiteUsername || '';
-    const sitePasswordObj = mainSite?.password || project.websitePassword;
-    const totalSites = project.additionalWebsites?.length || 0;
+    const siteUrl = mainSite?.url || '';
+    const siteUsername = mainSite?.username || '';
+    const sitePasswordObj = mainSite?.password;
+    const totalSites = project.websites?.length || 0;
 
     const pw = pwData[project._id]
     const hasPassword = sitePasswordObj && (
@@ -265,13 +286,14 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
   return (
     <div className="space-y-2 sm:space-y-1.5">
       {/* Desktop header row */}
-      <div className="hidden sm:grid grid-cols-[36px_minmax(0,1fr)_110px_70px] md:grid-cols-[36px_minmax(0,1fr)_1fr_120px_100px_80px] lg:grid-cols-[36px_1fr_1fr_130px_110px_100px_80px_36px] gap-4 px-4 sm:px-6 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <div className="hidden sm:grid grid-cols-[36px_minmax(0,1fr)_110px_70px] md:grid-cols-[36px_minmax(0,1fr)_1fr_120px_100px_80px] lg:grid-cols-[36px_1fr_1fr_130px_110px_100px_80px_80px_36px] gap-4 px-4 sm:px-6 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
         <span className="text-center">#</span>
         <span>Project</span>
         <span className="hidden md:block">Website</span>
         <span>Status</span>
         <span className="hidden md:block">Priority</span>
         <span className="hidden lg:block">Price</span>
+        <span className="hidden lg:block">Your Share</span>
         <span className="text-center hidden lg:block">Progress</span>
         <span></span>
       </div>
@@ -313,6 +335,12 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                       <button onClick={(e) => { e.stopPropagation(); handleCopy(project._id, project.orderId ? `${project.orderId}_${project.projectName}` : project.projectName, "title") }} className="shrink-0 text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-pointer">
                         {copied[`${project._id}-title`] ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
                       </button>
+                      {pendingProjects.has(project._id) && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-full px-1.5 py-0.5 shrink-0">
+                          <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Pending
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-muted-foreground">
                       {formatDate(project.startDate)}{project.cms ? ` · ${project.cms}` : ""}
@@ -337,6 +365,15 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                       )}
                     </span>
                   ) : null}
+                  {(() => {
+                    const pct = getSharePercent(project, session?.user?.id)
+                    const amt = project.price ? project.price * pct / 100 : 0
+                    return pct > 0 && Number(project.price) ? (
+                      <span className="inline-flex flex-col items-start leading-tight font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 rounded-md px-1.5 py-0.5 min-w-[52px]">
+                        <span className="text-[11px]">${amt.toFixed(2)}</span>
+                      </span>
+                    ) : null
+                  })()}
                 </div>
                 <div className="text-xs text-muted-foreground mb-1.5">
                   <span className="font-medium tabular-nums">Progress: {project.progress ?? 0}%</span>
@@ -406,6 +443,12 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                   <button onClick={(e) => { e.stopPropagation(); handleCopy(project._id, project.orderId ? `${project.orderId}_${project.projectName}` : project.projectName, "title") }} className="shrink-0 text-muted-foreground/30 hover:text-muted-foreground transition-colors cursor-pointer">
                     {copied[`${project._id}-title`] ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
                   </button>
+                  {pendingProjects.has(project._id) && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-full px-1.5 py-0.5 shrink-0">
+                      <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Pending
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {formatDate(project.startDate)}{project.cms ? ` · ${project.cms}` : ""}
@@ -433,6 +476,15 @@ const ProjectTable = memo(function ProjectTable({ projects = [], page = 1, pageS
                     )}
                   </>
                 ) : <span className="text-sm text-muted-foreground">-</span>}
+              </div>
+              <div className="hidden lg:flex flex-col items-start gap-0.5">
+                {(() => {
+                  const pct = getSharePercent(project, session?.user?.id)
+                  const amt = project.price ? project.price * pct / 100 : 0
+                  return pct > 0 && Number(project.price) ? (
+                    <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 rounded-md px-1.5 py-0.5">${amt.toFixed(2)}</span>
+                  ) : <span className="text-sm text-muted-foreground">-</span>
+                })()}
               </div>
               <div className="hidden lg:block text-sm text-right">
                 <span className="font-medium tabular-nums text-muted-foreground">{project.progress ?? 0}%</span>

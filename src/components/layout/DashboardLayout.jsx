@@ -27,6 +27,18 @@ export default function DashboardLayout({ children }) {
       .catch(() => {})
   }, [status])
 
+  useEffect(() => {
+    if (status !== "authenticated") return
+    fetch("/api/profile")
+      .then((res) => res.json())
+      .then((user) => {
+        if (!user.setupComplete && pathname !== "/setup") {
+          router.replace("/setup")
+        }
+      })
+      .catch(() => {})
+  }, [status, pathname, router])
+
   if (status === "loading") {
     return (
       <div className="flex h-screen items-center justify-center bg-background">

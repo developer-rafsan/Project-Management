@@ -2,32 +2,9 @@ import mongoose from 'mongoose';
 
 const projectSchema = new mongoose.Schema(
   {
-    orderId: {
-      type: String,
-    },
-    projectName: {
-      type: String,
-      required: true,
-    },
-    websiteUrl: {
-      type: String,
-      default: '',
-    },
-    websiteUsername: {
-      type: String,
-      default: '',
-    },
-    websitePassword: {
-      type: {
-        iv: String,
-        encryptedData: String,
-      },
-      default: {},
-    },
-    cms: {
-      type: String,
-      default: 'Other',
-    },
+    orderId: { type: String },
+    projectName: { type: String, required: true },
+    cms: { type: String, default: 'Other' },
     priority: {
       type: String,
       enum: ['Low', 'Medium', 'High', 'Urgent'],
@@ -38,81 +15,49 @@ const projectSchema = new mongoose.Schema(
       enum: ['Pending', 'In Progress', 'Delivered', 'Revision', 'On Hold', 'Cancelled'],
       default: 'Pending',
     },
-    assignee: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
-    tags: {
-      type: [String],
-    },
-    startDate: {
-      type: Date,
-    },
-    description: {
-      type: String,
-      default: '',
-    },
-    price: {
-      type: Number,
-      default: 0,
-    },
-    fiverrFeeEnabled: {
-      type: Boolean,
-      default: true,
-    },
-    progress: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100,
-    },
-    additionalWebsites: [{
-      name: { type: String, default: '' },
+    assignee: [{
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      percentage: { type: Number, min: 0, max: 100, default: 0 },
+    }],
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    tags: { type: [String] },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    startDate: { type: Date },
+    description: { type: String, default: '' },
+    price: { type: Number, default: 0 },
+    fiverrFeeEnabled: { type: Boolean, default: true },
+    progress: { type: Number, default: 0, min: 0, max: 100 },
+    websites: [{
       url: { type: String, default: '' },
       username: { type: String, default: '' },
       password: { type: { iv: String, encryptedData: String }, default: {} },
     }],
-    figmaLinks: [{
-      url: { type: String, default: '' },
+    domainHosting: [{
+      provider: { type: String, default: '' },
+      domainUrl: { type: String, default: '' },
+      email: { type: String, default: '' },
+      password: { type: { iv: String, encryptedData: String }, default: {} },
+      hostingProvider: { type: String, default: '' },
+      hostingEmail: { type: String, default: '' },
+      hostingPassword: { type: { iv: String, encryptedData: String }, default: {} },
+      sameAccount: { type: Boolean, default: false },
     }],
-    referenceLinks: [{
-      url: { type: String, default: '' },
+    figmaLinks: [{ url: { type: String, default: '' } }],
+    referenceLinks: [{ url: { type: String, default: '' } }],
+    currentMonth: { type: Number },
+    currentYear: { type: Number },
+    transferMonth: [{
+      oldMonth: Number,
+      newMonth: Number,
+      newYear: Number,
+      transferDate: Date,
+      transferredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     }],
-    currentMonth: {
-      type: Number,
-    },
-    currentYear: {
-      type: Number,
-    },
-    transferHistory: [
-      {
-        oldMonth: Number,
-        newMonth: Number,
-        newYear: Number,
-        transferDate: Date,
-        transferredBy: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-        },
-      },
-    ],
-    personTransferHistory: [
-      {
-        from: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-        },
-        to: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-        },
-        transferDate: Date,
-      },
-    ],
+    personTransfer: [{
+      from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      transferDate: Date,
+    }],
   },
   { timestamps: true }
 );

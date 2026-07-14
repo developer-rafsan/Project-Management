@@ -9,7 +9,7 @@ const activitySchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['status_change', 'month_transfer', 'person_transfer', 'project_created', 'project_updated'],
+      enum: ['status_change', 'month_transfer', 'person_transfer', 'project_created', 'project_updated', 'project_deleted', 'ownership_transfer', 'progress_updated', 'website_added', 'website_updated', 'website_removed', 'domain_added', 'domain_updated', 'domain_removed', 'link_updated', 'price_updated', 'note_added', 'note_updated', 'note_deleted', 'meta_updated'],
       required: true,
     },
     performedBy: {
@@ -32,6 +32,7 @@ const activitySchema = new mongoose.Schema(
     },
     note: String,
     description: String,
+    percentage: Number,
   },
   { timestamps: true }
 );

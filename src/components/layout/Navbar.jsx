@@ -46,6 +46,7 @@ import {
   X,
   Mail,
   MailOpen,
+  User,
 } from "lucide-react"
 
 const pageTitles = {
@@ -53,11 +54,13 @@ const pageTitles = {
   "/dashboard/projects": "Projects",
   "/dashboard/notes": "Notes",
   "/dashboard/settings": "Settings",
+  "/dashboard/profile": "Profile",
 }
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
+  { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
   { href: null, label: "Logout", icon: LogOut, logout: true },
@@ -307,7 +310,7 @@ export default function Navbar() {
                           !n.read ? 'bg-gradient-to-r from-red-50/80 to-transparent dark:from-red-950/15' : ''
                         }`}
                         onClick={() => {
-                          if (n.type === "assignee_transfer_request" && n.status === "pending") return
+                          if ((n.type === "assignee_transfer_request" || n.type === "assignee_add_request" || n.type === "assignee_remove_request") && n.status === "pending") return
                           setSelectedNotif(n)
                           setNotifOpen(false)
                           if (!n.read) setReadStatus(n._id, true)
@@ -382,6 +385,48 @@ export default function Navbar() {
                                   </Button>
                                 </div>
                               </>
+                            ) : n.type === "assignee_add_request" && n.status === "pending" ? (
+                              <>
+                                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                  <span className="font-medium text-foreground/80">{n.from?.name || "Someone"}</span>
+                                  {" "}wants to add you as an assignee to{" "}
+                                  <span className="font-medium text-foreground/80">&ldquo;{n.project?.projectName || "project"}&rdquo;</span>
+                                  {" "}with <span className="font-semibold text-foreground/80">{n.percentage || 0}%</span> share
+                                </p>
+                                {n.message && (
+                                  <p className="text-xs text-muted-foreground/60 mt-1 italic leading-relaxed">
+                                    &ldquo;{n.message}&rdquo;
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-2 mt-2.5">
+                                  <Button
+                                    size="xs"
+                                    variant="default"
+                                    className="h-7 gap-1 rounded-lg font-medium"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      acceptTransfer(n)
+                                      setNotifOpen(false)
+                                    }}
+                                  >
+                                    <Check className="size-3.5" />
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    className="h-7 gap-1 rounded-lg"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      rejectTransfer(n)
+                                      setNotifOpen(false)
+                                    }}
+                                  >
+                                    <X className="size-3.5" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              </>
                             ) : (
                               <p className={`text-xs mt-0.5 leading-relaxed ${!n.read ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground'}`}>
                                 {n.message || "Notification"}
@@ -402,13 +447,15 @@ export default function Navbar() {
           )}
         </div>
 
-        <Avatar className="size-8 cursor-default">
-          <AvatarImage
-            src={session?.user?.image}
-            alt={session?.user?.name || "User"}
-          />
-          <AvatarFallback>{userInitials}</AvatarFallback>
-        </Avatar>
+        <Link href="/dashboard/profile">
+          <Avatar className="size-8 cursor-pointer transition-opacity hover:opacity-80">
+            <AvatarImage
+              src={session?.user?.image}
+              alt={session?.user?.name || "User"}
+            />
+            <AvatarFallback>{userInitials}</AvatarFallback>
+          </Avatar>
+        </Link>
       </div>
 
       <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
@@ -490,7 +537,10 @@ export default function Navbar() {
                   <Bell className="size-3" />
                   {selectedNotif?.type === "assignee_transfer_request" ? "Transfer Request" :
                    selectedNotif?.type === "assignee_transfer_accepted" ? "Transfer Accepted" :
-                   selectedNotif?.type === "assignee_transfer_rejected" ? "Transfer Rejected" : "Notification"}
+                   selectedNotif?.type === "assignee_transfer_rejected" ? "Transfer Rejected" :
+                   selectedNotif?.type === "assignee_add_request" ? "Assignee Request" :
+                   selectedNotif?.type === "assignee_add_accepted" ? "Assignee Request Accepted" :
+                   selectedNotif?.type === "assignee_add_rejected" ? "Assignee Request Rejected" : "Notification"}
                 </p>
               </div>
             </div>

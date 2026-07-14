@@ -2,15 +2,17 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
-import Note from '@/models/Note';
+import ProjectNote from '@/models/ProjectNote';
 import Project from '@/models/Project';
+import Activity from '@/models/Activity';
 
 async function verifyProjectAccess(projectId, userId) {
-  const project = await Project.findById(projectId).select('createdBy assignee').lean();
+  const project = await Project.findById(projectId).select('createdBy assignee owner').lean();
   if (!project) return false;
   if (
+    project.owner?.toString() !== userId &&
     project.createdBy?.toString() !== userId &&
-    project.assignee?.toString() !== userId
+    !project.assignee?.some(a => a.user?.toString() === userId)
   ) return false;
   return true;
 }
@@ -30,7 +32,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const notes = await Note.find({ project: id })
+    const notes = await ProjectNote.find({ project: id })
       .populate('createdBy', 'name image')
       .sort({ createdAt: -1 })
       .lean();
@@ -63,15 +65,22 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    const note = await Note.create({
+    const note = await ProjectNote.create({
       project: id,
       content: body.content.trim(),
       createdBy: session.user.id,
     });
 
-    const populated = await Note.findById(note._id)
+    const populated = await ProjectNote.findById(note._id)
       .populate('createdBy', 'name image')
       .lean();
+
+    await Activity.create({
+      project: id,
+      type: 'note_added',
+      performedBy: session.user.id,
+      description: `Added a note to the project`,
+    });
 
     return NextResponse.json(populated, { status: 201 });
   } catch (error) {

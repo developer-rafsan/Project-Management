@@ -54,8 +54,7 @@ const schema = z.object({
   description: z.string().optional(),
   tags: z.string().optional(),
   price: z.string().optional(),
-  additionalWebsites: z.array(z.object({
-    name: z.string().optional(),
+  websites: z.array(z.object({
     url: z.string().optional(),
     username: z.string().optional(),
     password: z.string().optional(),
@@ -184,29 +183,13 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   }, [isEditing, initialData?.fiverrFeeEnabled])
 
   const getInitialWebsites = () => {
-    if (initialData?.additionalWebsites?.length > 0) {
-      return initialData.additionalWebsites;
-    }
-    if (initialData?.websiteUrl) {
-      return [{
-        name: 'Main Website',
-        url: initialData.websiteUrl || '',
-        username: initialData.websiteUsername || '',
-        password: typeof initialData?.websitePassword === "string" ? initialData.websitePassword : "",
-      }];
+    if (initialData?.websites?.length > 0) {
+      return initialData.websites;
     }
     return [];
   };
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    setValue,
-    watch,
-    trigger,
-    formState: { errors },
-  } = useForm({
+  const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       orderId: initialData?.orderId || "",
@@ -222,13 +205,15 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       tags: initialData?.tags?.join(", ") || "",
       price: initialData?.price ? String(initialData.price) : "",
 
-      additionalWebsites: getInitialWebsites(),
+      websites: getInitialWebsites(),
       figmaLinks: initialData?.figmaLinks || [],
       referenceLinks: initialData?.referenceLinks || [],
     },
   })
+  const { register, handleSubmit, control, setValue, watch, trigger, formState } = form
+  const errors = formState.errors
 
-  const { fields: addSiteFields, append: appendSite, remove: removeSite } = useFieldArray({ control, name: "additionalWebsites" })
+  const { fields: addSiteFields, append: appendSite, remove: removeSite } = useFieldArray({ control, name: "websites" })
   const { fields: figmaFields, append: appendFigma, remove: removeFigma } = useFieldArray({ control, name: "figmaLinks" })
   const { fields: refFields, append: appendRef, remove: removeRef } = useFieldArray({ control, name: "referenceLinks" })
 
@@ -257,9 +242,9 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       getProjectPassword(initialData._id)
         .then((res) => {
           if (res.password) {
-            const current = watch("additionalWebsites");
+            const current = watch("websites");
             if (current?.length > 0) {
-              setValue("additionalWebsites.0.password", res.password, { shouldValidate: false });
+              setValue("websites.0.password", res.password, { shouldValidate: false });
             }
           }
         })
@@ -270,7 +255,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   const formValues = watch()
 
   const copyPassword = useCallback(async () => {
-    const pw = formValues.additionalWebsites?.[0]?.password
+    const pw = formValues.websites?.[0]?.password
     if (!pw) return
     try {
       await navigator.clipboard.writeText(pw)
@@ -278,12 +263,12 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
     } catch {
       toast.error("Failed to copy password")
     }
-  }, [formValues.additionalWebsites])
+  }, [formValues.websites])
 
   const generatePassword = useCallback(() => {
     const pwd = generateStrongPassword()
     if (addSiteFields.length > 0) {
-      setValue("additionalWebsites.0.password", pwd, { shouldValidate: true })
+      setValue("websites.0.password", pwd, { shouldValidate: true })
     }
   }, [setValue, addSiteFields.length])
 
@@ -298,12 +283,11 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         tags: data.tags
           ? data.tags.split(",").map((t) => t.trim()).filter(Boolean)
           : [],
-        additionalWebsites: (data.additionalWebsites || []).map(site => ({
+        websites: (data.websites || []).map(site => ({
           ...site,
-          name: site.name || '',
           password: site.password || undefined,
         })),
-        assignee: isEditing ? (initialData?.assignee?._id || initialData?.assignee) : session?.user?.id,
+        assignee: isEditing ? (initialData?.assignee || [{ user: session?.user?.id, percentage: 100 }]) : [{ user: session?.user?.id, percentage: 100 }],
         orderId: data.orderId || undefined,
         fiverrFeeEnabled,
       }
@@ -349,7 +333,19 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
 
   const isLastStep = step === STEPS.length - 1
 
-  const handleSubmitForm = () => {
+  const handleSubmitForm = async () => {
+    const valid = await trigger()
+    if (!valid) {
+      const currentErrors = formState.errors
+      const firstErrorStep = stepFields.findIndex((fields) =>
+        fields.some((f) => currentErrors[f])
+      )
+      if (firstErrorStep >= 0 && firstErrorStep !== step) {
+        setStep(firstErrorStep)
+      }
+      toast.error("Please fix the highlighted errors")
+      return
+    }
     handleSubmit(onSubmit)()
   }
 
@@ -428,13 +424,13 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                     <Hash className="size-3" />
                     Order ID <span className="font-normal">(optional)</span>
                   </label>
-                  <Input {...register("orderId")} placeholder="Leave empty to auto-generate" className="h-9 text-sm bg-background" />
+                  <Input {...register("orderId")} placeholder="Leave empty to auto-generate" className={`h-9 text-sm bg-background ${errors.orderId ? "border-destructive ring-destructive/20" : ""}`} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     Project Name <span className="text-destructive">*</span>
                   </label>
-                  <Input {...register("projectName")} placeholder="Enter project name" className="h-9 text-sm bg-background" />
+                  <Input {...register("projectName")} placeholder="Enter project name" className={`h-9 text-sm bg-background ${errors.projectName ? "border-destructive ring-destructive/20" : ""}`} />
                   {errors.projectName && (
                     <p className="flex items-center gap-1 text-xs text-destructive">
                       <AlertCircle className="size-3 shrink-0" /> {errors.projectName.message}
@@ -450,7 +446,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                   <Globe className="size-3.5 text-primary" />
                   Websites
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendSite({ name: "", url: "", username: "", password: "" })} className="gap-1 h-7 text-xs cursor-pointer">
+                <Button type="button" variant="outline" size="sm" onClick={() => appendSite({ url: "", username: "", password: "" })} className="gap-1 h-7 text-xs cursor-pointer">
                   <Plus className="size-3" /> Add
                 </Button>
               </div>
@@ -471,12 +467,11 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    <Input {...register(`additionalWebsites.${idx}.name`)} placeholder="Site name (e.g., Main Website, Staging)" className="h-8 text-sm bg-background" />
-                    <Input {...register(`additionalWebsites.${idx}.url`)} placeholder="https://example.com" className="h-8 text-sm bg-background" />
+                    <Input {...register(`websites.${idx}.url`)} placeholder="https://example.com" className="h-8 text-sm bg-background" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <Input {...register(`additionalWebsites.${idx}.username`)} placeholder="Username" className="h-8 text-sm bg-background" />
+                      <Input {...register(`websites.${idx}.username`)} placeholder="Username" className="h-8 text-sm bg-background" />
                       <div className="flex gap-1.5">
-                        <Input {...register(`additionalWebsites.${idx}.password`)} placeholder="Password" className="h-8 text-sm bg-background flex-1" />
+                        <Input {...register(`websites.${idx}.password`)} placeholder="Password" className="h-8 text-sm bg-background flex-1" />
                         {idx === 0 && (
                           <Button type="button" variant="outline" size="icon" onClick={generatePassword} title="Generate strong password" className="shrink-0 size-8">
                             <RefreshCw className="size-3.5" />
@@ -504,7 +499,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 </label>
                 <Controller name="cms" control={control} render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="h-9 text-sm bg-background"><SelectValue placeholder="Select CMS platform" /></SelectTrigger>
+                    <SelectTrigger className={`h-9 text-sm bg-background ${errors.cms ? "border-destructive ring-destructive/20" : ""}`}><SelectValue placeholder="Select CMS platform" /></SelectTrigger>
                     <SelectContent className="max-h-[320px]">
                       {CMS_CATEGORIES.map((cat) => (
                         <div key={cat.label}>
@@ -546,7 +541,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                   </label>
                   <Controller name="priority" control={control} render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="h-9 text-sm bg-background">
+                      <SelectTrigger className={`h-9 text-sm bg-background ${errors.priority ? "border-destructive ring-destructive/20" : ""}`}>
                         {field.value ? (
                           <div className="flex items-center gap-2">
                             <div className={`size-2 rounded-full ${PRIORITY_STYLES[field.value]?.dot}`} />
@@ -583,7 +578,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                   </label>
                   <Controller name="status" control={control} render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="h-9 text-sm bg-background">
+                      <SelectTrigger className={`h-9 text-sm bg-background ${errors.status ? "border-destructive ring-destructive/20" : ""}`}>
                         {field.value ? (
                           <div className="flex items-center gap-2">
                             <div className={`size-2 rounded-full ${STATUS_STYLES[field.value]?.dot}`} />
@@ -774,7 +769,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                 <ReviewRow icon={Hash} label="Order ID" value={formValues.orderId || "Auto-generated"} />
                 <ReviewRow icon={Layout} label="Project Name" value={formValues.projectName} />
-                <ReviewRow icon={Globe} label="Websites" value={formValues.additionalWebsites?.length ? `${formValues.additionalWebsites.length} site(s)` : "—"} />
+                <ReviewRow icon={Globe} label="Websites" value={formValues.websites?.length ? `${formValues.websites.length} site(s)` : "—"} />
               </div>
             </div>
             <div>

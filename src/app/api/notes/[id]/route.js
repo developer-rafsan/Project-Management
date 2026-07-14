@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
-import SimpleNote from '@/models/SimpleNote';
+import Note from '@/models/Note';
 
 export async function PATCH(request, { params }) {
   try {
@@ -16,7 +16,7 @@ export async function PATCH(request, { params }) {
     const { id } = await params;
     const { title, content } = await request.json();
 
-    const note = await SimpleNote.findOneAndUpdate(
+    const note = await Note.findOneAndUpdate(
       { _id: id, createdBy: session.user.id },
       { ...(title !== undefined && { title }), ...(content !== undefined && { content }) },
       { new: true }
@@ -44,7 +44,7 @@ export async function DELETE(request, { params }) {
 
     const { id } = await params;
 
-    const note = await SimpleNote.findOneAndDelete({
+    const note = await Note.findOneAndDelete({
       _id: id,
       createdBy: session.user.id,
     });

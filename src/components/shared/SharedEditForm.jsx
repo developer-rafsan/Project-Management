@@ -15,7 +15,7 @@ export default function SharedEditForm({ project, apiPath, onSuccess, onCancel }
     price: project.price || "",
     startDate: project.startDate ? new Date(project.startDate).toISOString().split("T")[0] : "",
     tags: project.tags || [],
-    additionalWebsites: project.additionalWebsites || [],
+    websites: project.websites || [],
   })
   const [tagInput, setTagInput] = useState("")
   const [saving, setSaving] = useState(false)
@@ -56,18 +56,18 @@ export default function SharedEditForm({ project, apiPath, onSuccess, onCancel }
   const inputClass = "flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
 
   const updateSite = (idx, field, value) => {
-    const sites = [...formData.additionalWebsites];
-    if (!sites[idx]) sites[idx] = { name: '', url: '', username: '', password: '' };
+    const sites = [...formData.websites];
+    if (!sites[idx]) sites[idx] = { url: '', username: '', password: '' };
     sites[idx] = { ...sites[idx], [field]: value };
-    setFormData((p) => ({ ...p, additionalWebsites: sites }));
+    setFormData((p) => ({ ...p, websites: sites }));
   };
 
   const addSite = () => {
-    setFormData((p) => ({ ...p, additionalWebsites: [...p.additionalWebsites, { name: '', url: '', username: '', password: '' }] }));
+    setFormData((p) => ({ ...p, websites: [...p.websites, { url: '', username: '', password: '' }] }));
   };
 
   const removeSite = (idx) => {
-    setFormData((p) => ({ ...p, additionalWebsites: p.additionalWebsites.filter((_, i) => i !== idx) }));
+    setFormData((p) => ({ ...p, websites: p.websites.filter((_, i) => i !== idx) }));
   };
 
   return (
@@ -106,16 +106,15 @@ export default function SharedEditForm({ project, apiPath, onSuccess, onCancel }
           <label className="text-sm font-medium">Websites</label>
           <button type="button" onClick={addSite} className="text-xs text-primary hover:underline cursor-pointer">+ Add Site</button>
         </div>
-        {formData.additionalWebsites.length === 0 && (
+        {formData.websites.length === 0 && (
           <p className="text-xs text-muted-foreground">No websites</p>
         )}
-        {formData.additionalWebsites.map((site, i) => (
+        {formData.websites.map((site, i) => (
           <div key={i} className="rounded-lg border bg-muted/30 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium">Site #{i + 1}{i === 0 ? ' (Primary)' : ''}</span>
               <button type="button" onClick={() => removeSite(i)} className="text-xs text-destructive hover:text-destructive/80 cursor-pointer">Remove</button>
             </div>
-            <input value={site.name || ''} onChange={(e) => updateSite(i, 'name', e.target.value)} placeholder="Site name" className={inputClass} />
             <input value={site.url || ''} onChange={(e) => updateSite(i, 'url', e.target.value)} placeholder="URL" className={inputClass} />
             <div className="grid grid-cols-2 gap-2">
               <input value={site.username || ''} onChange={(e) => updateSite(i, 'username', e.target.value)} placeholder="Username" className={inputClass} />

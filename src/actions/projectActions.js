@@ -98,6 +98,11 @@ export async function deleteNote(projectId, noteId) {
   return handleResponse(response);
 }
 
+export async function getDomainPassword(projectId) {
+  const response = await fetch(`/api/projects/${projectId}/domain-password`);
+  return handleResponse(response);
+}
+
 export async function getStats(params = {}) {
   const query = buildQueryString(params);
   const url = query ? `${BASE_URL}/stats?${query}` : `${BASE_URL}/stats`;

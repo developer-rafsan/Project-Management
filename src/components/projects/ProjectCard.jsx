@@ -213,13 +213,13 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction, select
           </div>
         )}
 
-        {(project.additionalWebsites?.[0] || project.websiteUrl) && (
+        {project.websites?.[0] && (
           <div className="rounded-lg border bg-card p-2.5 space-y-2">
             {(() => {
-              const mainSite = project.additionalWebsites?.[0];
-              const siteUrl = mainSite?.url || project.websiteUrl || '';
-              const siteUsername = mainSite?.username || project.websiteUsername || '';
-              const totalSites = project.additionalWebsites?.length || 0;
+              const mainSite = project.websites?.[0];
+              const siteUrl = mainSite?.url || '';
+              const siteUsername = mainSite?.username || '';
+              const totalSites = project.websites?.length || 0;
               return (
                 <>
                   <div className="flex items-center gap-2 min-w-0">

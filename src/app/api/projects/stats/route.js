@@ -9,6 +9,16 @@ function getEffectiveMonthYear(project) {
   return { month: project.currentMonth, year: project.currentYear }
 }
 
+function getUserSharePct(project, userId) {
+  const isOwner = project.owner?.toString() === userId
+  if (isOwner) {
+    const t = (project.assignee || []).reduce((s, a) => s + (a.percentage || 0), 0)
+    return Math.max(0, 100 - t)
+  }
+  const entry = (project.assignee || []).find(a => (a.user?.toString() || a.user) === userId)
+  return entry ? (entry.percentage || 0) : 0
+}
+
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,10 +35,12 @@ export async function GET(request) {
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
+    const userId = session.user.id;
+
     const ownershipFilter = {
       $or: [
-        { createdBy: session.user.id },
-        { assignee: session.user.id },
+        { owner: userId },
+        { 'assignee.user': userId },
       ],
     };
 
@@ -45,7 +57,7 @@ export async function GET(request) {
     }
 
     const allProjects = await Project.find(dbFilter)
-      .select('_id status price startDate createdAt currentMonth currentYear fiverrFeeEnabled')
+      .select('_id status price startDate createdAt currentMonth currentYear fiverrFeeEnabled owner assignee')
       .lean();
 
     let filtered = allProjects;
@@ -60,7 +72,10 @@ export async function GET(request) {
       })
     }
 
-    const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, revisionProjects, statusMap, priceMap, dayMap, feeEnabledDelivered } = filtered.reduce((acc, p) => {
+    const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, revisionProjects, statusMap, priceMap, dayMap, myPriceMap, myFeeDelivered } = filtered.reduce((acc, p) => {
+      const sharePct = getUserSharePct(p, userId)
+      const myPrice = p.price ? (p.price * sharePct / 100) : 0
+
       acc.totalProjects++
       if (p.status === 'In Progress') acc.runningProjects++
       if (p.status === 'Delivered') acc.completedProjects++
@@ -70,9 +85,10 @@ export async function GET(request) {
       if (p.status) {
         acc.statusMap[p.status] = (acc.statusMap[p.status] || 0) + 1
         acc.priceMap[p.status] = (acc.priceMap[p.status] || 0) + (p.price || 0)
+        acc.myPriceMap[p.status] = (acc.myPriceMap[p.status] || 0) + myPrice
       }
       if (p.status === 'Delivered' && p.fiverrFeeEnabled !== false) {
-        acc.feeEnabledDelivered += (p.price || 0)
+        acc.myFeeDelivered += myPrice
       }
       if (p.startDate) {
         const d = new Date(p.startDate)
@@ -80,10 +96,11 @@ export async function GET(request) {
         acc.dayMap[key] = (acc.dayMap[key] || 0) + 1
       }
       return acc
-    }, { totalProjects: 0, runningProjects: 0, completedProjects: 0, pendingProjects: 0, onHoldProjects: 0, revisionProjects: 0, statusMap: {}, priceMap: {}, dayMap: {}, feeEnabledDelivered: 0 })
+    }, { totalProjects: 0, runningProjects: 0, completedProjects: 0, pendingProjects: 0, onHoldProjects: 0, revisionProjects: 0, statusMap: {}, priceMap: {}, dayMap: {}, myPriceMap: {}, myFeeDelivered: 0 })
 
     const statusGrouped = Object.entries(statusMap).map(([key, count]) => ({ _id: key, count }))
     const priceByStatus = Object.entries(priceMap).map(([key, total]) => ({ _id: key, total }))
+    const myPriceByStatus = Object.entries(myPriceMap).map(([key, total]) => ({ _id: key, total }))
 
     const dailyProgress = Object.entries(dayMap)
       .map(([key, count]) => {
@@ -119,7 +136,8 @@ export async function GET(request) {
       onHold: onHoldProjects,
       revision: revisionProjects,
       priceByStatus,
-      feeEnabledDelivered,
+      myPriceByStatus,
+      myFeeDelivered,
       recentProjects,
       recentUpdates,
       chartData: {

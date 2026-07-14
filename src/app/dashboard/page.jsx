@@ -85,16 +85,17 @@ export default function DashboardPage() {
           setChartData(grouped)
 
           const priceMap = {}
-          ;(data.priceByStatus || []).forEach((p) => {
+          ;(data.myPriceByStatus || []).forEach((p) => {
             priceMap[p._id] = p.total
           })
           const delivered = priceMap["Delivered"] || 0
           const cancelled = priceMap["Cancelled"] || 0
           const total = Object.values(priceMap).reduce((a, b) => a + b, 0)
           const inProgress = total - delivered - cancelled
-          const feeEnabledDelivered = data.feeEnabledDelivered || 0
+          const myFeeDelivered = data.myFeeDelivered || 0
           const globalFiverrFee = localStorage.getItem("fiverrFeeEnabled") !== "false"
-          const fee = globalFiverrFee ? feeEnabledDelivered * 0.2 : 0
+          const fee = globalFiverrFee ? myFeeDelivered * 0.2 : 0
+
           setRevenueData({ total, delivered, inProgress, cancelled, fee, net: delivered - fee })
 
           if (dateRange?.from && dateRange?.to) {
@@ -225,12 +226,12 @@ export default function DashboardPage() {
 
       {loading ? (
         <div className="space-y-4 sm:space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className={`h-20 sm:h-24 rounded-xl bg-muted animate-pulse ${i > 1 ? 'hidden sm:block' : ''} ${i > 2 ? 'hidden lg:block' : ''}`} />
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-[60px] sm:h-[100px] rounded-xl bg-muted animate-pulse" />
             ))}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className={`h-[68px] sm:h-[72px] rounded-xl bg-muted animate-pulse ${i > 1 ? 'hidden sm:block' : ''} ${i > 2 ? 'hidden lg:block' : ''} ${i > 4 ? 'hidden xl:block' : ''}`} />
             ))}

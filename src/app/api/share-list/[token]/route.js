@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
-import { decrypt } from '@/lib/encryption';
 import Share, { cleanupExpiredShares } from '@/models/Share';
 import Project from '@/models/Project';
 import crypto from 'crypto';
@@ -37,12 +36,12 @@ export async function GET(request, { params }) {
       : {
           $or: [
             { createdBy: share.createdBy._id },
-            { assignee: share.createdBy._id },
+            { 'assignee.user': share.createdBy._id },
           ],
         };
 
     const projects = await Project.find(query)
-      .populate('assignee', 'name image')
+      .populate('assignee.user', '_id name email image')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -75,15 +74,8 @@ export async function GET(request, { params }) {
         });
       }
 
-      let decryptedPassword = null;
-      if (p.websitePassword?.iv && p.websitePassword?.encryptedData) {
-        try { decryptedPassword = decrypt(p.websitePassword); } catch { decryptedPassword = null; }
-      }
-
       safeProjects.push({
         ...p,
-        websitePassword: undefined,
-        decryptedPassword,
         shareToken: token,
       });
     }

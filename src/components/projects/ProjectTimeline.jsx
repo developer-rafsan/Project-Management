@@ -1,7 +1,7 @@
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CalendarArrowUp, UserRoundPlus, ArrowLeftRight, Plus, Pencil } from "lucide-react"
+import { CalendarArrowUp, UserRoundPlus, ArrowLeftRight, Plus, Pencil, Trash2, Percent, Globe, Link, Server, DollarSign, FileText } from "lucide-react"
 
 const statusColors = {
   Pending: "bg-yellow-500",
@@ -90,6 +90,146 @@ function getActivityConfig(activity) {
         user: activity.performedBy || null,
         description: activity.description || null,
         note: activity.note || null,
+      }
+    case "project_deleted":
+      return {
+        dotColor: "bg-red-500",
+        dotIcon: Trash2,
+        icon: <Trash2 className="size-3.5 text-muted-foreground" />,
+        title: "Project Deleted",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "progress_updated":
+      return {
+        dotColor: "bg-emerald-500",
+        dotIcon: Percent,
+        icon: <Percent className="size-3.5 text-muted-foreground" />,
+        title: "Progress Updated",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: activity.note || null,
+      }
+    case "website_added":
+      return {
+        dotColor: "bg-sky-500",
+        dotIcon: Globe,
+        icon: <Globe className="size-3.5 text-muted-foreground" />,
+        title: "Website Added",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "website_updated":
+      return {
+        dotColor: "bg-sky-500",
+        dotIcon: Globe,
+        icon: <Globe className="size-3.5 text-muted-foreground" />,
+        title: "Website Updated",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "website_removed":
+      return {
+        dotColor: "bg-sky-500",
+        dotIcon: Globe,
+        icon: <Globe className="size-3.5 text-muted-foreground" />,
+        title: "Website Removed",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "domain_added":
+      return {
+        dotColor: "bg-indigo-500",
+        dotIcon: Server,
+        icon: <Server className="size-3.5 text-muted-foreground" />,
+        title: "Domain Added",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "domain_updated":
+      return {
+        dotColor: "bg-indigo-500",
+        dotIcon: Server,
+        icon: <Server className="size-3.5 text-muted-foreground" />,
+        title: "Domain Updated",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "domain_removed":
+      return {
+        dotColor: "bg-indigo-500",
+        dotIcon: Server,
+        icon: <Server className="size-3.5 text-muted-foreground" />,
+        title: "Domain Removed",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "link_updated":
+      return {
+        dotColor: "bg-violet-500",
+        dotIcon: Link,
+        icon: <Link className="size-3.5 text-muted-foreground" />,
+        title: "Links Updated",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "price_updated":
+      return {
+        dotColor: "bg-amber-500",
+        dotIcon: DollarSign,
+        icon: <DollarSign className="size-3.5 text-muted-foreground" />,
+        title: "Price Updated",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "meta_updated":
+      return {
+        dotColor: "bg-amber-500",
+        dotIcon: DollarSign,
+        icon: <DollarSign className="size-3.5 text-muted-foreground" />,
+        title: "Meta Updated",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
+      }
+    case "note_added":
+      return {
+        dotColor: "bg-rose-500",
+        dotIcon: FileText,
+        icon: <FileText className="size-3.5 text-muted-foreground" />,
+        title: "Note Added",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: activity.note || null,
+      }
+    case "note_updated":
+      return {
+        dotColor: "bg-rose-500",
+        dotIcon: FileText,
+        icon: <FileText className="size-3.5 text-muted-foreground" />,
+        title: "Note Updated",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: activity.note || null,
+      }
+    case "note_deleted":
+      return {
+        dotColor: "bg-rose-500",
+        dotIcon: FileText,
+        icon: <FileText className="size-3.5 text-muted-foreground" />,
+        title: "Note Deleted",
+        user: activity.performedBy || null,
+        description: activity.description || null,
+        note: null,
       }
     default:
       return {
