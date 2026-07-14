@@ -136,31 +136,30 @@ export default function SetupPage() {
           <div className="grid gap-3">
             <button
               onClick={() => handleSelectType("single")}
-              className="group relative flex items-center gap-4 rounded-xl border-2 border-border bg-card p-5 text-left transition-all hover:border-primary/50 hover:shadow-md active:scale-[0.98] cursor-pointer"
+              className="group relative flex items-center gap-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-5 text-left transition-all hover:border-primary hover:bg-primary/10 hover:shadow-lg active:scale-[0.98] cursor-pointer"
             >
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                <User className="size-6 text-primary" />
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                <User className="size-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-base">Single Person</p>
-                <p className="text-sm text-muted-foreground">I am an individual freelancer or professional</p>
+                <p className="font-semibold text-base text-foreground">Individual</p>
+                <p className="text-sm text-muted-foreground">I am a freelancer, professional, or solo creator</p>
               </div>
-              <ArrowRight className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                <ArrowRight className="size-4 text-primary" />
+              </div>
             </button>
 
-            <button
-              onClick={() => handleSelectType("organization")}
-              className="group relative flex items-center gap-4 rounded-xl border-2 border-border bg-card p-5 text-left transition-all hover:border-primary/50 hover:shadow-md active:scale-[0.98] cursor-pointer"
-            >
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                <Building2 className="size-6 text-primary" />
+            <div className="relative flex items-center gap-4 rounded-xl border-2 border-border/50 bg-muted/20 p-5 text-left opacity-50 cursor-not-allowed select-none">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground/50">
+                <Building2 className="size-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-base">Organization</p>
-                <p className="text-sm text-muted-foreground">I represent a company or agency</p>
+                <p className="font-semibold text-base text-muted-foreground/50">Organization</p>
+                <p className="text-sm text-muted-foreground/40">I represent a company or agency</p>
               </div>
-              <ArrowRight className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
-            </button>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40 bg-muted/50 px-2 py-1 rounded-full border border-border/50">Coming soon</span>
+            </div>
           </div>
         )}
 

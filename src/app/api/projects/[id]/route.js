@@ -45,9 +45,9 @@ export async function GET(request, { params }) {
     }
 
     if (
-      project.owner?.toString() !== session.user.id &&
+      (project.owner?._id || project.owner)?.toString() !== session.user.id &&
       project.createdBy?.toString() !== session.user.id &&
-      !project.assignee?.some(a => a.user?.toString() === session.user.id)
+      !project.assignee?.some(a => (a.user?._id || a.user)?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -76,12 +76,22 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    const isOwner =
+      (existingProject.owner?._id || existingProject.owner)?.toString() === session.user.id ||
+      existingProject.createdBy?.toString() === session.user.id;
+
     if (
-      existingProject.owner?.toString() !== session.user.id &&
-      existingProject.createdBy?.toString() !== session.user.id &&
-      !existingProject.assignee?.some(a => a.user?.toString() === session.user.id)
+      !isOwner &&
+      !existingProject.assignee?.some(a => (a.user?._id || a.user)?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!isOwner) {
+      const allowed = ['status', 'currentMonth', 'currentYear'];
+      for (const key of Object.keys(body)) {
+        if (!allowed.includes(key)) delete body[key];
+      }
     }
 
     const updates = {};
@@ -110,19 +120,45 @@ export async function PATCH(request, { params }) {
       if (Array.isArray(updates.websites) && updates.websites.length === 0) {
         updates.websites = undefined;
       } else {
-        updates.websites = updates.websites.map(ws => ({
-          ...ws,
-          password: ws.password && typeof ws.password === 'string' ? encrypt(ws.password) : (ws.password || {}),
-        }));
+        const existingPwMap = {};
+        (existingProject.websites || []).forEach(s => {
+          if (s._id && s.password) existingPwMap[s._id.toString()] = s.password;
+        });
+        updates.websites = updates.websites.map(ws => {
+          const obj = { name: ws.name || '', url: ws.url || '', username: ws.username || '' };
+          if (ws.password && typeof ws.password === 'string') {
+            obj.password = encrypt(ws.password);
+          } else if (ws._id && existingPwMap[ws._id]) {
+            obj.password = existingPwMap[ws._id];
+          }
+          return obj;
+        });
       }
     }
 
     if (updates.domainHosting) {
-      updates.domainHosting = updates.domainHosting.map(e => ({
-        ...e,
-        password: e.password && typeof e.password === 'string' ? encrypt(e.password) : (e.password || {}),
-        hostingPassword: e.hostingPassword && typeof e.hostingPassword === 'string' ? encrypt(e.hostingPassword) : (e.hostingPassword || {}),
-      }));
+      const existingDhMap = {};
+      (existingProject.domainHosting || []).forEach(e => {
+        if (e._id) existingDhMap[e._id.toString()] = { password: e.password, hostingPassword: e.hostingPassword };
+      });
+      updates.domainHosting = updates.domainHosting.map(e => {
+        const obj = { ...e };
+        if (e.password && typeof e.password === 'string') {
+          obj.password = encrypt(e.password);
+        } else if (e._id && existingDhMap[e._id]) {
+          obj.password = existingDhMap[e._id].password;
+        } else {
+          delete obj.password;
+        }
+        if (e.hostingPassword && typeof e.hostingPassword === 'string') {
+          obj.hostingPassword = encrypt(e.hostingPassword);
+        } else if (e._id && existingDhMap[e._id]) {
+          obj.hostingPassword = existingDhMap[e._id].hostingPassword;
+        } else {
+          delete obj.hostingPassword;
+        }
+        return obj;
+      });
     }
 
     const statusChanged = body.status && body.status !== existingProject.status;
@@ -320,9 +356,9 @@ export async function DELETE(request, { params }) {
     }
 
     if (
-      project.owner?.toString() !== session.user.id &&
+      (project.owner?._id || project.owner)?.toString() !== session.user.id &&
       project.createdBy?.toString() !== session.user.id &&
-      !project.assignee?.some(a => a.user?.toString() === session.user.id)
+      !project.assignee?.some(a => (a.user?._id || a.user)?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

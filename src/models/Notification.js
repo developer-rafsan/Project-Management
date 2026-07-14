@@ -4,7 +4,7 @@ const notificationSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ['assignee_transfer_request', 'assignee_transfer_accepted', 'assignee_transfer_rejected', 'assignee_add_request', 'assignee_add_accepted', 'assignee_add_rejected', 'assignee_remove_request', 'assignee_remove_accepted', 'assignee_remove_rejected'],
+      enum: ['assignee_transfer_request', 'assignee_transfer_accepted', 'assignee_transfer_rejected', 'assignee_add_request', 'assignee_add_accepted', 'assignee_add_rejected', 'assignee_remove_request', 'assignee_remove_accepted', 'assignee_remove_rejected', 'assignee_update_request', 'assignee_update_accepted', 'assignee_update_rejected', 'owner_transfer_request', 'owner_transfer_accepted', 'owner_transfer_rejected'],
       required: true,
     },
     from: {

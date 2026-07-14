@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef, memo } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useDispatch } from "react-redux"
+import { useSelector, useDispatch } from "react-redux"
 import { updateProjectInStore } from "@/lib/features/projectSlice"
 import { toast } from "sonner"
 import {
@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FileText } from "lucide-react"
 import MonthTransferDialog from "@/components/projects/MonthTransferDialog"
-import TransferAssigneeDialog from "@/components/projects/TransferAssigneeDialog"
+import TransferOwnershipDialog from "@/components/projects/TransferOwnershipDialog"
 import Notes from "@/components/projects/Notes"
 import { ProjectBreadcrumbs, ProjectTitle, ProjectActions } from "@/components/projects/ProjectDetailHeader"
 import ShareDialog from "@/components/projects/ShareDialog"
@@ -32,6 +32,8 @@ import {
   ProjectMetaCard,
   ProjectTagsCard,
   ProjectLinksCard,
+  ProjectDomainCard,
+  ProjectContributorsCard,
 } from "@/components/projects/ProjectInfoSidebar"
 import { StatusChangeDialog } from "@/components/projects/StatusChangeDialog"
 import {
@@ -43,14 +45,36 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+const SidebarSkeleton = memo(function SidebarSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="h-28 w-full rounded-xl" />
+      ))}
+    </div>
+  )
+})
+
+const ActivitySkeleton = memo(function ActivitySkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={i} className="h-14 w-full rounded-lg" />
+      ))}
+    </div>
+  )
+})
+
 export default function ProjectDetailPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const params = useParams()
   const dispatch = useDispatch()
-  const [project, setProject] = useState(null)
+  const cachedProject = useSelector((s) => s.projects.items.find(p => p._id === params.id))
+  const [project, setProject] = useState(cachedProject || null)
   const [activities, setActivities] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!cachedProject)
+  const [sidebarReady, setSidebarReady] = useState(!!cachedProject)
   const [decryptedPassword, setDecryptedPassword] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
@@ -58,6 +82,8 @@ export default function ProjectDetailPage() {
   const [domainHostingPasswords, setDomainHostingPasswords] = useState({})
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const refreshRef = useRef(null)
+  const dataLoaded = useRef(false)
 
   useEffect(() => {
     if (deleteOpen) {
@@ -68,49 +94,67 @@ export default function ProjectDetailPage() {
     return () => { document.body.style.overflow = "" }
   }, [deleteOpen])
   const [transferOpen, setTransferOpen] = useState(false)
-  const [transferAssigneeOpen, setTransferAssigneeOpen] = useState(false)
+  const [transferOwnershipOpen, setTransferOwnershipOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("")
   const [statusNote, setStatusNote] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
 
   const fetchData = useCallback(async () => {
+    if (dataLoaded.current) return
     setLoading(true)
     try {
-      const [projectData, activitiesData, passwordData, additionalPwData, domainPwData] = await Promise.all([
+      const [projectData, activitiesData] = await Promise.all([
         getProject(params.id),
         getProjectActivities(params.id),
-        getProjectPassword(params.id).catch(() => ({ password: "" })),
-        getAdditionalPasswords(params.id).catch(() => ({ passwords: [] })),
-        getDomainPassword(params.id).catch(() => ({ domainHostingPasswords: [] })),
       ])
       setProject(projectData)
       setActivities(activitiesData || [])
-      setDecryptedPassword(passwordData.password || null)
-      const dhMap = {}
-      for (const item of domainPwData.domainHostingPasswords || []) {
-        dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
-      }
-      setDomainHostingPasswords(dhMap)
-      const pwMap = {}
-      for (const item of additionalPwData.passwords || []) {
-        pwMap[item.index] = item.password
-      }
-      setAdditionalPasswords(pwMap)
+      dispatch(updateProjectInStore(projectData))
+      dataLoaded.current = true
+      setSidebarReady(true)
+      setLoading(false)
+      Promise.all([
+        getProjectPassword(params.id).catch(() => ({ password: "" })),
+        getAdditionalPasswords(params.id).catch(() => ({ passwords: [] })),
+        getDomainPassword(params.id).catch(() => ({ domainHostingPasswords: [] })),
+      ]).then(([passwordData, additionalPwData, domainPwData]) => {
+        setDecryptedPassword(passwordData.password || null)
+        const dhMap = {}
+        for (const item of domainPwData.domainHostingPasswords || []) {
+          dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
+        }
+        setDomainHostingPasswords(dhMap)
+        const pwMap = {}
+        for (const item of additionalPwData.passwords || []) {
+          pwMap[item.index] = item.password
+        }
+        setAdditionalPasswords(pwMap)
+      })
     } catch (err) {
       toast.error(err.message || "Failed to load project")
-    } finally {
       setLoading(false)
+      setSidebarReady(true)
     }
-  }, [params.id])
+  }, [params.id, dispatch])
 
   const refreshActivities = useCallback(async () => {
-    const fresh = await getProjectActivities(params.id)
-    setActivities(fresh || [])
+    if (refreshRef.current) clearTimeout(refreshRef.current)
+    refreshRef.current = setTimeout(async () => {
+      const fresh = await getProjectActivities(params.id)
+      setActivities(fresh || [])
+    }, 500)
   }, [params.id])
+
+  const handleGenericUpdate = useCallback(async (updated) => {
+    setProject(updated)
+    dispatch(updateProjectInStore(updated))
+    refreshActivities()
+  }, [dispatch, refreshActivities])
 
   useEffect(() => {
     fetchData()
+    return () => { dataLoaded.current = false }
   }, [fetchData])
 
   const handleDuplicate = async () => {
@@ -191,12 +235,8 @@ export default function ProjectDetailPage() {
   const handleDomainUpdate = useCallback(async (updated) => {
     setProject(updated)
     dispatch(updateProjectInStore(updated))
-    const pwData = await getDomainPassword(params.id).catch(() => ({ domainHostingPasswords: [] }))
-    const dhMap = {}
-    for (const item of pwData.domainHostingPasswords || []) dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
-    setDomainHostingPasswords(dhMap)
-    await refreshActivities()
-  }, [refreshActivities, params.id])
+    refreshActivities()
+  }, [dispatch, refreshActivities])
 
   const handleTogglePassword = useCallback(async () => {
     if (showPassword) {
@@ -217,7 +257,18 @@ export default function ProjectDetailPage() {
     }
   }, [params.id, showPassword, decryptedPassword])
 
-  if (loading) {
+  if (!project && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <p className="text-muted-foreground mb-4">Project not found</p>
+        <Button onClick={() => router.push("/dashboard/projects")}>
+          Back to Projects
+        </Button>
+      </div>
+    )
+  }
+
+  if (!project) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <Skeleton className="h-4 w-48 sm:w-64" />
@@ -230,32 +281,21 @@ export default function ProjectDetailPage() {
         </div>
         <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-xl" />
-            ))}
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <ActivitySkeleton />
           </div>
-          <div className="space-y-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full rounded-xl" />
-            ))}
-          </div>
+          <SidebarSkeleton />
         </div>
       </div>
     )
   }
 
-  if (!project) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-muted-foreground mb-4">Project not found</p>
-        <Button onClick={() => router.push("/dashboard/projects")}>
-          Back to Projects
-        </Button>
-      </div>
-    )
-  }
-
   const passwordDisplay = decryptedPassword || null
+
+  const isOwner = project && session?.user?.id && (
+    (project.owner?._id || project.owner)?.toString() === session.user.id ||
+    project.createdBy?.toString() === session.user.id
+  )
 
   return (
     <div className="space-y-4 sm:space-y-6 pb-8 sm:pb-0">
@@ -268,16 +308,17 @@ export default function ProjectDetailPage() {
           </div>
           <ProjectActions
             project={project}
+            isOwner={isOwner}
             actionLoading={actionLoading}
             onStatusClick={() => {
               setNewStatus(project.status)
               setStatusOpen(true)
             }}
-            onDuplicate={handleDuplicate}
+            onDuplicate={isOwner ? handleDuplicate : undefined}
             onTransfer={() => setTransferOpen(true)}
-            onTransferAssignee={() => setTransferAssigneeOpen(true)}
-            onDelete={() => setDeleteOpen(true)}
-            onShare={() => setShareOpen(true)}
+            onTransferOwnership={isOwner ? () => setTransferOwnershipOpen(true) : undefined}
+            onDelete={isOwner ? () => setDeleteOpen(true) : undefined}
+            onShare={isOwner ? () => setShareOpen(true) : undefined}
           />
         </div>
       </div>
@@ -306,24 +347,32 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className="space-y-4 sm:space-y-6">
-          <ProjectDetailsCard project={project} onUpdate={async (updated) => { setProject(updated); dispatch(updateProjectInStore(updated)); await refreshActivities() }} />
-          <ProjectWebsiteCard
-            project={project}
-            passwordDisplay={passwordDisplay}
-            showPassword={showPassword}
-            onTogglePassword={handleTogglePassword}
-            additionalPasswords={additionalPasswords}
-            onUpdate={handleWebsiteUpdate}
-          />
-          <ProjectDomainCard
-            project={project}
-            domainHostingPasswords={domainHostingPasswords}
-            onUpdate={handleDomainUpdate}
-          />
-          <ProjectLinksCard project={project} onUpdate={async (updated) => { setProject(updated); dispatch(updateProjectInStore(updated)); await refreshActivities() }} />
-          <ProjectContributorsCard project={project} sessionUserId={session?.user?.id} onUpdate={async (updated) => { setProject(updated); dispatch(updateProjectInStore(updated)); await refreshActivities() }} />
-          <ProjectMetaCard project={project} sessionUserId={session?.user?.id} onUpdate={async (updated) => { setProject(updated); dispatch(updateProjectInStore(updated)); await refreshActivities() }} />
-          <ProjectTagsCard tags={project.tags} />
+          {sidebarReady ? (
+            <>
+              <ProjectDetailsCard project={project} isOwner={isOwner} onUpdate={handleGenericUpdate} />
+              <ProjectWebsiteCard
+                project={project}
+                isOwner={isOwner}
+                passwordDisplay={passwordDisplay}
+                showPassword={showPassword}
+                onTogglePassword={handleTogglePassword}
+                additionalPasswords={additionalPasswords}
+                onUpdate={handleWebsiteUpdate}
+              />
+              <ProjectDomainCard
+                project={project}
+                isOwner={isOwner}
+                domainHostingPasswords={domainHostingPasswords}
+                onUpdate={handleDomainUpdate}
+              />
+              <ProjectLinksCard project={project} isOwner={isOwner} onUpdate={handleGenericUpdate} />
+              <ProjectContributorsCard project={project} isOwner={isOwner} sessionUserId={session?.user?.id} onUpdate={handleGenericUpdate} />
+              <ProjectMetaCard project={project} isOwner={isOwner} sessionUserId={session?.user?.id} onUpdate={handleGenericUpdate} />
+              <ProjectTagsCard tags={project.tags} />
+            </>
+          ) : (
+            <SidebarSkeleton />
+          )}
         </div>
       </div>
 
@@ -365,16 +414,15 @@ export default function ProjectDetailPage() {
         onSuccess={handleTransferSuccess}
       />
 
-      <TransferAssigneeDialog
+      <TransferOwnershipDialog
         project={project}
-        open={transferAssigneeOpen}
-        onClose={() => setTransferAssigneeOpen(false)}
-        onSuccess={async () => {
-          setTransferAssigneeOpen(false)
+        open={transferOwnershipOpen}
+        onClose={() => setTransferOwnershipOpen(false)}
+        onSuccess={async (updated) => {
+          setProject(updated)
+          dispatch(updateProjectInStore(updated))
+          setTransferOwnershipOpen(false)
           await refreshActivities()
-          const fresh = await getProject(params.id)
-          setProject(fresh)
-          dispatch(updateProjectInStore(fresh))
         }}
       />
 

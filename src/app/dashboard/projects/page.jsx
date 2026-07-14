@@ -265,15 +265,15 @@ export default function ProjectsPage() {
       </div>
 
       <div className="rounded-xl border bg-card p-3 sm:p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex-1 min-w-0 w-full overflow-x-auto hide-scrollbar">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+          <div className="flex-1 min-w-0 w-full">
             <ProjectFilters
               filters={filters}
               onFilterChange={handleFilterChange}
               onSearch={handleSearch}
             />
           </div>
-          <div className="hidden sm:flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
             <div className="flex rounded-lg border p-0.5 bg-muted/30">
               <Button
                 variant={filterMode === "month" ? "default" : "ghost"}
@@ -303,7 +303,7 @@ export default function ProjectsPage() {
             {filterMode === "month" && (
               <div className="flex gap-1.5">
                 <Select value={String(selectedMonth)} onValueChange={(v) => { setSelectedMonth(Number(v)); setPage(1) }}>
-                  <SelectTrigger className="w-[110px] h-8">
+                  <SelectTrigger className="w-[100px] h-8">
                     <SelectValue placeholder="Month">
                       {format(new Date(2024, selectedMonth - 1), "MMM")}
                     </SelectValue>
@@ -317,7 +317,7 @@ export default function ProjectsPage() {
                   </SelectContent>
                 </Select>
                 <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); setPage(1) }}>
-                  <SelectTrigger className="w-[90px] h-8">
+                  <SelectTrigger className="w-[85px] h-8">
                     <SelectValue placeholder="Year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -331,7 +331,7 @@ export default function ProjectsPage() {
             {filterMode === "range" && (
               <DateRangePicker value={dateRange} onChange={setDateRange} />
             )}
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
+            <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">
               {filterMode === "month"
                 ? (() => {
                     const { from, to } = getMonthRange(selectedYear, selectedMonth, startDay)
@@ -343,65 +343,6 @@ export default function ProjectsPage() {
                     ? "All projects"
                     : ""}
             </span>
-          </div>
-          <div className="flex sm:hidden flex-wrap items-center gap-2">
-            <div className="flex rounded-lg border p-0.5 bg-muted/30">
-              <Button
-                variant={filterMode === "month" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => { setFilterMode("month"); setPage(1) }}
-                className="rounded-md px-2 text-xs"
-              >
-                Month
-              </Button>
-              <Button
-                variant={filterMode === "range" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => { setFilterMode("range"); setPage(1) }}
-                className="rounded-md px-2 text-xs"
-              >
-                Range
-              </Button>
-              <Button
-                variant={filterMode === "all" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => { setFilterMode("all"); setPage(1) }}
-                className="rounded-md px-2 text-xs"
-              >
-                All
-              </Button>
-            </div>
-            {filterMode === "month" && (
-              <div className="flex gap-1.5">
-                <Select value={String(selectedMonth)} onValueChange={(v) => { setSelectedMonth(Number(v)); setPage(1) }}>
-                  <SelectTrigger className="w-[95px] h-8">
-                    <SelectValue placeholder="Month">
-                      {format(new Date(2024, selectedMonth - 1), "MMM")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem key={m} value={String(m)}>
-                        {format(new Date(2024, m - 1), "MMMM")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); setPage(1) }}>
-                  <SelectTrigger className="w-[80px] h-8">
-                    <SelectValue placeholder="Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: new Date().getFullYear() - 2021 + 1 }, (_, i) => 2022 + i).map((y) => (
-                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {filterMode === "range" && (
-              <DateRangePicker value={dateRange} onChange={setDateRange} />
-            )}
           </div>
         </div>
       </div>
@@ -552,13 +493,9 @@ export default function ProjectsPage() {
             <Button onClick={async () => {
               setBulkStatusLoading(true)
               try {
-                let count = 0
-                for (const id of selectedIds) {
-                  const updated = await updateProject(id, { status: bulkStatusValue })
-                  dispatch(updateProjectInStore(updated))
-                  count++
-                }
-                toast.success(`Status updated for ${count} project${count > 1 ? "s" : ""}`)
+                const results = await Promise.all(selectedIds.map(id => updateProject(id, { status: bulkStatusValue })))
+                results.forEach(p => dispatch(updateProjectInStore(p)))
+                toast.success(`Status updated for ${results.length} project${results.length > 1 ? "s" : ""}`)
                 setBulkStatusOpen(false)
               } catch (err) {
                 toast.error(err.message || "Failed to update status")
@@ -620,13 +557,9 @@ export default function ProjectsPage() {
               if (!bulkTransferMonth || !bulkTransferYear) { toast.error("Select month and year"); return }
               setBulkTransferLoading(true)
               try {
-                let count = 0
-                for (const id of selectedIds) {
-                  const updated = await updateProject(id, { currentMonth: Number(bulkTransferMonth), currentYear: Number(bulkTransferYear) })
-                  dispatch(updateProjectInStore(updated))
-                  count++
-                }
-                toast.success(`Transferred ${count} project${count > 1 ? "s" : ""}`)
+                const results = await Promise.all(selectedIds.map(id => updateProject(id, { currentMonth: Number(bulkTransferMonth), currentYear: Number(bulkTransferYear) })))
+                results.forEach(p => dispatch(updateProjectInStore(p)))
+                toast.success(`Transferred ${results.length} project${results.length > 1 ? "s" : ""}`)
                 setBulkTransferOpen(false)
               } catch (err) {
                 toast.error(err.message || "Failed to transfer")
@@ -664,13 +597,9 @@ export default function ProjectsPage() {
             <Button variant="destructive" onClick={async () => {
               setBulkDeleteLoading(true)
               try {
-                let count = 0
-                for (const id of selectedIds) {
-                  await deleteProject(id)
-                  dispatch(removeProject(id))
-                  count++
-                }
-                toast.success(`Deleted ${count} project${count > 1 ? "s" : ""}`)
+                await Promise.all(selectedIds.map(id => deleteProject(id)))
+                selectedIds.forEach(id => dispatch(removeProject(id)))
+                toast.success(`Deleted ${selectedIds.length} project${selectedIds.length > 1 ? "s" : ""}`)
                 setSelectedIds([])
                 setSelectMode(false)
                 setBulkDeleteOpen(false)

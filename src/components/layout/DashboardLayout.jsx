@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import Sidebar from "@/components/layout/Sidebar"
 import Navbar from "@/components/layout/Navbar"
@@ -13,6 +13,7 @@ export default function DashboardLayout({ children }) {
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const setupChecked = useRef(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -28,7 +29,8 @@ export default function DashboardLayout({ children }) {
   }, [status])
 
   useEffect(() => {
-    if (status !== "authenticated") return
+    if (status !== "authenticated" || setupChecked.current) return
+    setupChecked.current = true
     fetch("/api/profile")
       .then((res) => res.json())
       .then((user) => {

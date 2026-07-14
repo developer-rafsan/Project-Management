@@ -28,6 +28,7 @@ const projectSchema = new mongoose.Schema(
     fiverrFeeEnabled: { type: Boolean, default: true },
     progress: { type: Number, default: 0, min: 0, max: 100 },
     websites: [{
+      name: { type: String, default: '' },
       url: { type: String, default: '' },
       username: { type: String, default: '' },
       password: { type: { iv: String, encryptedData: String }, default: {} },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, memo, useRef, useCallback } from "react"
+import { useState, useEffect, memo, useRef, useCallback } from "react"
 import Link from "next/link"
 import {
   Card,

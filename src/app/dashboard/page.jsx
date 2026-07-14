@@ -26,6 +26,7 @@ const statusColors = {
   Pending: "#eab308",
   "In Progress": "#6366f1",
   Delivered: "#10b981",
+  Revision: "#a855f7",
   "On Hold": "#f97316",
   Cancelled: "#ef4444",
 }
@@ -115,7 +116,7 @@ export default function DashboardPage() {
           setRecentProjects(data.recentProjects || [])
           setRecentUpdates(data.recentUpdates || [])
         })
-        .catch(() => {})
+        .catch((err) => console.error("Dashboard stats error:", err))
         .finally(() => setLoading(false))
     }
 

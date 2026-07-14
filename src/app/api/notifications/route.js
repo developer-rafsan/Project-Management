@@ -59,7 +59,7 @@ export async function POST(request) {
     }
 
     const notifType = type || 'assignee_transfer_request';
-    if (!['assignee_transfer_request', 'assignee_add_request', 'assignee_remove_request'].includes(notifType)) {
+    if (!['assignee_transfer_request', 'assignee_add_request', 'assignee_remove_request', 'assignee_update_request', 'owner_transfer_request'].includes(notifType)) {
       return NextResponse.json({ error: 'Invalid notification type' }, { status: 400 });
     }
 
@@ -69,6 +69,7 @@ export async function POST(request) {
     }
 
     if (
+      project.owner?.toString() !== session.user.id &&
       project.createdBy?.toString() !== session.user.id &&
       !project.assignee?.some(a => a.user?.toString() === session.user.id)
     ) {
@@ -77,14 +78,14 @@ export async function POST(request) {
 
     const notificationData = {
       type: notifType,
-      title: notifType === 'assignee_add_request' ? 'Assignee Request' : notifType === 'assignee_remove_request' ? 'Remove Request' : 'Transfer Request',
+      title: notifType === 'assignee_add_request' ? 'Assignee Request' : notifType === 'assignee_remove_request' ? 'Remove Request' : notifType === 'assignee_update_request' ? 'Update Request' : notifType === 'owner_transfer_request' ? 'Owner Transfer Request' : 'Transfer Request',
       from: session.user.id,
       to: toUserId,
       project: projectId,
       message: message || '',
     };
 
-    if (notifType === 'assignee_add_request' && percentage != null) {
+    if ((notifType === 'assignee_add_request' || notifType === 'assignee_update_request') && percentage != null) {
       if (percentage < 0 || percentage > 100) {
         return NextResponse.json({ error: 'Percentage must be between 0 and 100' }, { status: 400 });
       }

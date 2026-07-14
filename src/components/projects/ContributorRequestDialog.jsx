@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -20,15 +19,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import { Loader2, UserRound, Search, Check } from "lucide-react"
+import { Loader2, Search, Percent, Check } from "lucide-react"
 import { toast } from "sonner"
 import { getUsers } from "@/actions/projectActions"
 
-export default function TransferOwnershipDialog({ project, open, onClose, onSuccess }) {
+export default function ContributorRequestDialog({ project, open, onClose, onSuccess }) {
   const [users, setUsers] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedUserId, setSelectedUserId] = useState("")
-  const [message, setMessage] = useState("")
+  const [percentage, setPercentage] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -38,7 +37,7 @@ export default function TransferOwnershipDialog({ project, open, onClose, onSucc
     if (open) {
       setSearchQuery("")
       setSelectedUserId("")
-      setMessage("")
+      setPercentage("")
       setFocused(false)
       fetchUsers()
       setTimeout(() => inputRef.current?.focus(), 100)
@@ -75,6 +74,12 @@ export default function TransferOwnershipDialog({ project, open, onClose, onSucc
       return
     }
 
+    const pct = Number(percentage)
+    if (!pct || pct < 0 || pct > 100) {
+      toast.error("Please enter a valid percentage (0-100)")
+      return
+    }
+
     setSubmitting(true)
     try {
       const res = await fetch("/api/notifications", {
@@ -83,19 +88,19 @@ export default function TransferOwnershipDialog({ project, open, onClose, onSucc
         body: JSON.stringify({
           to: selectedUserId,
           project: project._id,
-          message,
-          type: "owner_transfer_request",
+          type: "assignee_add_request",
+          percentage: pct,
         }),
       })
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.message || "Failed to send transfer request")
+        throw new Error(err.message || "Failed to send request")
       }
-      toast.success("Owner transfer request sent")
+      toast.success("Contributor request sent")
       onSuccess?.()
       onClose?.()
     } catch (err) {
-      toast.error(err.message || "Failed to send transfer request")
+      toast.error(err.message || "Failed to send request")
     } finally {
       setSubmitting(false)
     }
@@ -105,15 +110,15 @@ export default function TransferOwnershipDialog({ project, open, onClose, onSucc
     <Dialog open={open} onOpenChange={(open) => !open && onClose?.()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Transfer Ownership</DialogTitle>
+          <DialogTitle>Add Contributor</DialogTitle>
           <DialogDescription>
-            Send an ownership transfer request for &ldquo;{project?.projectName}&rdquo;. The recipient must accept to take full control.
+            Search for a user and send them a contributor request for &ldquo;{project?.projectName}&rdquo;. They must accept to join.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Select New Owner</label>
+            <label className="text-sm font-medium">Select User</label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
               <Input
@@ -177,21 +182,24 @@ export default function TransferOwnershipDialog({ project, open, onClose, onSucc
                 <AvatarImage src={selectedUser.image} />
                 <AvatarFallback className="text-[9px]">{selectedUser.name?.charAt(0) || "?"}</AvatarFallback>
               </Avatar>
-              <UserRound className="size-3.5 text-muted-foreground shrink-0" />
-              <>Transferring ownership to <strong className="truncate">{selectedUser.name}</strong></>
+              <span className="text-muted-foreground">Adding <strong>{selectedUser.name}</strong> as contributor</span>
             </div>
           )}
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">
-              Note <span className="text-muted-foreground">(optional)</span>
-            </label>
-            <Textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Add a note for the recipient..."
-              rows={2}
-            />
+            <label className="text-sm font-medium">Percentage (%)</label>
+            <div className="relative">
+              <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={percentage}
+                onChange={(e) => setPercentage(e.target.value)}
+                placeholder="Enter share percentage..."
+                className="pl-8"
+              />
+            </div>
           </div>
         </div>
 
@@ -199,7 +207,7 @@ export default function TransferOwnershipDialog({ project, open, onClose, onSucc
           <Button variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={submitting || !selectedUserId}>
+          <Button onClick={handleConfirm} disabled={submitting || !selectedUserId || !percentage}>
             {submitting && <Loader2 className="size-4 animate-spin" />}
             Send Request
           </Button>

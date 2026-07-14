@@ -134,7 +134,7 @@ export default function Navbar() {
   }
 
   const pendingRequests = notifications.filter(
-    (n) => n.type === "assignee_transfer_request" && n.status === "pending"
+    (n) => (n.type === "assignee_transfer_request" || n.type === "owner_transfer_request") && n.status === "pending"
   )
   const recentNotifs = notifications.slice(0, 20)
 
@@ -310,7 +310,7 @@ export default function Navbar() {
                           !n.read ? 'bg-gradient-to-r from-red-50/80 to-transparent dark:from-red-950/15' : ''
                         }`}
                         onClick={() => {
-                          if ((n.type === "assignee_transfer_request" || n.type === "assignee_add_request" || n.type === "assignee_remove_request") && n.status === "pending") return
+                          if ((n.type === "assignee_transfer_request" || n.type === "assignee_add_request" || n.type === "assignee_remove_request" || n.type === "owner_transfer_request") && n.status === "pending") return
                           setSelectedNotif(n)
                           setNotifOpen(false)
                           if (!n.read) setReadStatus(n._id, true)
@@ -398,6 +398,64 @@ export default function Navbar() {
                                     &ldquo;{n.message}&rdquo;
                                   </p>
                                 )}
+                                <div className="flex items-center gap-2 mt-2.5">
+                                  <Button
+                                    size="xs"
+                                    variant="default"
+                                    className="h-7 gap-1 rounded-lg font-medium"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      acceptTransfer(n)
+                                      setNotifOpen(false)
+                                    }}
+                                  >
+                                    <Check className="size-3.5" />
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    className="h-7 gap-1 rounded-lg"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      rejectTransfer(n)
+                                      setNotifOpen(false)
+                                    }}
+                                  >
+                                    <X className="size-3.5" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              </>
+                            ) : n.type === "assignee_remove_request" && n.status === "pending" ? (
+                              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                <span className="font-medium text-foreground/80">{n.from?.name || "Someone"}</span>
+                                {" "}removed you from{" "}
+                                <span className="font-medium text-foreground/80">&ldquo;{n.project?.projectName || "project"}&rdquo;</span>
+                              </p>
+                            ) : n.type === "assignee_update_request" && n.status === "pending" ? (
+                              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                <span className="font-medium text-foreground/80">{n.from?.name || "Someone"}</span>
+                                {" "}updated your share in{" "}
+                                <span className="font-medium text-foreground/80">&ldquo;{n.project?.projectName || "project"}&rdquo;</span>
+                                {" "}to <span className="font-semibold text-foreground/80">{n.percentage || 0}%</span>
+                              </p>
+                            ) : n.type === "owner_transfer_request" && n.status === "pending" ? (
+                              <>
+                                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                  <span className="font-medium text-foreground/80">{n.from?.name || "Someone"}</span>
+                                  {" "}wants to transfer ownership of{" "}
+                                  <span className="font-medium text-foreground/80">&ldquo;{n.project?.projectName || "project"}&rdquo;</span>
+                                  {" "}to you
+                                </p>
+                                {n.message && (
+                                  <p className="text-xs text-muted-foreground/60 mt-1 italic leading-relaxed">
+                                    &ldquo;{n.message}&rdquo;
+                                  </p>
+                                )}
+                                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                                  Accepting will give you full control. Previous owner will lose access.
+                                </p>
                                 <div className="flex items-center gap-2 mt-2.5">
                                   <Button
                                     size="xs"
@@ -536,11 +594,17 @@ export default function Navbar() {
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
                   <Bell className="size-3" />
                   {selectedNotif?.type === "assignee_transfer_request" ? "Transfer Request" :
-                   selectedNotif?.type === "assignee_transfer_accepted" ? "Transfer Accepted" :
-                   selectedNotif?.type === "assignee_transfer_rejected" ? "Transfer Rejected" :
-                   selectedNotif?.type === "assignee_add_request" ? "Assignee Request" :
-                   selectedNotif?.type === "assignee_add_accepted" ? "Assignee Request Accepted" :
-                   selectedNotif?.type === "assignee_add_rejected" ? "Assignee Request Rejected" : "Notification"}
+                    selectedNotif?.type === "assignee_transfer_accepted" ? "Transfer Accepted" :
+                    selectedNotif?.type === "assignee_transfer_rejected" ? "Transfer Rejected" :
+                    selectedNotif?.type === "owner_transfer_request" ? "Owner Transfer Request" :
+                    selectedNotif?.type === "owner_transfer_accepted" ? "Owner Transfer Accepted" :
+                    selectedNotif?.type === "owner_transfer_rejected" ? "Owner Transfer Rejected" :
+                    selectedNotif?.type === "assignee_add_request" ? "Assignee Request" :
+                    selectedNotif?.type === "assignee_add_accepted" ? "Assignee Request Accepted" :
+                    selectedNotif?.type === "assignee_add_rejected" ? "Assignee Request Rejected" :
+                    selectedNotif?.type === "owner_transfer_request" ? "Owner Transfer Request" :
+                    selectedNotif?.type === "owner_transfer_accepted" ? "Owner Transfer Accepted" :
+                    selectedNotif?.type === "owner_transfer_rejected" ? "Owner Transfer Rejected" : "Notification"}
                 </p>
               </div>
             </div>

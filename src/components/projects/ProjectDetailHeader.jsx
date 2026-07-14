@@ -9,7 +9,6 @@ import {
   Trash2,
   CalendarArrowUp,
   ArrowLeftRight,
-  UserRoundPlus,
   UserRoundCog,
   Link as LinkIcon,
   Circle,
@@ -81,11 +80,11 @@ export function ProjectTitle({ project }) {
 
 export function ProjectActions({
   project,
+  isOwner,
   actionLoading,
   onStatusClick,
   onDuplicate,
   onTransfer,
-  onTransferAssignee,
   onTransferOwnership,
   onDelete,
   onShare,
@@ -96,30 +95,34 @@ export function ProjectActions({
         <ArrowLeftRight className="size-3.5" />
         Status
       </Button>
-      <Button variant="outline" size="sm" onClick={onShare}>
-        <LinkIcon className="size-3.5" />
-        Share
-      </Button>
-      <Button variant="outline" size="sm" onClick={onDuplicate} disabled={actionLoading}>
-        <DuplicateIcon className="size-3.5" />
-        Duplicate
-      </Button>
+      {isOwner && (
+        <Button variant="outline" size="sm" onClick={onShare}>
+          <LinkIcon className="size-3.5" />
+          Share
+        </Button>
+      )}
+      {isOwner && (
+        <Button variant="outline" size="sm" onClick={onDuplicate} disabled={actionLoading}>
+          <DuplicateIcon className="size-3.5" />
+          Duplicate
+        </Button>
+      )}
       <Button variant="outline" size="sm" onClick={onTransfer}>
         <CalendarArrowUp className="size-3.5" />
         Transfer
       </Button>
-      <Button variant="outline" size="sm" onClick={onTransferAssignee}>
-        <UserRoundPlus className="size-3.5" />
-        Transfer to
-      </Button>
-      <Button variant="outline" size="sm" onClick={onTransferOwnership}>
-        <UserRoundCog className="size-3.5" />
-        Owner
-      </Button>
-      <Button variant="destructive" size="sm" onClick={onDelete}>
-        <Trash2 className="size-3.5" />
-        Delete
-      </Button>
+      {isOwner && (
+        <Button variant="outline" size="sm" onClick={onTransferOwnership}>
+          <UserRoundCog className="size-3.5" />
+          Owner transfer
+        </Button>
+      )}
+      {isOwner && (
+        <Button variant="destructive" size="sm" onClick={onDelete}>
+          <Trash2 className="size-3.5" />
+          Delete
+        </Button>
+      )}
     </div>
   )
 }

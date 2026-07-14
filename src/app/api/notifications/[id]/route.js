@@ -47,6 +47,10 @@ export async function PATCH(request, { params }) {
           project.assignee = (project.assignee || []).filter(
             a => (a.user?.toString ? a.user.toString() : a.user) !== session.user.id
           );
+        } else if (notification.type === 'owner_transfer_request') {
+          project.owner = session.user.id;
+          project.createdBy = session.user.id;
+          project.assignee = [{ user: session.user.id, percentage: 100 }];
         } else {
           project.assignee = [{ user: session.user.id, percentage: 100 }];
           project.createdBy = session.user.id;
@@ -65,7 +69,9 @@ export async function PATCH(request, { params }) {
           ? `Added as assignee with ${notification.percentage || 0}% share`
           : notification.type === 'assignee_remove_request'
             ? `Removed from assignees`
-            : `Transferred to ${session.user.name || 'new assignee'}`;
+            : notification.type === 'owner_transfer_request'
+              ? `Ownership transferred to ${session.user.name || 'new owner'}`
+              : `Transferred to ${session.user.name || 'new assignee'}`;
 
         await Activity.create({
           project: notification.project,
@@ -79,15 +85,19 @@ export async function PATCH(request, { params }) {
 
       const responseType = notification.type === 'assignee_add_request' ? 'assignee_add_accepted'
         : notification.type === 'assignee_remove_request' ? 'assignee_remove_accepted'
+        : notification.type === 'owner_transfer_request' ? 'owner_transfer_accepted'
         : 'assignee_transfer_accepted';
       const responseTitle = notification.type === 'assignee_add_request' ? 'Assignee Request Accepted'
         : notification.type === 'assignee_remove_request' ? 'Remove Request Accepted'
+        : notification.type === 'owner_transfer_request' ? 'Owner Transfer Accepted'
         : 'Transfer Accepted';
       const responseMsg = notification.type === 'assignee_add_request'
         ? `has accepted the assignee request for "${project?.projectName || 'project'}"`
         : notification.type === 'assignee_remove_request'
           ? `has accepted removal from "${project?.projectName || 'project'}"`
-          : `has accepted the transfer of "${project?.projectName || 'project'}"`;
+          : notification.type === 'owner_transfer_request'
+            ? `has accepted ownership of "${project?.projectName || 'project'}"`
+            : `has accepted the transfer of "${project?.projectName || 'project'}"`;
 
       await Notification.create({
         type: responseType,
@@ -117,15 +127,19 @@ export async function PATCH(request, { params }) {
 
       const responseType = notification.type === 'assignee_add_request' ? 'assignee_add_rejected'
         : notification.type === 'assignee_remove_request' ? 'assignee_remove_rejected'
+        : notification.type === 'owner_transfer_request' ? 'owner_transfer_rejected'
         : 'assignee_transfer_rejected';
       const responseTitle = notification.type === 'assignee_add_request' ? 'Assignee Request Rejected'
         : notification.type === 'assignee_remove_request' ? 'Remove Request Rejected'
+        : notification.type === 'owner_transfer_request' ? 'Owner Transfer Rejected'
         : 'Transfer Rejected';
       const responseMsg = notification.type === 'assignee_add_request'
         ? `has rejected the assignee request for "${project?.projectName || 'project'}"`
         : notification.type === 'assignee_remove_request'
           ? `has rejected removal from "${project?.projectName || 'project'}"`
-          : `has rejected the transfer of "${project?.projectName || 'project'}"`;
+          : notification.type === 'owner_transfer_request'
+            ? `has rejected ownership of "${project?.projectName || 'project'}"`
+            : `has rejected the transfer of "${project?.projectName || 'project'}"`;
 
       await Notification.create({
         type: responseType,

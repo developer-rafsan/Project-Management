@@ -10,13 +10,14 @@ function getEffectiveMonthYear(project) {
 }
 
 function getUserSharePct(project, userId) {
+  const entry = (project.assignee || []).find(a => (a.user?.toString() || a.user) === userId)
+  if (entry) return entry.percentage || 0
   const isOwner = project.owner?.toString() === userId
   if (isOwner) {
     const t = (project.assignee || []).reduce((s, a) => s + (a.percentage || 0), 0)
     return Math.max(0, 100 - t)
   }
-  const entry = (project.assignee || []).find(a => (a.user?.toString() || a.user) === userId)
-  return entry ? (entry.percentage || 0) : 0
+  return 0
 }
 
 export async function GET(request) {
