@@ -499,7 +499,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 </label>
                 <Controller name="cms" control={control} render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className={`h-9 text-sm bg-background ${errors.cms ? "border-destructive ring-destructive/20" : ""}`}><SelectValue placeholder="Select CMS platform" /></SelectTrigger>
+                    <SelectTrigger className={`h-9 text-sm bg-background w-full ${errors.cms ? "border-destructive ring-destructive/20" : ""}`}><SelectValue placeholder="Select CMS platform" /></SelectTrigger>
                     <SelectContent className="max-h-[320px]">
                       {CMS_CATEGORIES.map((cat) => (
                         <div key={cat.label}>
@@ -541,7 +541,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                   </label>
                   <Controller name="priority" control={control} render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className={`h-9 text-sm bg-background ${errors.priority ? "border-destructive ring-destructive/20" : ""}`}>
+                      <SelectTrigger className={`h-9 text-sm bg-background w-full ${errors.priority ? "border-destructive ring-destructive/20" : ""}`}>
                         {field.value ? (
                           <div className="flex items-center gap-2">
                             <div className={`size-2 rounded-full ${PRIORITY_STYLES[field.value]?.dot}`} />
@@ -578,7 +578,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                   </label>
                   <Controller name="status" control={control} render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className={`h-9 text-sm bg-background ${errors.status ? "border-destructive ring-destructive/20" : ""}`}>
+                      <SelectTrigger className={`h-9 text-sm bg-background w-full ${errors.status ? "border-destructive ring-destructive/20" : ""}`}>
                         {field.value ? (
                           <div className="flex items-center gap-2">
                             <div className={`size-2 rounded-full ${STATUS_STYLES[field.value]?.dot}`} />

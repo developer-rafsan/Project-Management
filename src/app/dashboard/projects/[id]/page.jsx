@@ -161,11 +161,15 @@ export default function ProjectDetailPage() {
     if (!project) return
     setActionLoading(true)
     try {
-      const { _id, createdAt, updatedAt, orderId, transferMonth, owner, ...rest } = project
+      const { _id, createdAt, updatedAt, orderId, transferMonth, owner, assignee, personTransfer, activities, __v, ...rest } = project
+      const cleanAssignee = (assignee || []).map(a => ({
+        user: a.user?._id || a.user,
+        percentage: a.percentage || 0,
+      }))
       const newProject = await createProject({
         ...rest,
+        assignee: cleanAssignee,
         projectName: `${project.projectName} (Copy)`,
-        websites: rest.websites || [],
       })
       toast.success("Project duplicated")
       router.push(`/dashboard/projects/${newProject._id}`)

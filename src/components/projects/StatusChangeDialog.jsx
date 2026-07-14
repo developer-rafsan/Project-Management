@@ -45,7 +45,7 @@ export function StatusChangeDialog({
           <div className="space-y-2">
             <label className="text-sm font-medium">Status</label>
             <Select value={newStatus} onValueChange={onNewStatusChange}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>

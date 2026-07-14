@@ -177,19 +177,19 @@ export function ProjectDetailsCard({ project, isOwner, onUpdate }) {
           <span className="font-mono text-sm">{project.orderId || "-"}</span>
         </InfoRow>
         <SectionDivider />
-        <InfoRow icon={User} label="Assignee">
-          {project.assignee ? (
+        <InfoRow icon={User} label="Owner">
+          {project.owner ? (
             <div className="flex items-center gap-2">
               <Avatar size="sm">
-                <AvatarImage src={project.assignee.image} />
+                <AvatarImage src={project.owner?.image} />
                 <AvatarFallback className="text-[10px]">
-                  {project.assignee.name?.charAt(0) || "?"}
+                  {(project.owner?.name || "?").charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm">{project.assignee.name}</span>
+              <span className="text-sm">{project.owner?.name || "Unknown"}</span>
             </div>
           ) : (
-            <span className="text-sm text-muted-foreground">Unassigned</span>
+            <span className="text-sm text-muted-foreground">-</span>
           )}
         </InfoRow>
         <SectionDivider />
