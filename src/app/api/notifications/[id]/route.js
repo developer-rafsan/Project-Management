@@ -53,8 +53,13 @@ export async function PATCH(request, { params }) {
           );
         } else if (notification.type === 'owner_transfer_request') {
           project.owner = session.user.id;
-          project.createdBy = session.user.id;
-          project.assignee = [{ user: session.user.id, percentage: 100 }];
+          const existing = project.assignee || [];
+          const alreadyAssigned = existing.some(
+            a => (a.user?.toString ? a.user.toString() : a.user) === session.user.id
+          );
+          if (!alreadyAssigned) {
+            project.assignee = [...existing, { user: session.user.id, percentage: 0 }];
+          }
         } else {
           project.assignee = [{ user: session.user.id, percentage: 100 }];
           project.createdBy = session.user.id;

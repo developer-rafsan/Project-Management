@@ -295,8 +295,7 @@ export default function ProjectDetailPage() {
   const passwordDisplay = decryptedPassword || null
 
   const isOwner = project && session?.user?.id && (
-    (project.owner?._id || project.owner)?.toString() === session.user.id ||
-    project.createdBy?.toString() === session.user.id
+    (project.owner?._id || project.owner)?.toString() === session.user.id
   )
 
   return (

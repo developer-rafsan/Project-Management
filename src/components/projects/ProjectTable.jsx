@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table"
 import {
   Copy, Check, ExternalLink, Globe, User, Lock, Eye, EyeOff,
-  MoreHorizontal, Trash2, Pencil, ArrowLeftRight, CalendarArrowUp,
+  MoreHorizontal, Trash2, Pencil, ArrowLeftRight,
   UserRoundPlus, Link, Percent, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -111,11 +111,9 @@ const RowActions = memo(function RowActions({ project, onAction }) {
         <DropdownMenuItem onClick={() => onAction?.("progress", project)}>
           <Percent className="size-4" /> Progress
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAction?.("transfer", project)}>
-          <CalendarArrowUp className="size-4" /> Transfer
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAction?.("transferAssignee", project)}>
-          <UserRoundPlus className="size-4" /> Transfer to
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onAction?.("transferOwner", project)}>
+          <UserRoundPlus className="size-4" /> Transfer Owner
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => onAction?.("share", project)}>

@@ -11,7 +11,6 @@ async function verifyProjectAccess(projectId, userId) {
   if (!project) return false;
   if (
     project.owner?.toString() !== userId &&
-    project.createdBy?.toString() !== userId &&
     !project.assignee?.some(a => a.user?.toString() === userId)
   ) return false;
   return true;

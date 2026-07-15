@@ -555,15 +555,6 @@ export function ProjectWebsiteCard({ project, isOwner, passwordDisplay, showPass
         </DialogContent>
       </Dialog>
 
-      <ContributorRequestDialog
-        project={project}
-        open={requestOpen}
-        onClose={() => setRequestOpen(false)}
-        onSuccess={() => {
-          setRequestOpen(false)
-          fetchPendingRequests()
-        }}
-      />
     </>
   )
 }
@@ -1229,7 +1220,6 @@ export function ProjectDomainCard({ project, isOwner, domainHostingPasswords = {
 
 export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpdate }) {
   const [editOpen, setEditOpen] = useState(false)
-  const [requestOpen, setRequestOpen] = useState(false)
   const [contributors, setContributors] = useState([])
   const [saving, setSaving] = useState(false)
   const [allUsers, setAllUsers] = useState([])
@@ -1250,7 +1240,6 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
         setPendingRequests(data.filter((n) => n.status === "pending"))
       }
     } catch {
-      // silent
     } finally {
       setLoadingRequests(false)
     }
@@ -1270,6 +1259,7 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
         name: project.owner?.name || 'Owner',
         image: project.owner?.image || '',
         percentage: ownerPct,
+        _isOwner: true,
       }]),
       ...assignees
         .filter(a => (a.user?._id || a.user)?.toString() !== ownerId)
@@ -1284,36 +1274,68 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
     try {
       const users = await getUsers()
       setAllUsers(users)
-    } catch { /* silent */ }
+    } catch {}
     setEditOpen(true)
     setTimeout(() => searchRef.current?.focus(), 100)
+  }
+
+  const handleAddToList = (user) => {
+    const exists = contributors.some(c => c.userId === user._id)
+    const hasPending = pendingRequests.some(r => r.to?._id === user._id)
+    if (exists || hasPending) return
+    setContributors(prev => [...prev, {
+      userId: user._id,
+      name: user.name,
+      image: user.image || '',
+      percentage: 0,
+      _isNew: true,
+    }])
+    setSearchQuery("")
+    setSearchFocused(false)
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
+      const nonOwner = contributors.filter(c => !c._isOwner)
       const totalPct = contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0)
-      if (totalPct > 100) {
-        toast.error("Total share cannot exceed 100%")
+      if (totalPct !== 100) {
+        toast.error("Total share must be exactly 100%")
         setSaving(false)
         return
       }
 
+      const existingUserIds = new Set(assignees.map(a => (a.user?._id || a.user)?.toString()))
+      const newContributors = nonOwner.filter(c => !existingUserIds.has(c.userId))
+      const existingContributors = nonOwner.filter(c => existingUserIds.has(c.userId))
       const removed = assignees.filter(a => {
         const uid = (a.user?._id || a.user)?.toString()
         return !contributors.some(c => c.userId === uid)
       })
-      const kept = contributors.map(c => ({
-        user: c.userId,
-        percentage: Number(c.percentage) || 0,
-      }))
       const origMap = new Map(assignees.map(a => [(a.user?._id || a.user)?.toString(), a.percentage || 0]))
-      const changed = contributors.filter(c => {
+      const changed = existingContributors.filter(c => {
         const origPct = origMap.get(c.userId)
         return origPct !== undefined && (Number(c.percentage) || 0) !== origPct
       })
 
+      const kept = existingContributors.map(c => ({
+        user: c.userId,
+        percentage: Number(c.percentage) || 0,
+      }))
       const updated = await updateProject(project._id, { assignee: kept })
+
+      for (const c of newContributors) {
+        await fetch("/api/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: c.userId,
+            project: project._id,
+            type: "assignee_add_request",
+            percentage: Number(c.percentage) || 0,
+          }),
+        })
+      }
 
       for (const r of removed) {
         const uid = (r.user?._id || r.user)?.toString()
@@ -1344,14 +1366,15 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
       }
 
       onUpdate?.(updated)
+      fetchPendingRequests()
       setEditOpen(false)
 
-      if (removed.length > 0 && changed.length > 0) {
-        toast.success(`${removed.length} removed, ${changed.length} updated`)
-      } else if (removed.length > 0) {
-        toast.success(`${removed.length} contributor${removed.length > 1 ? 's' : ''} removed`)
-      } else if (changed.length > 0) {
-        toast.success(`Share updated for ${changed.length} contributor${changed.length > 1 ? 's' : ''}`)
+      const parts = []
+      if (newContributors.length > 0) parts.push(`${newContributors.length} invited`)
+      if (removed.length > 0) parts.push(`${removed.length} removed`)
+      if (changed.length > 0) parts.push(`${changed.length} updated`)
+      if (parts.length > 0) {
+        toast.success(parts.join(', '))
       } else {
         toast.info("No changes made")
       }
@@ -1373,22 +1396,20 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
   const totalPct = contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0)
   const userIsOwner = isOwner !== undefined ? isOwner : (project.owner?._id === sessionUserId || project.owner?.toString() === sessionUserId)
 
+  const filteredUsers = allUsers.filter(u =>
+    u.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <>
+      <div className="rounded-xl border bg-card p-5">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contributors</h2>
-        <div className="flex items-center gap-1">
-          {userIsOwner && hasContributors && (
-            <Button variant="ghost" size="icon-xs" onClick={handleOpen}>
-              <Pencil className="size-3" />
-            </Button>
-          )}
-          {userIsOwner && (
-            <Button variant="ghost" size="icon-xs" onClick={() => setRequestOpen(true)} title="Add contributor">
-              <Plus className="size-3" />
-            </Button>
-          )}
-        </div>
+        {userIsOwner && (
+          <Button variant="ghost" size="icon-xs" onClick={handleOpen}>
+            <Pencil className="size-3" />
+          </Button>
+        )}
       </div>
       {hasContributors ? (
         <div className="divide-y divide-border/50">
@@ -1489,119 +1510,134 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Manage Contributors</DialogTitle>
-            <DialogDescription>Add, remove or update share percentages</DialogDescription>
+            <DialogDescription>Search users to invite, manage shares and remove contributors</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
               <Input
                 ref={searchRef}
-                placeholder="Search users to add..."
+                placeholder="Search users to invite..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
                 className="pl-8 h-9 text-sm"
               />
-              {searchFocused && searchQuery && (
+              {searchFocused && searchQuery && filteredUsers.length > 0 && (
                 <div className="absolute top-full mt-1 left-0 right-0 z-50 rounded-lg border bg-popover shadow-md overflow-hidden">
                   <Command className="rounded-lg">
                     <CommandList>
-                      {allUsers
-                        .filter(u => u.name?.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .length > 0 ? (
-                        <CommandGroup>
-                          {allUsers
-                            .filter(u => u.name?.toLowerCase().includes(searchQuery.toLowerCase()))
-                            .map((u) => {
-                              const ownerId = project.owner?._id?.toString() || project.owner?.toString()
-                              const existingIds = new Set(contributors.map(c => c.userId))
-                              const isOwner = u._id === ownerId
-                              const exists = existingIds.has(u._id)
-                              const disabled = isOwner || exists
-                              return (
-                                <CommandItem
-                                  key={u._id}
-                                  value={u._id}
-                                  disabled={disabled}
-                                  className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer ${disabled ? "opacity-40 pointer-events-none" : ""}`}
-                                >
-                                  <Avatar className="size-7 shrink-0">
-                                    <AvatarImage src={u.image} />
-                                    <AvatarFallback className="text-[10px]">{u.name?.charAt(0) || "?"}</AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium">{u.name}</p>
-                                  </div>
-                                  {exists && <span className="text-xs text-muted-foreground shrink-0">Added</span>}
-                                  {isOwner && <span className="text-xs text-muted-foreground shrink-0">Owner</span>}
-                                  {!exists && !isOwner && (
-                                    <Button type="button" size="icon-xs" variant="ghost" className="shrink-0 size-6" onMouseDown={(e) => {
-                                      e.preventDefault()
-                                      setContributors([...contributors, { userId: u._id, name: u.name, image: u.image, percentage: "" }])
-                                      setSearchQuery("")
-                                      setSearchFocused(false)
-                                      searchRef.current?.focus()
-                                    }}>
-                                      <Plus className="size-3.5" />
-                                    </Button>
-                                  )}
-                                </CommandItem>
-                              )
-                            })}
-                        </CommandGroup>
-                      ) : (
-                        <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">No users found</CommandEmpty>
-                      )}
+                      <CommandGroup>
+                        {filteredUsers.map((u) => {
+                          const isOwner = u._id === ownerId
+                          const inList = contributors.some(c => c.userId === u._id)
+                          const isExistingAssignee = assignees.some(a => (a.user?._id || a.user)?.toString() === u._id)
+                          const hasPending = pendingRequests.some(r => r.to?._id === u._id)
+                          const disabled = isOwner || inList || hasPending
+                          let label = ''
+                          if (isOwner) label = 'Owner'
+                          else if (isExistingAssignee) label = 'Added'
+                          else if (inList) label = 'In List'
+                          else if (hasPending) label = 'Pending'
+                          return (
+                            <CommandItem
+                              key={u._id}
+                              value={u._id}
+                              disabled={disabled}
+                              className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+                            >
+                              <Avatar className="size-7 shrink-0">
+                                <AvatarImage src={u.image} />
+                                <AvatarFallback className="text-[10px]">{u.name?.charAt(0) || "?"}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium">{u.name}</p>
+                              </div>
+                              {label && <span className="text-xs text-muted-foreground shrink-0">{label}</span>}
+                              {!disabled && (
+                                <Button type="button" size="icon-xs" variant="ghost" className="shrink-0 size-6" onMouseDown={(e) => {
+                                  e.preventDefault()
+                                  handleAddToList(u)
+                                }}>
+                                  <Plus className="size-3.5" />
+                                </Button>
+                              )}
+                            </CommandItem>
+                          )
+                        })}
+                      </CommandGroup>
                     </CommandList>
                   </Command>
+                </div>
+              )}
+              {searchFocused && searchQuery && filteredUsers.length === 0 && (
+                <div className="absolute top-full mt-1 left-0 right-0 z-50 rounded-lg border bg-popover shadow-md">
+                  <div className="px-3 py-6 text-center text-sm text-muted-foreground">No users found</div>
                 </div>
               )}
             </div>
 
             <div className="space-y-1.5 max-h-[260px] overflow-y-auto">
-              {contributors.map((c, i) => {
-                const totalPct = contributors.reduce((s, x) => s + (Number(x.percentage) || 0), 0)
-                return (
-                  <div key={c.userId || i} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2.5">
-                    <Avatar size="sm">
-                      <AvatarImage src={c.image} />
-                      <AvatarFallback className="text-[10px]">{c.name?.charAt(0) || "?"}</AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm font-medium flex-1 min-w-0 truncate">{c.name || "Unknown"}</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Input type="number" min={0} max={100} value={c.percentage} onChange={(v) => { const n = [...contributors]; n[i] = { ...n[i], percentage: v.target.value }; setContributors(n) }} className="h-8 w-16 text-xs text-center" />
-                      <span className="text-xs text-muted-foreground">%</span>
-                    </div>
+              {contributors.map((c, i) => (
+                <div key={c.userId || i} className={`flex items-center gap-2 rounded-lg border p-2.5 ${c._isNew ? 'border-dashed border-primary/40 bg-primary/[0.03]' : 'bg-muted/30'}`}>
+                  <Avatar size="sm">
+                    <AvatarImage src={c.image} />
+                    <AvatarFallback className="text-[10px]">{c.name?.charAt(0) || "?"}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium flex-1 min-w-0 truncate">{c.name || "Unknown"}</span>
+                  {c._isNew && <Badge variant="outline" className="rounded-full text-[9px] h-5 px-1.5 text-primary border-primary/40">Invite</Badge>}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Input type="number" min={0} max={100} value={c.percentage} onChange={(v) => { const n = [...contributors]; n[i] = { ...n[i], percentage: v.target.value }; setContributors(n) }} className="h-8 w-16 text-xs text-center" />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                  {!c._isOwner && (
                     <Button variant="ghost" size="icon-xs" onClick={() => setContributors(contributors.filter((_, j) => j !== i))}>
                       <X className="size-3" />
                     </Button>
-                  </div>
-                )
-              })}
+                  )}
+                </div>
+              ))}
+              {pendingRequests.length > 0 && (
+                <>
+                  <div className="border-t border-border/40 pt-2 mt-2" />
+                  <span className="text-xs font-medium text-muted-foreground px-1">Pending Invitations</span>
+                  {pendingRequests.map((req) => (
+                    <div key={req._id} className="flex items-center gap-2 rounded-lg border bg-amber-50/60 dark:bg-amber-900/10 border-amber-200/60 dark:border-amber-800/30 p-2.5">
+                      <Avatar size="sm">
+                        <AvatarImage src={req.to?.image} />
+                        <AvatarFallback className="text-[10px]">{req.to?.name?.charAt(0) || "?"}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium flex-1 min-w-0 truncate">{req.to?.name || "Unknown"}</span>
+                      <Badge variant="secondary" className="rounded-full text-[10px] font-medium shrink-0">Pending</Badge>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs font-medium text-muted-foreground">Total</span>
-              <span className={`text-xs font-semibold tabular-nums ${(() => { const t = contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0); return t > 100 ? "text-destructive" : "text-muted-foreground" })()}`}>
-                {contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0)}% / 100%
+              <span className={`text-xs font-semibold tabular-nums ${totalPct !== 100 ? "text-destructive" : "text-emerald-500"}`}>
+                {totalPct}% / 100%
               </span>
             </div>
-            {contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0) > 100 && (
+            {totalPct !== 100 && (
               <div className="flex items-center gap-1.5 text-xs text-destructive">
                 <AlertCircle className="size-3.5" />
-                Total exceeds 100% — cannot save
+                {totalPct > 100 ? "Total exceeds 100%" : "Total must be exactly 100%"}
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving || contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0) > 100}>
-              {saving ? "Saving..." : "Save"}
+            <Button onClick={handleSave} disabled={saving || totalPct !== 100}>
+              {saving ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+    </>
   )
 }

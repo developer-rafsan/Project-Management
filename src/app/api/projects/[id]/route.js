@@ -47,7 +47,6 @@ export async function GET(request, { params }) {
 
     if (
       (project.owner?._id || project.owner)?.toString() !== session.user.id &&
-      project.createdBy?.toString() !== session.user.id &&
       !project.assignee?.some(a => (a.user?._id || a.user)?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -78,8 +77,7 @@ export async function PATCH(request, { params }) {
     }
 
     const isOwner =
-      (existingProject.owner?._id || existingProject.owner)?.toString() === session.user.id ||
-      existingProject.createdBy?.toString() === session.user.id;
+      (existingProject.owner?._id || existingProject.owner)?.toString() === session.user.id;
 
     if (
       !isOwner &&
@@ -165,8 +163,6 @@ export async function PATCH(request, { params }) {
     const statusChanged = body.status && body.status !== existingProject.status;
 
     if (statusChanged) {
-      if (!body.currentProjectDate) updates.currentProjectDate = new Date();
-
       await Activity.create({
         project: id,
         type: 'status_change',
@@ -346,9 +342,7 @@ export async function DELETE(request, { params }) {
     }
 
     if (
-      (project.owner?._id || project.owner)?.toString() !== session.user.id &&
-      project.createdBy?.toString() !== session.user.id &&
-      !project.assignee?.some(a => (a.user?._id || a.user)?.toString() === session.user.id)
+      (project.owner?._id || project.owner)?.toString() !== session.user.id
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

@@ -48,7 +48,6 @@ export async function GET(request) {
     const ownershipFilter = {
       $or: [
         { owner: session.user.id },
-        { createdBy: session.user.id },
         { 'assignee.user': session.user.id },
       ],
     };

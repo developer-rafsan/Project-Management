@@ -16,12 +16,12 @@ export async function GET(request, { params }) {
 
     const { id } = await params;
 
-    const project = await Project.findById(id).select('createdBy assignee').lean();
+    const project = await Project.findById(id).select('owner assignee').lean();
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
     if (
-      project.createdBy?.toString() !== session.user.id &&
+      project.owner?.toString() !== session.user.id &&
       !project.assignee?.some(a => a.user?.toString() === session.user.id)
     ) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

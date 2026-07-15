@@ -21,8 +21,7 @@ import ProjectTable from "@/components/projects/ProjectTable"
 import ProjectCard from "@/components/projects/ProjectCard"
 import ProjectForm from "@/components/projects/ProjectForm"
 import Pagination from "@/components/projects/Pagination"
-import MonthTransferDialog from "@/components/projects/MonthTransferDialog"
-import TransferAssigneeDialog from "@/components/projects/TransferAssigneeDialog"
+import TransferOwnershipDialog from "@/components/projects/TransferOwnershipDialog"
 import { StatusChangeDialog } from "@/components/projects/StatusChangeDialog"
 import ShareDialog from "@/components/projects/ShareDialog"
 import ShareListDialog from "@/components/projects/ShareListDialog"
@@ -37,7 +36,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Loader2, Plus, FolderKanban, ArrowLeftRight, CalendarArrowUp, UserRoundPlus, Link2, Trash2, ListChecks, X } from "lucide-react"
+import { Loader2, Plus, FolderKanban, ArrowLeftRight, Link2, Trash2, ListChecks, X } from "lucide-react"
 
 const PAGE_SIZE = 20
 
@@ -60,8 +59,7 @@ export default function ProjectsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editProject, setEditProject] = useState(null)
   const [statusProject, setStatusProject] = useState(null)
-  const [transferProject, setTransferProject] = useState(null)
-  const [transferAssigneeProject, setTransferAssigneeProject] = useState(null)
+  const [transferOwnerProject, setTransferOwnerProject] = useState(null)
   const [shareProject, setShareProject] = useState(null)
   const [shareListOpen, setShareListOpen] = useState(false)
   const [shareSelectedIds, setShareSelectedIds] = useState([])
@@ -72,11 +70,6 @@ export default function ProjectsPage() {
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
   const [bulkStatusValue, setBulkStatusValue] = useState("Pending")
   const [bulkStatusLoading, setBulkStatusLoading] = useState(false)
-  const [bulkTransferOpen, setBulkTransferOpen] = useState(false)
-  const [bulkTransferMonth, setBulkTransferMonth] = useState("")
-  const [bulkTransferYear, setBulkTransferYear] = useState("")
-  const [bulkTransferLoading, setBulkTransferLoading] = useState(false)
-  const [bulkTransferToOpen, setBulkTransferToOpen] = useState(false)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false)
 
@@ -129,10 +122,8 @@ export default function ProjectsPage() {
       }
     } else if (action === "status") {
       setStatusProject(project)
-    } else if (action === "transfer") {
-      setTransferProject(project)
-    } else if (action === "transferAssignee") {
-      setTransferAssigneeProject(project)
+    } else if (action === "transferOwner") {
+      setTransferOwnerProject(project)
     } else if (action === "share") {
       setShareProject(project)
     } else if (action === "progress") {
@@ -351,12 +342,6 @@ export default function ProjectsPage() {
           <Button variant="secondary" size="xs" onClick={() => { setBulkStatusValue("Pending"); setBulkStatusOpen(true) }} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium cursor-pointer shadow-sm">
             <ArrowLeftRight className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Status</span>
           </Button>
-          <Button variant="secondary" size="xs" onClick={() => { setBulkTransferMonth(""); setBulkTransferYear(""); setBulkTransferOpen(true) }} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium cursor-pointer shadow-sm">
-            <CalendarArrowUp className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Transfer</span>
-          </Button>
-          <Button variant="secondary" size="xs" onClick={() => setBulkTransferToOpen(true)} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium cursor-pointer shadow-sm">
-            <UserRoundPlus className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Transfer to</span>
-          </Button>
           <Button variant="secondary" size="xs" onClick={() => setBulkDeleteOpen(true)} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer shadow-sm">
             <Trash2 className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Delete</span>
           </Button>
@@ -438,24 +423,15 @@ export default function ProjectsPage() {
         />
       )}
 
-      {transferProject && (
-        <MonthTransferDialog
-          project={transferProject}
-          open={!!transferProject}
-          onClose={() => setTransferProject(null)}
-          onSuccess={(updated) => {
-            dispatch(updateProjectInStore(updated))
-            setTransferProject(null)
+      {transferOwnerProject && (
+        <TransferOwnershipDialog
+          project={transferOwnerProject}
+          open={!!transferOwnerProject}
+          onClose={() => setTransferOwnerProject(null)}
+          onSuccess={() => {
+            dispatch(fetchProjects({ month: selectedMonth, year: selectedYear }))
+            setTransferOwnerProject(null)
           }}
-        />
-      )}
-
-      {transferAssigneeProject && (
-        <TransferAssigneeDialog
-          project={transferAssigneeProject}
-          open={!!transferAssigneeProject}
-          onClose={() => setTransferAssigneeProject(null)}
-          onSuccess={() => setTransferAssigneeProject(null)}
         />
       )}
 
@@ -504,80 +480,6 @@ export default function ProjectsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Bulk Transfer */}
-      <Dialog open={bulkTransferOpen} onOpenChange={(v) => { if (!v) setBulkTransferOpen(false) }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Transfer Projects</DialogTitle>
-            <DialogDescription>
-              Move {selectedIds.length} selected project{selectedIds.length > 1 ? "s" : ""} to a different month.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Month</label>
-                <Select value={bulkTransferMonth} onValueChange={setBulkTransferMonth}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem key={m} value={String(m)}>
-                        {new Date(2024, m - 1).toLocaleString("default", { month: "long" })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Year</label>
-                <Select value={bulkTransferYear} onValueChange={setBulkTransferYear}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((y) => (
-                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkTransferOpen(false)} disabled={bulkTransferLoading}>Cancel</Button>
-            <Button onClick={async () => {
-              if (!bulkTransferMonth || !bulkTransferYear) { toast.error("Select month and year"); return }
-              setBulkTransferLoading(true)
-              try {
-                const date = new Date(Number(bulkTransferYear), Number(bulkTransferMonth) - 1, 1)
-                const results = await Promise.all(selectedIds.map(id => updateProject(id, { currentProjectDate: date })))
-                results.forEach(p => dispatch(updateProjectInStore(p)))
-                toast.success(`Transferred ${results.length} project${results.length > 1 ? "s" : ""}`)
-                setBulkTransferOpen(false)
-              } catch (err) {
-                toast.error(err.message || "Failed to transfer")
-              } finally {
-                setBulkTransferLoading(false)
-              }
-            }} disabled={bulkTransferLoading}>
-              {bulkTransferLoading && <Loader2 className="size-4 animate-spin" />}
-              Transfer {selectedIds.length > 1 ? `${selectedIds.length} Projects` : "Project"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <TransferAssigneeDialog
-        project={allProjects.find(p => p._id === selectedIds[0])}
-        open={bulkTransferToOpen}
-        onClose={() => setBulkTransferToOpen(false)}
-        onSuccess={() => {}}
-        bulkProjectIds={selectedIds}
-        key={bulkTransferToOpen ? "open" : "closed"}
-      />
 
       {/* Bulk Delete */}
       <Dialog open={bulkDeleteOpen} onOpenChange={(v) => { if (!v) setBulkDeleteOpen(false) }}>

@@ -200,7 +200,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       customCms: initialData?.cms && !CMS_OPTIONS.includes(initialData.cms) ? initialData.cms : "",
       priority: initialData?.priority || "",
       status: initialData?.status || "",
-      currentProjectDate: initialData?.currentProjectDate ? new Date(initialData.currentProjectDate) : undefined,
+      currentProjectDate: initialData?.currentProjectDate ? new Date(initialData.currentProjectDate) : new Date(),
       description: initialData?.description || "",
       tags: initialData?.tags?.join(", ") || "",
       price: initialData?.price ? String(initialData.price) : "",
