@@ -76,7 +76,6 @@ export default function SharedProjectPage({ params: paramsPromise }) {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("")
-  const [statusNote, setStatusNote] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
   const [shareToken, setShareToken] = useState(null)
   const [transferMonthOpen, setTransferMonthOpen] = useState(false)
@@ -150,14 +149,13 @@ export default function SharedProjectPage({ params: paramsPromise }) {
       const res = await fetch(`/api/shared/${shareToken}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus, updateNote: statusNote || "" }),
+        body: JSON.stringify({ status: newStatus }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to update status")
       setProject(data)
       setStatusOpen(false)
       setNewStatus("")
-      setStatusNote("")
       toast.success("Status updated")
       fetchData()
     } catch (err) {
@@ -329,8 +327,6 @@ export default function SharedProjectPage({ params: paramsPromise }) {
         projectName={project.projectName}
         newStatus={newStatus}
         onNewStatusChange={setNewStatus}
-        statusNote={statusNote}
-        onStatusNoteChange={setStatusNote}
         actionLoading={actionLoading}
         onConfirm={handleStatusChange}
       />

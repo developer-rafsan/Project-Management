@@ -13,7 +13,7 @@ export default function SharedEditForm({ project, apiPath, onSuccess, onCancel }
     priority: project.priority || "Medium",
     description: project.description || "",
     price: project.price || "",
-    startDate: project.startDate ? new Date(project.startDate).toISOString().split("T")[0] : "",
+    currentProjectDate: project.currentProjectDate ? new Date(project.currentProjectDate).toISOString().split("T")[0] : "",
     tags: project.tags || [],
     websites: project.websites || [],
   })
@@ -96,8 +96,8 @@ export default function SharedEditForm({ project, apiPath, onSuccess, onCancel }
           <input type="number" value={formData.price} onChange={(e) => setFormData((p) => ({ ...p, price: e.target.value }))} className={inputClass} />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Start Date</label>
-          <input type="date" value={formData.startDate} onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))} className={inputClass} />
+          <label className="text-sm font-medium">Project Date</label>
+          <input type="date" value={formData.currentProjectDate} onChange={(e) => setFormData((p) => ({ ...p, currentProjectDate: e.target.value }))} className={inputClass} />
         </div>
       </div>
 

@@ -29,7 +29,10 @@ export function getMonthFromDate(date, startDay = 1) {
 }
 
 export function getEffectiveMonthYear(project, startDay = 1) {
-  return { month: project.currentMonth, year: project.currentYear }
+  const d = project.currentProjectDate || project.createdAt
+  if (!d) return { month: null, year: null }
+  const date = new Date(d)
+  return getMonthFromDate(date, startDay)
 }
 
 

@@ -41,6 +41,10 @@ export async function PATCH(request, { params }) {
             a => (a.user?.toString ? a.user.toString() : a.user) === session.user.id
           );
           if (!alreadyAssigned) {
+            const currentTotal = existing.reduce((s, a) => s + (a.percentage || 0), 0);
+            if (currentTotal + pct > 100) {
+              return NextResponse.json({ error: `Accepting this would exceed 100% total share (${currentTotal}% + ${pct}% > 100%)` }, { status: 400 });
+            }
             project.assignee = [...existing, { user: session.user.id, percentage: pct }];
           }
         } else if (notification.type === 'assignee_remove_request') {

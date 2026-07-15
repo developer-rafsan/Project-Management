@@ -1,12 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import {
   Dialog,
   DialogContent,
@@ -48,8 +55,10 @@ import {
   Users,
   ChevronDown,
   ChevronUp,
+  Search,
+  AlertCircle,
 } from "lucide-react"
-import { updateProject } from "@/actions/projectActions"
+import { updateProject, getUsers } from "@/actions/projectActions"
 import ContributorRequestDialog from "@/components/projects/ContributorRequestDialog"
 
 const CMS_OPTIONS = ["WordPress", "WooCommerce", "Shopify", "Wix", "Webflow", "Next.js", "React", "Laravel", "PHP", "Custom", "HTML", "Other"]
@@ -111,7 +120,7 @@ function CopyButton({ text, label = "Copy" }) {
 
 function InfoRow({ icon: Icon, label, children }) {
   return (
-    <div className="flex items-start gap-3 py-2">
+    <div className="flex items-center gap-3 py-2">
       <div className="flex items-center gap-2 min-w-[120px] shrink-0">
         <Icon className="size-3.5 text-muted-foreground" />
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
@@ -545,6 +554,16 @@ export function ProjectWebsiteCard({ project, isOwner, passwordDisplay, showPass
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ContributorRequestDialog
+        project={project}
+        open={requestOpen}
+        onClose={() => setRequestOpen(false)}
+        onSuccess={() => {
+          setRequestOpen(false)
+          fetchPendingRequests()
+        }}
+      />
     </>
   )
 }
@@ -751,6 +770,21 @@ export function ProjectMetaCard({ project, isOwner, onUpdate }) {
         )}
       </div>
       <div className="divide-y divide-border/50">
+        <InfoRow icon={User} label="Created by">
+          <div className="flex items-center gap-1.5">
+            {project.createdBy && (
+              <>
+                <Avatar size="sm">
+                  <AvatarImage src={project.createdBy.image} />
+                  <AvatarFallback className="text-[10px]">{(project.createdBy.name || "?").charAt(0)}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium truncate">{project.createdBy.name || "Unknown"}</span>
+              </>
+            )}
+            {!project.createdBy && <span className="text-sm text-muted-foreground">-</span>}
+          </div>
+        </InfoRow>
+        <SectionDivider />
         <InfoRow icon={DollarSign} label="Price">
           <span className="text-sm font-medium">
             {Number(project.price) ? `$${Number(project.price).toFixed(2)}` : "-"}
@@ -763,22 +797,12 @@ export function ProjectMetaCard({ project, isOwner, onUpdate }) {
           </span>
         </InfoRow>
         <SectionDivider />
-        <InfoRow icon={Calendar} label="Month/Year">
-          <span className="text-sm">
-            {project.currentMonth ? monthNames[project.currentMonth - 1] : "-"} / {project.currentYear || "-"}
-          </span>
-        </InfoRow>
-        <SectionDivider />
-        <InfoRow icon={Calendar} label="Start Date">
-          <span className="text-sm">{formatDateShort(project.startDate || project.createdAt)}</span>
+        <InfoRow icon={Calendar} label="Project Date">
+          <span className="text-sm">{project.currentProjectDate ? formatDateShort(project.currentProjectDate) : "-"}</span>
         </InfoRow>
         <SectionDivider />
         <InfoRow icon={Clock} label="Created">
           <span className="text-sm">{formatDateShort(project.createdAt)}</span>
-        </InfoRow>
-        <SectionDivider />
-        <InfoRow icon={Clock} label="Updated">
-          <span className="text-sm">{formatDateShort(project.updatedAt)}</span>
         </InfoRow>
       </div>
 
@@ -1208,6 +1232,10 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
   const [requestOpen, setRequestOpen] = useState(false)
   const [contributors, setContributors] = useState([])
   const [saving, setSaving] = useState(false)
+  const [allUsers, setAllUsers] = useState([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchFocused, setSearchFocused] = useState(false)
+  const searchRef = useRef(null)
   const [pendingRequests, setPendingRequests] = useState([])
   const [loadingRequests, setLoadingRequests] = useState(false)
 
@@ -1232,20 +1260,49 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
     fetchPendingRequests()
   }, [project._id])
 
-  const handleOpen = () => {
-    setContributors(assignees.map((a) => ({
-      userId: a.user?._id || a.user || '',
-      name: a.user?.name || '',
-      image: a.user?.image || '',
-      percentage: a.percentage || 0,
-    })))
+  const handleOpen = async () => {
+    const ownerId = project.owner?._id?.toString() || project.owner?.toString()
+    const ownerPct = Math.max(0, 100 - assignees.reduce((s, a) => s + (a.percentage || 0), 0))
+    const ownerInAssignees = assignees.some(a => (a.user?._id || a.user)?.toString() === ownerId)
+    setContributors([
+      ...(ownerInAssignees ? [] : [{
+        userId: ownerId,
+        name: project.owner?.name || 'Owner',
+        image: project.owner?.image || '',
+        percentage: ownerPct,
+      }]),
+      ...assignees
+        .filter(a => (a.user?._id || a.user)?.toString() !== ownerId)
+        .map((a) => ({
+          userId: a.user?._id || a.user || '',
+          name: a.user?.name || '',
+          image: a.user?.image || '',
+          percentage: a.percentage || 0,
+        })),
+    ])
+    setSearchQuery("")
+    try {
+      const users = await getUsers()
+      setAllUsers(users)
+    } catch { /* silent */ }
     setEditOpen(true)
+    setTimeout(() => searchRef.current?.focus(), 100)
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      const removed = assignees.filter(a => !contributors.some(c => c.userId === (a.user?._id || a.user)?.toString()))
+      const totalPct = contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0)
+      if (totalPct > 100) {
+        toast.error("Total share cannot exceed 100%")
+        setSaving(false)
+        return
+      }
+
+      const removed = assignees.filter(a => {
+        const uid = (a.user?._id || a.user)?.toString()
+        return !contributors.some(c => c.userId === uid)
+      })
       const kept = contributors.map(c => ({
         user: c.userId,
         percentage: Number(c.percentage) || 0,
@@ -1305,11 +1362,16 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
     }
   }
 
-  const hasContributors = assignees.length > 0
+  const ownerId = project.owner?._id?.toString() || project.owner?.toString()
+  const ownerInAssignees = assignees.some(a => (a.user?._id || a.user)?.toString() === ownerId)
+  const ownerImplicitPct = Math.max(0, 100 - assignees.reduce((s, a) => s + (a.percentage || 0), 0))
+  const allContributors = ownerInAssignees
+    ? assignees
+    : [{ user: { _id: ownerId, name: project.owner?.name, image: project.owner?.image }, percentage: ownerImplicitPct, _isOwner: true }, ...assignees]
+  const hasContributors = allContributors.length > 0
 
   const totalPct = contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0)
   const userIsOwner = isOwner !== undefined ? isOwner : (project.owner?._id === sessionUserId || project.owner?.toString() === sessionUserId)
-  const ownerPct = userIsOwner ? Math.max(0, 100 - assignees.reduce((s, a) => s + (a.percentage || 0), 0)) : 0
 
   return (
     <div className="rounded-xl border bg-card p-5">
@@ -1330,31 +1392,29 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
       </div>
       {hasContributors ? (
         <div className="divide-y divide-border/50">
-          {userIsOwner && ownerPct > 0 && (
-            <InfoRow icon={User} label="You">
-              <div className="flex items-center justify-between w-full">
-                <span className="text-sm font-medium">{project.owner?.name || "Owner"}</span>
-                <span className="text-xs font-semibold tabular-nums text-muted-foreground">{ownerPct}%</span>
-              </div>
-            </InfoRow>
-          )}
-          {assignees.map((a, idx) => (
-            <div key={a.user?._id || idx}>
-              {!(idx === 0 && userIsOwner && ownerPct > 0) && <SectionDivider />}
-              <InfoRow icon={Users} label="Contributor">
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <Avatar size="sm">
-                      <AvatarImage src={a.user?.image} />
-                      <AvatarFallback className="text-[10px]">{a.user?.name?.charAt(0) || "?"}</AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm truncate">{a.user?.name || "Unknown"}</span>
+          {allContributors.map((a, idx) => {
+            const uid = a.user?._id?.toString() || a.user?.toString()
+            const name = a.user?.name || "Unknown"
+            const image = a.user?.image
+            const isOwnerEntry = uid === ownerId
+            return (
+              <div key={uid || idx}>
+                {idx > 0 && <SectionDivider />}
+                <InfoRow icon={isOwnerEntry ? User : Users} label={isOwnerEntry ? "Owner" : "Contributor"}>
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <Avatar size="sm">
+                        <AvatarImage src={image} />
+                        <AvatarFallback className="text-[10px]">{name.charAt(0) || "?"}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm truncate">{name}</span>
+                    </div>
+                    <span className="text-xs font-semibold tabular-nums text-muted-foreground shrink-0 ml-2">{a.percentage}%</span>
                   </div>
-                  <span className="text-xs font-semibold tabular-nums text-muted-foreground shrink-0 ml-2">{a.percentage}%</span>
-                </div>
-              </InfoRow>
-            </div>
-          ))}
+                </InfoRow>
+              </div>
+            )
+          })}
           {pendingRequests.length > 0 && (
             <>
               <SectionDivider />
@@ -1388,19 +1448,19 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
               <p className="text-xs text-muted-foreground">No contributors yet</p>
             </div>
             {userIsOwner && (
-              <Button variant="default" size="sm" onClick={() => setRequestOpen(true)} className="gap-1.5 h-8 text-xs shrink-0 shadow-sm">
+              <Button variant="default" size="sm" onClick={handleOpen} className="gap-1.5 h-8 text-xs shrink-0 shadow-sm">
                 <Plus className="size-3.5" /> Add
               </Button>
             )}
           </div>
-          {userIsOwner && ownerPct > 0 && (
+          {project.owner && (
             <div className="rounded-lg bg-primary/5 border border-primary/10 px-3 py-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <User className="size-3.5 text-primary" />
                   <span className="text-sm font-medium">{project.owner?.name || "You"}</span>
                 </div>
-                <span className="text-sm font-bold text-primary">{ownerPct}%</span>
+                <span className="text-sm font-bold text-primary">{ownerImplicitPct}%</span>
               </div>
             </div>
           )}
@@ -1429,57 +1489,119 @@ export function ProjectContributorsCard({ project, isOwner, sessionUserId, onUpd
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Manage Contributors</DialogTitle>
-            <DialogDescription>Update share percentages</DialogDescription>
+            <DialogDescription>Add, remove or update share percentages</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            {userIsOwner && (
-              <div className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
-                <div className="flex items-center gap-2">
-                  <Avatar size="sm">
-                    <AvatarImage src={project.owner?.image} />
-                    <AvatarFallback className="text-[10px]">{project.owner?.name?.charAt(0) || "O"}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <span className="text-sm font-medium">{project.owner?.name || "Owner"}</span>
-                    <p className="text-[10px] text-muted-foreground">Owner</p>
-                  </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              <Input
+                ref={searchRef}
+                placeholder="Search users to add..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                className="pl-8 h-9 text-sm"
+              />
+              {searchFocused && searchQuery && (
+                <div className="absolute top-full mt-1 left-0 right-0 z-50 rounded-lg border bg-popover shadow-md overflow-hidden">
+                  <Command className="rounded-lg">
+                    <CommandList>
+                      {allUsers
+                        .filter(u => u.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .length > 0 ? (
+                        <CommandGroup>
+                          {allUsers
+                            .filter(u => u.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+                            .map((u) => {
+                              const ownerId = project.owner?._id?.toString() || project.owner?.toString()
+                              const existingIds = new Set(contributors.map(c => c.userId))
+                              const isOwner = u._id === ownerId
+                              const exists = existingIds.has(u._id)
+                              const disabled = isOwner || exists
+                              return (
+                                <CommandItem
+                                  key={u._id}
+                                  value={u._id}
+                                  disabled={disabled}
+                                  className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+                                >
+                                  <Avatar className="size-7 shrink-0">
+                                    <AvatarImage src={u.image} />
+                                    <AvatarFallback className="text-[10px]">{u.name?.charAt(0) || "?"}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium">{u.name}</p>
+                                  </div>
+                                  {exists && <span className="text-xs text-muted-foreground shrink-0">Added</span>}
+                                  {isOwner && <span className="text-xs text-muted-foreground shrink-0">Owner</span>}
+                                  {!exists && !isOwner && (
+                                    <Button type="button" size="icon-xs" variant="ghost" className="shrink-0 size-6" onMouseDown={(e) => {
+                                      e.preventDefault()
+                                      setContributors([...contributors, { userId: u._id, name: u.name, image: u.image, percentage: "" }])
+                                      setSearchQuery("")
+                                      setSearchFocused(false)
+                                      searchRef.current?.focus()
+                                    }}>
+                                      <Plus className="size-3.5" />
+                                    </Button>
+                                  )}
+                                </CommandItem>
+                              )
+                            })}
+                        </CommandGroup>
+                      ) : (
+                        <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">No users found</CommandEmpty>
+                      )}
+                    </CommandList>
+                  </Command>
                 </div>
-                <span className="text-sm font-semibold tabular-nums">{Math.max(0, 100 - totalPct)}%</span>
+              )}
+            </div>
+
+            <div className="space-y-1.5 max-h-[260px] overflow-y-auto">
+              {contributors.map((c, i) => {
+                const totalPct = contributors.reduce((s, x) => s + (Number(x.percentage) || 0), 0)
+                return (
+                  <div key={c.userId || i} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2.5">
+                    <Avatar size="sm">
+                      <AvatarImage src={c.image} />
+                      <AvatarFallback className="text-[10px]">{c.name?.charAt(0) || "?"}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium flex-1 min-w-0 truncate">{c.name || "Unknown"}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Input type="number" min={0} max={100} value={c.percentage} onChange={(v) => { const n = [...contributors]; n[i] = { ...n[i], percentage: v.target.value }; setContributors(n) }} className="h-8 w-16 text-xs text-center" />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
+                    <Button variant="ghost" size="icon-xs" onClick={() => setContributors(contributors.filter((_, j) => j !== i))}>
+                      <X className="size-3" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs font-medium text-muted-foreground">Total</span>
+              <span className={`text-xs font-semibold tabular-nums ${(() => { const t = contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0); return t > 100 ? "text-destructive" : "text-muted-foreground" })()}`}>
+                {contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0)}% / 100%
+              </span>
+            </div>
+            {contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0) > 100 && (
+              <div className="flex items-center gap-1.5 text-xs text-destructive">
+                <AlertCircle className="size-3.5" />
+                Total exceeds 100% — cannot save
               </div>
             )}
-            {contributors.map((c, i) => (
-              <div key={i} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2.5">
-                <Avatar size="sm">
-                  <AvatarImage src={c.image} />
-                  <AvatarFallback className="text-[10px]">{c.name?.charAt(0) || "?"}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium flex-1 min-w-0 truncate">{c.name || "Unknown"}</span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Input type="number" min={0} max={100} value={c.percentage} onChange={(v) => { const n = [...contributors]; n[i] = { ...n[i], percentage: v.target.value }; setContributors(n) }} className="h-8 w-16 text-xs text-center" />
-                  <span className="text-xs text-muted-foreground">%</span>
-                </div>
-                <Button variant="ghost" size="icon-xs" onClick={() => setContributors(contributors.filter((_, j) => j !== i))}>
-                  <X className="size-3" />
-                </Button>
-              </div>
-            ))}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+            <Button onClick={handleSave} disabled={saving || contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0) > 100}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <ContributorRequestDialog
-        project={project}
-        open={requestOpen}
-        onClose={() => setRequestOpen(false)}
-        onSuccess={() => {
-          setRequestOpen(false)
-          fetchPendingRequests()
-        }}
-      />
     </div>
   )
 }

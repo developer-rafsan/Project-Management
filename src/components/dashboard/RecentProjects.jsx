@@ -96,7 +96,7 @@ export default function RecentProjects({ projects }) {
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {project.startDate ? new Date(project.startDate).toLocaleDateString() : "-"}
+                    {project.currentProjectDate ? new Date(project.currentProjectDate).toLocaleDateString() : "-"}
                   </TableCell>
                 </TableRow>
               ))

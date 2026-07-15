@@ -333,10 +333,10 @@ const ProjectTable = memo(function ProjectTable({
 
   const renderSortableHead = (col) => {
     if (!col.sortable) {
-      return <TableHead className={col.className}>{col.label}</TableHead>
+      return <TableHead key={col.id} className={col.className}>{col.label}</TableHead>
     }
     return (
-      <TableHead className={cn(col.className, "cursor-pointer select-none hover:text-foreground transition-colors")} onClick={() => handleSort(col.id)}>
+      <TableHead key={col.id} className={cn(col.className, "cursor-pointer select-none hover:text-foreground transition-colors")} onClick={() => handleSort(col.id)}>
         <div className="flex items-center gap-0.5">
           {col.label}
           <SortIcon column={col.id} />
@@ -394,7 +394,7 @@ const ProjectTable = memo(function ProjectTable({
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(project.startDate)}{project.cms ? ` \u00B7 ${project.cms}` : ""}
+                        {formatDate(project.currentProjectDate || project.createdAt)}{project.cms ? ` \u00B7 ${project.cms}` : ""}
                       </p>
                     </div>
                   </TableCell>
@@ -474,7 +474,7 @@ const ProjectTable = memo(function ProjectTable({
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {formatDate(project.startDate)}{project.cms ? ` \u00B7 ${project.cms}` : ""}
+                      {formatDate(project.currentProjectDate || project.createdAt)}{project.cms ? ` \u00B7 ${project.cms}` : ""}
                     </p>
                   </div>
                   <span className="text-xs text-muted-foreground tabular-nums shrink-0">#{serial}</span>

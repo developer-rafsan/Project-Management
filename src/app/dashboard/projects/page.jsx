@@ -184,10 +184,9 @@ export default function ProjectsPage() {
       })
     } else if (filterMode === "range" && (dateRange?.from || dateRange?.to)) {
       list = list.filter((p) => {
-        const eff = getEffectiveMonthYear(p, startDay)
-        const pd = new Date(eff.year, eff.month - 1, 1)
-        const monthEnd = new Date(eff.year, eff.month, 0, 23, 59, 59, 999)
-        if (dateRange.from && monthEnd < dateRange.from) return false
+        const pd = p.currentProjectDate ? new Date(p.currentProjectDate) : (p.createdAt ? new Date(p.createdAt) : null)
+        if (!pd) return false
+        if (dateRange.from && pd < dateRange.from) return false
         if (dateRange.to && pd > dateRange.to) return false
         return true
       })
@@ -304,9 +303,7 @@ export default function ProjectsPage() {
               <div className="flex gap-1.5">
                 <Select value={String(selectedMonth)} onValueChange={(v) => { setSelectedMonth(Number(v)); setPage(1) }}>
                   <SelectTrigger className="w-[100px] h-8">
-                    <SelectValue placeholder="Month">
-                      {format(new Date(2024, selectedMonth - 1), "MMM")}
-                    </SelectValue>
+                    <SelectValue placeholder={format(new Date(2024, selectedMonth - 1), "MMM")} />
                   </SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -427,8 +424,6 @@ export default function ProjectsPage() {
           projectName={statusProject.projectName}
           newStatus={statusProject.status}
           onNewStatusChange={(s) => setStatusProject((prev) => prev ? { ...prev, status: s } : null)}
-          statusNote=""
-          onStatusNoteChange={() => {}}
           actionLoading={false}
           onConfirm={async () => {
             try {
@@ -557,7 +552,8 @@ export default function ProjectsPage() {
               if (!bulkTransferMonth || !bulkTransferYear) { toast.error("Select month and year"); return }
               setBulkTransferLoading(true)
               try {
-                const results = await Promise.all(selectedIds.map(id => updateProject(id, { currentMonth: Number(bulkTransferMonth), currentYear: Number(bulkTransferYear) })))
+                const date = new Date(Number(bulkTransferYear), Number(bulkTransferMonth) - 1, 1)
+                const results = await Promise.all(selectedIds.map(id => updateProject(id, { currentProjectDate: date })))
                 results.forEach(p => dispatch(updateProjectInStore(p)))
                 toast.success(`Transferred ${results.length} project${results.length > 1 ? "s" : ""}`)
                 setBulkTransferOpen(false)

@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -54,9 +53,9 @@ export default function MonthTransferDialog({ project, open, onClose, onSuccess 
 
     setSubmitting(true)
     try {
+      const date = new Date(Number(newYear), Number(newMonth) - 1, 1)
       const updated = await updateProject(project._id, {
-        currentMonth: Number(newMonth),
-        currentYear: Number(newYear),
+        currentProjectDate: date,
       })
       toast.success("Project transferred successfully")
       onSuccess?.(updated)
@@ -93,7 +92,6 @@ export default function MonthTransferDialog({ project, open, onClose, onSuccess 
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Year</label>
               <Select value={newYear} onValueChange={setNewYear}>
@@ -107,16 +105,6 @@ export default function MonthTransferDialog({ project, open, onClose, onSuccess 
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Note <span className="text-muted-foreground">(optional)</span></label>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Reason for transfer..."
-              rows={2}
-            />
           </div>
         </div>
 

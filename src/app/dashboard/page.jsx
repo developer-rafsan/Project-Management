@@ -183,9 +183,7 @@ export default function DashboardPage() {
             <div className="flex gap-2">
               <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
                 <SelectTrigger className="w-[120px] sm:w-[150px]">
-                  <SelectValue placeholder="Month">
-                    {format(new Date(2024, selectedMonth - 1), "MMM")}
-                  </SelectValue>
+                  <SelectValue placeholder={format(new Date(2024, selectedMonth - 1), "MMM")} />
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (

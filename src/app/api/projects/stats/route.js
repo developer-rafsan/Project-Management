@@ -2,11 +2,28 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
+import { getMonthRange } from '@/lib/dateUtils';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
 
-function getEffectiveMonthYear(project) {
-  return { month: project.currentMonth, year: project.currentYear }
+function getEffectiveMonthYear(project, startDay = 1) {
+  const d = project.currentProjectDate || project.createdAt
+  if (!d) return { month: null, year: null }
+  const date = new Date(d)
+  if (startDay <= 1) {
+    return { month: date.getMonth() + 1, year: date.getFullYear() }
+  }
+  const day = date.getDate()
+  let month = date.getMonth() + 1
+  let year = date.getFullYear()
+  if (day >= startDay) {
+    month += 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+  }
+  return { month, year }
 }
 
 function getUserSharePct(project, userId) {
@@ -35,6 +52,7 @@ export async function GET(request) {
     const selectedYear = parseInt(searchParams.get('selectedYear'));
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
+    const monthStartDay = parseInt(searchParams.get('monthStartDay')) || 1;
 
     const userId = session.user.id;
 
@@ -53,18 +71,18 @@ export async function GET(request) {
 
     let dbFilter = { ...ownershipFilter };
     if (selectedMonth) {
-      dbFilter.currentMonth = selectedMonth;
-      dbFilter.currentYear = selectedYear;
+      const { from, to } = getMonthRange(selectedYear, selectedMonth, monthStartDay)
+      dbFilter.currentProjectDate = { $gte: from, $lte: to }
     }
 
     const allProjects = await Project.find(dbFilter)
-      .select('_id status price startDate createdAt currentMonth currentYear fiverrFeeEnabled owner assignee')
+      .select('_id status price createdAt currentProjectDate fiverrFeeEnabled owner assignee')
       .lean();
 
     let filtered = allProjects;
     if (allParam !== 'true' && !selectedMonth) {
       filtered = allProjects.filter(p => {
-        const eff = getEffectiveMonthYear(p)
+        const eff = getEffectiveMonthYear(p, monthStartDay)
         const pd = new Date(eff.year, eff.month - 1, 1)
         const monthEnd = new Date(eff.year, eff.month, 0, 23, 59, 59, 999)
         if (fromDate && monthEnd < fromDate) return false
@@ -91,8 +109,8 @@ export async function GET(request) {
       if (p.status === 'Delivered' && p.fiverrFeeEnabled !== false) {
         acc.myFeeDelivered += myPrice
       }
-      if (p.startDate) {
-        const d = new Date(p.startDate)
+      if (p.currentProjectDate) {
+        const d = new Date(p.currentProjectDate)
         const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
         acc.dayMap[key] = (acc.dayMap[key] || 0) + 1
       }

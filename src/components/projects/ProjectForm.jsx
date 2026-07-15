@@ -50,7 +50,7 @@ const schema = z.object({
   customCms: z.string().optional(),
   priority: z.string().min(1, "Priority is required"),
   status: z.string().min(1, "Status is required"),
-  startDate: z.date().optional(),
+  currentProjectDate: z.date().optional(),
   description: z.string().optional(),
   tags: z.string().optional(),
   price: z.string().optional(),
@@ -200,7 +200,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       customCms: initialData?.cms && !CMS_OPTIONS.includes(initialData.cms) ? initialData.cms : "",
       priority: initialData?.priority || "",
       status: initialData?.status || "",
-      startDate: initialData?.startDate ? new Date(initialData.startDate) : undefined,
+      currentProjectDate: initialData?.currentProjectDate ? new Date(initialData.currentProjectDate) : undefined,
       description: initialData?.description || "",
       tags: initialData?.tags?.join(", ") || "",
       price: initialData?.price ? String(initialData.price) : "",
@@ -220,7 +220,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   const stepFields = [
     ['orderId', 'projectName'],
     ['cms', 'customCms', 'priority', 'status'],
-    ['startDate', 'price', 'tags', 'description'],
+    ['currentProjectDate', 'price', 'tags', 'description'],
     [],
   ]
 
@@ -278,7 +278,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       const payload = {
         ...data,
         cms: data.cms === "Other" && data.customCms ? data.customCms : data.cms,
-        startDate: data.startDate || new Date(),
+        currentProjectDate: data.currentProjectDate || undefined,
         price: data.price ? Number(data.price) : 0,
         tags: data.tags
           ? data.tags.split(",").map((t) => t.trim()).filter(Boolean)
@@ -287,7 +287,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
           ...site,
           password: site.password || undefined,
         })),
-        assignee: isEditing ? (initialData?.assignee || [{ user: session?.user?.id, percentage: 100 }]) : [{ user: session?.user?.id, percentage: 100 }],
+        assignee: isEditing ? (initialData?.assignee || []) : [],
         orderId: data.orderId || undefined,
         fiverrFeeEnabled,
       }
@@ -625,12 +625,12 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    Start Date
+                    <Calendar className="size-3" />
+                    Project Date
                   </label>
-                  <Controller name="startDate" control={control} render={({ field }) => (
-                    <DatePicker value={field.value} onChange={(date) => field.onChange(date || new Date())} placeholder="Pick a start date" />
+                  <Controller name="currentProjectDate" control={control} render={({ field }) => (
+                    <DatePicker value={field.value} onChange={(date) => field.onChange(date)} placeholder="Pick a date" />
                   )} />
-                  <p className="text-[10px] text-muted-foreground/60">Defaults to today</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -793,7 +793,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 Schedule &amp; Details
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <ReviewRow icon={Calendar} label="Start Date" value={formValues.startDate ? new Date(formValues.startDate).toLocaleDateString() : "Today"} />
+                <ReviewRow icon={Calendar} label="Project Date" value={formValues.currentProjectDate ? new Date(formValues.currentProjectDate).toLocaleDateString() : "Today"} />
                 <ReviewRow icon={DollarSign} label="Price" value={formValues.price ? `$${formValues.price}` : "—"} />
                 {fiverrFeeEnabled && formValues.price && Number(formValues.price) > 0 && (
                   <>

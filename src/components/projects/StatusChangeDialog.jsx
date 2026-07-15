@@ -1,7 +1,6 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -27,8 +26,6 @@ export function StatusChangeDialog({
   projectName,
   newStatus,
   onNewStatusChange,
-  statusNote,
-  onStatusNoteChange,
   actionLoading,
   onConfirm,
 }) {
@@ -54,17 +51,6 @@ export function StatusChangeDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Note <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <Textarea
-              value={statusNote}
-              onChange={(e) => onStatusNoteChange(e.target.value)}
-              placeholder="Add a note about this status change..."
-              rows={2}
-            />
           </div>
         </div>
         <DialogFooter>

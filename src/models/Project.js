@@ -22,7 +22,6 @@ const projectSchema = new mongoose.Schema(
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     tags: { type: [String] },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    startDate: { type: Date },
     description: { type: String, default: '' },
     price: { type: Number, default: 0 },
     fiverrFeeEnabled: { type: Boolean, default: true },
@@ -45,8 +44,7 @@ const projectSchema = new mongoose.Schema(
     }],
     figmaLinks: [{ url: { type: String, default: '' } }],
     referenceLinks: [{ url: { type: String, default: '' } }],
-    currentMonth: { type: Number },
-    currentYear: { type: Number },
+    currentProjectDate: { type: Date },
     transferMonth: [{
       oldMonth: Number,
       newMonth: Number,
@@ -60,7 +58,7 @@ const projectSchema = new mongoose.Schema(
       transferDate: Date,
     }],
   },
-  { timestamps: true }
+  { timestamps: { createdAt: true, updatedAt: false } }
 );
 
 export default mongoose.models.Project || mongoose.model('Project', projectSchema);

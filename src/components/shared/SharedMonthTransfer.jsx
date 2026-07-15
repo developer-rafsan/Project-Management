@@ -33,10 +33,11 @@ export default function SharedMonthTransfer({ project, apiPath, open, onClose, o
     }
     setSubmitting(true)
     try {
+      const date = new Date(Number(newYear), Number(newMonth) - 1, 1)
       const res = await fetch(apiPath, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentMonth: Number(newMonth), currentYear: Number(newYear) }),
+        body: JSON.stringify({ currentProjectDate: date }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to transfer")

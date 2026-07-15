@@ -97,7 +97,6 @@ export default function ProjectDetailPage() {
   const [transferOwnershipOpen, setTransferOwnershipOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("")
-  const [statusNote, setStatusNote] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
 
   const fetchData = useCallback(async () => {
@@ -162,10 +161,13 @@ export default function ProjectDetailPage() {
     setActionLoading(true)
     try {
       const { _id, createdAt, updatedAt, orderId, transferMonth, owner, assignee, personTransfer, activities, __v, ...rest } = project
-      const cleanAssignee = (assignee || []).map(a => ({
-        user: a.user?._id || a.user,
-        percentage: a.percentage || 0,
-      }))
+      const ownerId = owner?._id?.toString() || owner?.toString()
+      const cleanAssignee = (assignee || [])
+        .filter(a => (a.user?._id || a.user)?.toString() !== ownerId)
+        .map(a => ({
+          user: a.user?._id || a.user,
+          percentage: a.percentage || 0,
+        }))
       const newProject = await createProject({
         ...rest,
         assignee: cleanAssignee,
@@ -206,16 +208,12 @@ export default function ProjectDetailPage() {
     if (!project || !newStatus) return
     setActionLoading(true)
     try {
-      const updated = await updateProject(project._id, {
-        status: newStatus,
-        updateNote: statusNote || "",
-      })
+      const updated = await updateProject(project._id, { status: newStatus })
       setProject(updated)
       dispatch(updateProjectInStore(updated))
       await refreshActivities()
       setStatusOpen(false)
       setNewStatus("")
-      setStatusNote("")
       toast.success("Status updated")
     } catch (err) {
       toast.error(err.message || "Failed to update status")
@@ -310,20 +308,22 @@ export default function ProjectDetailPage() {
           <div className="min-w-0 flex-1">
             <ProjectTitle project={project} />
           </div>
-          <ProjectActions
-            project={project}
-            isOwner={isOwner}
-            actionLoading={actionLoading}
-            onStatusClick={() => {
-              setNewStatus(project.status)
-              setStatusOpen(true)
-            }}
-            onDuplicate={isOwner ? handleDuplicate : undefined}
-            onTransfer={() => setTransferOpen(true)}
-            onTransferOwnership={isOwner ? () => setTransferOwnershipOpen(true) : undefined}
-            onDelete={isOwner ? () => setDeleteOpen(true) : undefined}
-            onShare={isOwner ? () => setShareOpen(true) : undefined}
-          />
+          <div className="flex items-center gap-1 flex-wrap">
+            <ProjectActions
+              project={project}
+              isOwner={isOwner}
+              actionLoading={actionLoading}
+              onStatusClick={() => {
+                setNewStatus(project.status)
+                setStatusOpen(true)
+              }}
+              onDuplicate={isOwner ? handleDuplicate : undefined}
+              onTransfer={() => setTransferOpen(true)}
+              onTransferOwnership={isOwner ? () => setTransferOwnershipOpen(true) : undefined}
+              onDelete={isOwner ? () => setDeleteOpen(true) : undefined}
+              onShare={isOwner ? () => setShareOpen(true) : undefined}
+            />
+          </div>
         </div>
       </div>
 
@@ -405,8 +405,6 @@ export default function ProjectDetailPage() {
         projectName={project.projectName}
         newStatus={newStatus}
         onNewStatusChange={setNewStatus}
-        statusNote={statusNote}
-        onStatusNoteChange={setStatusNote}
         actionLoading={actionLoading}
         onConfirm={handleStatusChange}
       />
@@ -422,11 +420,9 @@ export default function ProjectDetailPage() {
         project={project}
         open={transferOwnershipOpen}
         onClose={() => setTransferOwnershipOpen(false)}
-        onSuccess={async (updated) => {
-          setProject(updated)
-          dispatch(updateProjectInStore(updated))
+        onSuccess={() => {
           setTransferOwnershipOpen(false)
-          await refreshActivities()
+          refreshActivities()
         }}
       />
 

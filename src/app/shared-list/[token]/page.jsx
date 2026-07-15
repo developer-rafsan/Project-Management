@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import SharedEditForm from "@/components/shared/SharedEditForm"
+import { getEffectiveMonthYear } from "@/lib/dateUtils"
 import SharedMonthTransfer from "@/components/shared/SharedMonthTransfer"
 import SharedTransferAssignee from "@/components/shared/SharedTransferAssignee"
 import SharedDeleteConfirm from "@/components/shared/SharedDeleteConfirm"
@@ -83,6 +84,14 @@ export default function SharedListPage({ params: paramsPromise }) {
   const [transferAssigneeOpen, setTransferAssigneeOpen] = useState(false)
   const [deleteProjectId, setDeleteProjectId] = useState(null)
 
+  const [startDay] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("monthStartDay")
+      return saved ? Number(saved) : 1
+    }
+    return 1
+  })
+
   const now = new Date()
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1)
   const [filterYear, setFilterYear] = useState(now.getFullYear())
@@ -134,9 +143,8 @@ export default function SharedListPage({ params: paramsPromise }) {
 
     if (filterMode === "month") {
       list = list.filter((p) => {
-        const pm = p.currentMonth || (p.createdAt ? new Date(p.createdAt).getMonth() + 1 : now.getMonth() + 1)
-        const py = p.currentYear || (p.createdAt ? new Date(p.createdAt).getFullYear() : now.getFullYear())
-        return pm === filterMonth && py === filterYear
+        const eff = getEffectiveMonthYear(p, startDay)
+        return eff.month === filterMonth && eff.year === filterYear
       })
     }
 
@@ -160,7 +168,7 @@ export default function SharedListPage({ params: paramsPromise }) {
     }
 
     return list
-  }, [projects, filterMode, filterMonth, filterYear, filterStatus, filterPriority, filterCms, searchQuery, now])
+  }, [projects, filterMode, filterMonth, filterYear, filterStatus, filterPriority, filterCms, searchQuery, startDay, now])
 
   if (loading || status === "loading") {
     return (
@@ -244,7 +252,7 @@ export default function SharedListPage({ params: paramsPromise }) {
               <div className="flex gap-1.5">
                 <Select value={String(filterMonth)} onValueChange={(v) => setFilterMonth(Number(v))}>
                   <SelectTrigger className="w-[100px] h-7 text-xs">
-                    <SelectValue>{monthNames[filterMonth - 1]}</SelectValue>
+                    <SelectValue placeholder={monthNames[filterMonth - 1]} />
                   </SelectTrigger>
                   <SelectContent>
                     {monthNames.map((name, i) => (
@@ -357,7 +365,7 @@ export default function SharedListPage({ params: paramsPromise }) {
                             <User className="size-3" /> {project.assignee[0].user.name}
                           </span>
                         )}
-                        <span>{formatDate(project.startDate)}</span>
+                        <span>{formatDate(project.currentProjectDate || project.createdAt)}</span>
                       </div>
                     </Link>
                     <div className="flex items-center gap-2 shrink-0">

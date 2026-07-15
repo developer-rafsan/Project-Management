@@ -20,6 +20,7 @@ export async function GET(request, { params }) {
     const project = await Project.findById(id)
       .populate('assignee.user', '_id name email image')
       .populate('owner', '_id name email image')
+      .populate('createdBy', '_id name email image')
       .populate('transferMonth.transferredBy', '_id name email image')
       .lean();
 
@@ -88,7 +89,7 @@ export async function PATCH(request, { params }) {
     }
 
     if (!isOwner) {
-      const allowed = ['status', 'currentMonth', 'currentYear'];
+      const allowed = ['status'];
       for (const key of Object.keys(body)) {
         if (!allowed.includes(key)) delete body[key];
       }
@@ -98,9 +99,9 @@ export async function PATCH(request, { params }) {
 
     const fields = [
       'orderId', 'projectName', 'cms', 'priority', 'status',
-      'assignee', 'startDate', 'tags', 'description', 'price',
+      'assignee', 'tags', 'description', 'price',
       'progress', 'websites', 'figmaLinks', 'referenceLinks',
-      'currentMonth', 'currentYear', 'fiverrFeeEnabled',
+      'currentProjectDate', 'fiverrFeeEnabled',
       'domainHosting',
     ];
 
@@ -108,8 +109,8 @@ export async function PATCH(request, { params }) {
       if (body[field] !== undefined) {
         if (field === 'price') {
           updates[field] = Number(body[field]);
-        } else if (field === 'startDate') {
-          updates[field] = new Date(body[field]);
+        } else if (field === 'currentProjectDate') {
+          updates[field] = body[field] ? new Date(body[field]) : undefined;
         } else {
           updates[field] = body[field];
         }
@@ -164,9 +165,7 @@ export async function PATCH(request, { params }) {
     const statusChanged = body.status && body.status !== existingProject.status;
 
     if (statusChanged) {
-      const now = new Date();
-      if (!body.currentMonth) updates.currentMonth = now.getMonth() + 1;
-      if (!body.currentYear) updates.currentYear = now.getFullYear();
+      if (!body.currentProjectDate) updates.currentProjectDate = new Date();
 
       await Activity.create({
         project: id,
@@ -174,26 +173,20 @@ export async function PATCH(request, { params }) {
         performedBy: session.user.id,
         previousStatus: existingProject.status,
         newStatus: body.status,
-        note: body.updateNote || '',
       });
     }
 
     const monthYearChanged =
-      (updates.currentMonth && updates.currentMonth !== existingProject.currentMonth) ||
-      (updates.currentYear && updates.currentYear !== existingProject.currentYear) ||
-      (body.currentMonth && body.currentMonth !== existingProject.currentMonth) ||
-      (body.currentYear && body.currentYear !== existingProject.currentYear);
+      (updates.currentProjectDate && updates.currentProjectDate !== existingProject.currentProjectDate) ||
+      (body.currentProjectDate && body.currentProjectDate !== existingProject.currentProjectDate);
 
     const generalFieldKeys = fields.filter(
-      f => !['status', 'currentMonth', 'currentYear'].includes(f)
+      f => !['status', 'currentProjectDate'].includes(f)
     );
     const hasGeneralChanges = generalFieldKeys.some(key => {
       if (body[key] === undefined) return false;
       const existing = existingProject[key];
       const incoming = body[key];
-      if (key === 'startDate') {
-        return new Date(incoming).getTime() !== new Date(existing).getTime();
-      }
       if (key === 'price') {
         return Number(incoming) !== Number(existing);
       }
@@ -291,9 +284,7 @@ export async function PATCH(request, { params }) {
         project: id,
         type: 'month_transfer',
         performedBy: session.user.id,
-        oldMonth: existingProject.currentMonth,
-        newMonth: updates.currentMonth || existingProject.currentMonth,
-        newYear: updates.currentYear || existingProject.currentYear,
+        description: `Project date changed`,
       });
     }
 
@@ -303,7 +294,6 @@ export async function PATCH(request, { params }) {
           if (body[key] === undefined) return false;
           const existing = existingProject[key];
           const incoming = body[key];
-          if (key === 'startDate') return new Date(incoming).getTime() !== new Date(existing).getTime();
           if (key === 'price') return Number(incoming) !== Number(existing);
           if (key === 'tags') {
             const a = (Array.isArray(incoming) ? incoming : []).sort().join(',');
@@ -314,7 +304,7 @@ export async function PATCH(request, { params }) {
         })
         .map(k => ({
           orderId: 'Order ID', projectName: 'Name',
-          cms: 'CMS', priority: 'Priority', assignee: 'Assignee', startDate: 'Start Date',
+          cms: 'CMS', priority: 'Priority', assignee: 'Assignee',
           tags: 'Tags', description: 'Description', price: 'Price', progress: 'Progress',
           websites: 'Websites', figmaLinks: 'Figma Links', referenceLinks: 'Reference Links',
           fiverrFeeEnabled: 'Fiverr Fee',

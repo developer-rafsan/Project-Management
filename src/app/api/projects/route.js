@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import { encrypt } from '@/lib/encryption';
+import { getMonthRange } from '@/lib/dateUtils';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
 
@@ -23,6 +24,7 @@ export async function GET(request) {
     const cms = searchParams.get('cms');
     const tags = searchParams.get('tags');
     const assignee = searchParams.get('assignee');
+    const monthStartDay = parseInt(searchParams.get('monthStartDay')) || 1;
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 20;
@@ -33,8 +35,10 @@ export async function GET(request) {
 
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
-    if (month) filter.currentMonth = parseInt(month);
-    if (year) filter.currentYear = parseInt(year);
+    if (month && year) {
+      const { from, to } = getMonthRange(parseInt(year), parseInt(month), monthStartDay)
+      filter.currentProjectDate = { $gte: from, $lte: to }
+    }
     if (cms) filter.cms = cms;
     if (tags) {
       filter.tags = { $in: tags.split(',').map((t) => t.trim()) };
@@ -70,7 +74,7 @@ export async function GET(request) {
 
     const [projects, total] = await Promise.all([
       Project.find(filter)
-        .select('orderId projectName status priority cms price progress websites figmaLinks referenceLinks startDate createdAt currentMonth currentYear assignee tags createdBy owner fiverrFeeEnabled')
+        .select('orderId projectName status priority cms price progress websites figmaLinks referenceLinks createdAt currentProjectDate assignee tags createdBy owner fiverrFeeEnabled')
         .sort(sort).skip(skip).limit(limit).lean(),
       Project.countDocuments(filter),
     ]);
@@ -107,7 +111,6 @@ export async function POST(request) {
       priority,
       status,
       assignee,
-      startDate,
       tags,
       note,
       description,
@@ -116,8 +119,7 @@ export async function POST(request) {
       websites,
       figmaLinks,
       referenceLinks,
-      currentMonth,
-      currentYear,
+      currentProjectDate,
       fiverrFeeEnabled,
     } = body;
 
@@ -158,8 +160,7 @@ export async function POST(request) {
       cms: cms || 'Other',
       priority: priority || 'Medium',
       status: status || 'Pending',
-      assignee: Array.isArray(assignee) ? assignee : [{ user: assignee || session.user.id, percentage: 100 }],
-      startDate: startDate ? new Date(startDate) : new Date(),
+      assignee: Array.isArray(assignee) ? assignee : [],
       tags: tags || [],
       description: description || '',
       price: price ? Number(price) : 0,
@@ -170,8 +171,7 @@ export async function POST(request) {
       })),
       figmaLinks: figmaLinks || [],
       referenceLinks: referenceLinks || [],
-      currentMonth: currentMonth || now.getMonth() + 1,
-      currentYear: currentYear || now.getFullYear(),
+      currentProjectDate: currentProjectDate ? new Date(currentProjectDate) : new Date(),
       createdBy: session.user.id,
       owner: session.user.id,
       fiverrFeeEnabled: fiverrFeeEnabled !== undefined ? fiverrFeeEnabled : true,

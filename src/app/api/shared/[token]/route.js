@@ -118,8 +118,8 @@ export async function PATCH(request, { params }) {
     const updates = {};
     const fields = [
       'orderId', 'projectName', 'cms', 'priority', 'status',
-      'startDate', 'tags', 'description', 'price',
-      'currentMonth', 'currentYear', 'assignee',
+      'tags', 'description', 'price',
+      'currentProjectDate', 'assignee',
       'websites', 'domainHosting',
     ];
 
@@ -127,8 +127,8 @@ export async function PATCH(request, { params }) {
       if (body[field] !== undefined) {
         if (field === 'price') {
           updates[field] = Number(body[field]);
-        } else if (field === 'startDate') {
-          updates[field] = new Date(body[field]);
+        } else if (field === 'currentProjectDate') {
+          updates[field] = body[field] ? new Date(body[field]) : undefined;
         } else {
           updates[field] = body[field];
         }
@@ -156,9 +156,7 @@ export async function PATCH(request, { params }) {
 
     const statusChanged = body.status && body.status !== existingProject.status;
     if (statusChanged) {
-      const now = new Date();
-      if (!body.currentMonth) updates.currentMonth = now.getMonth() + 1;
-      if (!body.currentYear) updates.currentYear = now.getFullYear();
+      if (!body.currentProjectDate) updates.currentProjectDate = new Date();
 
       await Activity.create({
         project: projectId,
@@ -166,37 +164,29 @@ export async function PATCH(request, { params }) {
         performedBy: share.createdBy,
         previousStatus: existingProject.status,
         newStatus: body.status,
-        note: body.updateNote || '',
       });
     }
 
     const monthYearChanged =
-      (updates.currentMonth && updates.currentMonth !== existingProject.currentMonth) ||
-      (updates.currentYear && updates.currentYear !== existingProject.currentYear) ||
-      (body.currentMonth && body.currentMonth !== existingProject.currentMonth) ||
-      (body.currentYear && body.currentYear !== existingProject.currentYear);
+      (updates.currentProjectDate && updates.currentProjectDate !== existingProject.currentProjectDate) ||
+      (body.currentProjectDate && body.currentProjectDate !== existingProject.currentProjectDate);
 
     if (monthYearChanged) {
       await Activity.create({
         project: projectId,
         type: 'month_transfer',
         performedBy: share.createdBy,
-        oldMonth: existingProject.currentMonth,
-        newMonth: updates.currentMonth || existingProject.currentMonth,
-        newYear: updates.currentYear || existingProject.currentYear,
+        description: `Project date changed`,
       });
     }
 
     const generalFieldKeys = fields.filter(
-      f => !['status', 'currentMonth', 'currentYear'].includes(f)
+      f => !['status', 'currentProjectDate'].includes(f)
     );
     const hasGeneralChanges = generalFieldKeys.some(key => {
       if (body[key] === undefined) return false;
       const existing = existingProject[key];
       const incoming = body[key];
-      if (key === 'startDate') {
-        return new Date(incoming).getTime() !== new Date(existing).getTime();
-      }
       if (key === 'price') {
         return Number(incoming) !== Number(existing);
       }
@@ -214,7 +204,6 @@ export async function PATCH(request, { params }) {
           if (body[key] === undefined) return false;
           const existing = existingProject[key];
           const incoming = body[key];
-          if (key === 'startDate') return new Date(incoming).getTime() !== new Date(existing).getTime();
           if (key === 'price') return Number(incoming) !== Number(existing);
           if (key === 'tags') {
             const a = (Array.isArray(incoming) ? incoming : []).sort().join(',');
@@ -225,7 +214,7 @@ export async function PATCH(request, { params }) {
         })
         .map(k => ({
           orderId: 'Order ID', projectName: 'Name',
-          cms: 'CMS', priority: 'Priority', startDate: 'Start Date', tags: 'Tags',
+          cms: 'CMS', priority: 'Priority', tags: 'Tags',
           description: 'Description', price: 'Price', progress: 'Progress',
           websites: 'Websites', figmaLinks: 'Figma Links', referenceLinks: 'Reference Links',
           fiverrFeeEnabled: 'Fiverr Fee',
