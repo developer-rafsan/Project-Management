@@ -27,14 +27,13 @@ function getEffectiveMonthYear(project, startDay = 1) {
 }
 
 function getUserSharePct(project, userId) {
-  const entry = (project.assignee || []).find(a => (a.user?.toString() || a.user) === userId)
-  if (entry) return entry.percentage || 0
   const isOwner = project.owner?.toString() === userId
   if (isOwner) {
     const t = (project.assignee || []).reduce((s, a) => s + (a.percentage || 0), 0)
     return Math.max(0, 100 - t)
   }
-  return 0
+  const entry = (project.assignee || []).find(a => (a.user?.toString() || a.user) === userId)
+  return entry ? (entry.percentage || 0) : 0
 }
 
 export async function GET(request) {
@@ -171,6 +170,6 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('GET /api/projects/stats error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

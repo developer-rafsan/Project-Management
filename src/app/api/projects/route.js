@@ -89,7 +89,7 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('GET /api/projects error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -164,10 +164,17 @@ export async function POST(request) {
       description: description || '',
       price: price ? Number(price) : 0,
       progress: progress !== undefined ? Number(progress) : 0,
-      websites: (websites || []).map(ws => ({
-        ...ws,
-        password: ws.password ? encrypt(ws.password) : {},
-      })),
+      websites: (websites || []).map(ws => {
+        const obj = { ...ws };
+        if (ws.password && typeof ws.password === 'string') {
+          obj.password = encrypt(ws.password);
+        } else if (ws.password && typeof ws.password === 'object') {
+          obj.password = ws.password;
+        } else {
+          obj.password = {};
+        }
+        return obj;
+      }),
       figmaLinks: figmaLinks || [],
       referenceLinks: referenceLinks || [],
       currentProjectDate: currentProjectDate ? new Date(currentProjectDate) : new Date(),
@@ -203,6 +210,6 @@ export async function POST(request) {
     return NextResponse.json(populated, { status: 201 });
   } catch (error) {
     console.error('POST /api/projects error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

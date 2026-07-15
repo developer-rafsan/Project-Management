@@ -178,7 +178,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
   } catch (error) {
     console.error('PATCH /api/notifications/[id] error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -205,6 +205,6 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE /api/notifications/[id] error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

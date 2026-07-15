@@ -1,7 +1,13 @@
 export async function handleResponse(response) {
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    const text = await response.text().catch(() => '');
+    throw new Error(`Server error (${response.status}): ${text || 'Response is not valid JSON'}`);
+  }
   if (!response.ok) {
-    throw new Error(data.error || data.message || 'Something went wrong');
+    throw new Error(data.error || data.message || `Server error (${response.status})`);
   }
   return data;
 }

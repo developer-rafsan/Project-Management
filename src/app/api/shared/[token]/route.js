@@ -80,7 +80,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ project: safeProject, activities, notes, accessLevel: share.accessLevel });
   } catch (error) {
     console.error('GET /api/shared/[token] error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -314,7 +314,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(updatedProject);
   } catch (error) {
     console.error('PATCH /api/shared/[token] error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -351,6 +351,6 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ message: 'Project deleted successfully' });
   } catch (error) {
     console.error('DELETE /api/shared/[token] error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

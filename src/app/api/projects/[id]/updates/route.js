@@ -37,6 +37,6 @@ export async function GET(request, { params }) {
     return NextResponse.json(activities);
   } catch (error) {
     console.error('GET /api/projects/[id]/updates error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

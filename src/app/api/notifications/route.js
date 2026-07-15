@@ -38,7 +38,7 @@ export async function GET(request) {
     return NextResponse.json(notifications);
   } catch (error) {
     console.error('GET /api/notifications error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -103,6 +103,6 @@ export async function POST(request) {
     return NextResponse.json(populated, { status: 201 });
   } catch (error) {
     console.error('POST /api/notifications error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

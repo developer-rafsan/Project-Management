@@ -38,6 +38,6 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ message: 'Share link revoked' });
   } catch (error) {
     console.error('DELETE /api/projects/[id]/shares/[shareId] error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

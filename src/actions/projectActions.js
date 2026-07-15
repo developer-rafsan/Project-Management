@@ -20,12 +20,18 @@ export async function createProject(data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  const result = await response.json();
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    const text = await response.text().catch(() => '');
+    throw new Error(`Server error (${response.status}): ${text || 'Response is not valid JSON'}`);
+  }
   if (!response.ok) {
     if (response.status === 409 && result.duplicateWarning) {
       return result;
     }
-    throw new Error(result.error || result.message || 'Something went wrong');
+    throw new Error(result.error || result.message || `Server error (${response.status})`);
   }
   return result;
 }

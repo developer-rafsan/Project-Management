@@ -20,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ notes });
   } catch (error) {
     console.error('GET /api/notes error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -48,6 +48,6 @@ export async function POST(request) {
     return NextResponse.json(note, { status: 201 });
   } catch (error) {
     console.error('POST /api/notes error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

@@ -103,33 +103,30 @@ export default function ProjectDetailPage() {
     if (dataLoaded.current) return
     setLoading(true)
     try {
-      const [projectData, activitiesData] = await Promise.all([
+      const [projectData, activitiesData, passwordData, additionalPwData, domainPwData] = await Promise.all([
         getProject(params.id),
         getProjectActivities(params.id),
+        getProjectPassword(params.id).catch(() => ({ password: "" })),
+        getAdditionalPasswords(params.id).catch(() => ({ passwords: [] })),
+        getDomainPassword(params.id).catch(() => ({ domainHostingPasswords: [] })),
       ])
       setProject(projectData)
       setActivities(activitiesData || [])
       dispatch(updateProjectInStore(projectData))
+      setDecryptedPassword(passwordData.password || null)
+      const dhMap = {}
+      for (const item of domainPwData.domainHostingPasswords || []) {
+        dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
+      }
+      setDomainHostingPasswords(dhMap)
+      const pwMap = {}
+      for (const item of additionalPwData.passwords || []) {
+        pwMap[item.index] = item.password
+      }
+      setAdditionalPasswords(pwMap)
       dataLoaded.current = true
       setSidebarReady(true)
       setLoading(false)
-      Promise.all([
-        getProjectPassword(params.id).catch(() => ({ password: "" })),
-        getAdditionalPasswords(params.id).catch(() => ({ passwords: [] })),
-        getDomainPassword(params.id).catch(() => ({ domainHostingPasswords: [] })),
-      ]).then(([passwordData, additionalPwData, domainPwData]) => {
-        setDecryptedPassword(passwordData.password || null)
-        const dhMap = {}
-        for (const item of domainPwData.domainHostingPasswords || []) {
-          dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
-        }
-        setDomainHostingPasswords(dhMap)
-        const pwMap = {}
-        for (const item of additionalPwData.passwords || []) {
-          pwMap[item.index] = item.password
-        }
-        setAdditionalPasswords(pwMap)
-      })
     } catch (err) {
       toast.error(err.message || "Failed to load project")
       setLoading(false)
@@ -160,7 +157,7 @@ export default function ProjectDetailPage() {
     if (!project) return
     setActionLoading(true)
     try {
-      const { _id, createdAt, updatedAt, orderId, transferMonth, owner, assignee, personTransfer, activities, __v, ...rest } = project
+      const { _id, createdAt, updatedAt, transferMonth, owner, assignee, personTransfer, activities, __v, ...rest } = project
       const ownerId = owner?._id?.toString() || owner?.toString()
       const cleanAssignee = (assignee || [])
         .filter(a => (a.user?._id || a.user)?.toString() !== ownerId)
@@ -170,6 +167,8 @@ export default function ProjectDetailPage() {
         }))
       const newProject = await createProject({
         ...rest,
+        orderId: project.orderId,
+        confirmDuplicateOrderId: true,
         assignee: cleanAssignee,
         projectName: `${project.projectName} (Copy)`,
       })
@@ -237,6 +236,12 @@ export default function ProjectDetailPage() {
   const handleDomainUpdate = useCallback(async (updated) => {
     setProject(updated)
     dispatch(updateProjectInStore(updated))
+    const domainPwData = await getDomainPassword(updated._id).catch(() => ({ domainHostingPasswords: [] }))
+    const dhMap = {}
+    for (const item of domainPwData.domainHostingPasswords || []) {
+      dhMap[item.index] = { password: item.password, hostingPassword: item.hostingPassword }
+    }
+    setDomainHostingPasswords(dhMap)
     refreshActivities()
   }, [dispatch, refreshActivities])
 

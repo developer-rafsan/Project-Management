@@ -18,7 +18,7 @@ import {
 import {
   Copy, Check, ExternalLink, Globe, User, Lock, Eye, EyeOff,
   MoreHorizontal, Trash2, Pencil, ArrowLeftRight,
-  UserRoundPlus, Link, Percent, ArrowUpDown, ArrowUp, ArrowDown,
+  Link, Percent, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -72,14 +72,13 @@ function LongPressHandler({ onLongPress, onClick, children, className, active })
 
 function getSharePercent(project, userId) {
   if (!userId) return 0
-  const entry = (project.assignee || []).find(a => (a.user?._id || a.user) === userId)
-  if (entry) return entry.percentage || 0
   const isOwner = project.owner?._id === userId || project.owner?.toString() === userId
   if (isOwner) {
     const t = (project.assignee || []).reduce((s, a) => s + (a.percentage || 0), 0)
     return Math.max(0, 100 - t)
   }
-  return 0
+  const entry = (project.assignee || []).find(a => (a.user?._id || a.user) === userId)
+  return entry ? (entry.percentage || 0) : 0
 }
 
 const SORTABLE_COLUMNS = {
@@ -111,11 +110,6 @@ const RowActions = memo(function RowActions({ project, onAction }) {
         <DropdownMenuItem onClick={() => onAction?.("progress", project)}>
           <Percent className="size-4" /> Progress
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onAction?.("transferOwner", project)}>
-          <UserRoundPlus className="size-4" /> Transfer Owner
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => onAction?.("share", project)}>
           <Link className="size-4" /> Share
         </DropdownMenuItem>
@@ -411,9 +405,14 @@ const ProjectTable = memo(function ProjectTable({
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     {Number(shareAmt) ? (
-                      <span className={cn("text-xs font-semibold rounded-md px-1.5 py-0.5", sharePct < 100 ? "text-violet-600 dark:text-violet-400 bg-violet-500/10" : "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10")}>
-                        ${Number(shareAmt).toFixed(2)}
-                      </span>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <span className={cn("text-xs font-semibold rounded-md px-1.5 py-0.5", sharePct < 100 ? "text-violet-600 dark:text-violet-400 bg-violet-500/10" : "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10")}>
+                          ${Number(shareAmt).toFixed(2)}
+                        </span>
+                        <span className={cn("text-[10px] font-medium px-1.5 rounded-sm", project.fiverrFeeEnabled !== false ? "text-orange-600 dark:text-orange-400 bg-orange-500/10" : "text-muted-foreground/60 bg-muted/50")}>
+                          {project.fiverrFeeEnabled !== false ? "Fiverr Fee On" : "Fiverr Fee Off"}
+                        </span>
+                      </div>
                     ) : <span className="text-sm text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell text-right">
@@ -487,6 +486,9 @@ const ProjectTable = memo(function ProjectTable({
                   {Number(shareAmt) ? (
                     <span className={cn("inline-flex flex-col items-start leading-tight font-semibold rounded-md px-1.5 py-0.5 min-w-[52px]", sharePct < 100 ? "text-violet-600 dark:text-violet-400 bg-violet-500/10" : "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10")}>
                       <span className="text-[11px]">${Number(shareAmt).toFixed(2)}</span>
+                      <span className={cn("text-[9px] font-medium mt-0.5", project.fiverrFeeEnabled !== false ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground/60")}>
+                        {project.fiverrFeeEnabled !== false ? "Fee On" : "Fee Off"}
+                      </span>
                     </span>
                   ) : null}
                 </div>

@@ -35,7 +35,7 @@ export async function GET(request) {
     return NextResponse.json(result);
   } catch (error) {
     console.error('GET /api/share-list error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -83,6 +83,6 @@ export async function POST(request) {
     return NextResponse.json({ _id: share._id, token, url, expiresAt, accessLevel, projectCount: savedCount, requestedCount: body.projectIds?.length || 0 });
   } catch (error) {
     console.error('POST /api/share-list error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

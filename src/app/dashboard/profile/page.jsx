@@ -28,6 +28,44 @@ const PROFESSION_OPTIONS = [
   { value: "Other", icon: MoreHorizontal },
 ]
 
+function InfoRow({ icon: Icon, label, value, href }) {
+  return (
+    <div className="flex items-center gap-3 py-2.5 border-b border-border/40 last:border-0">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+        <Icon className="size-4 text-muted-foreground" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        {href ? (
+          <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline truncate block">
+            {value || "-"}
+          </a>
+        ) : (
+          <p className="text-sm font-medium truncate">{value || "-"}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function EditField({ icon: Icon, label, value, onChange, placeholder, type = "text" }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        {Icon && <Icon className="size-3.5" />}
+        {label}
+      </label>
+      <Input
+        type={type}
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder || label}
+        className="h-9"
+      />
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -36,6 +74,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({})
+  const [activeSection, setActiveSection] = useState("personal")
 
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return }
@@ -77,6 +116,11 @@ export default function ProfilePage() {
     }
   }
 
+  const handleCancel = () => {
+    setForm({ ...profile })
+    setEditing(false)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -92,7 +136,7 @@ export default function ProfilePage() {
   const isOrg = profile?.accountType === "organization"
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-8">
+    <div className="max-w-3xl mx-auto space-y-6 pb-10">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
@@ -101,11 +145,11 @@ export default function ProfilePage() {
         {!editing ? (
           <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-2">
             <Pencil className="size-4" />
-            Edit Profile
+            Edit
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setEditing(false); setForm({ ...profile }) }} className="gap-2">
+            <Button variant="outline" size="sm" onClick={handleCancel} className="gap-2">
               <X className="size-4" />
               Cancel
             </Button>
@@ -119,20 +163,22 @@ export default function ProfilePage() {
 
       <Card>
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6">
             <Avatar className="size-20 sm:size-24 ring-4 ring-background shadow-xl">
               <AvatarImage src={profile?.image} />
               <AvatarFallback className="text-xl sm:text-2xl font-bold bg-primary/10 text-primary">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
-            <div className="text-center sm:text-left flex-1 min-w-0">
-              <h2 className="text-xl font-bold">{profile?.name}</h2>
-              <p className="text-sm text-muted-foreground flex items-center justify-center sm:justify-start gap-1">
-                <Mail className="size-3.5" />
-                {profile?.email}
-              </p>
-              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+            <div className="text-center sm:text-left flex-1 min-w-0 space-y-2">
+              <div>
+                <h2 className="text-xl font-bold">{profile?.name}</h2>
+                <p className="text-sm text-muted-foreground flex items-center justify-center sm:justify-start gap-1.5 mt-0.5">
+                  <Mail className="size-3.5 shrink-0" />
+                  <span className="truncate">{profile?.email}</span>
+                </p>
+              </div>
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                 {isOrg ? (
                   <Badge variant="secondary" className="rounded-full gap-1">
                     <Building2 className="size-3" />
@@ -145,7 +191,8 @@ export default function ProfilePage() {
                   </Badge>
                 )}
                 {profile?.setupComplete && (
-                  <Badge variant="outline" className="rounded-full text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800">
+                  <Badge variant="outline" className="rounded-full text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 gap-1">
+                    <Check className="size-3" />
                     Active
                   </Badge>
                 )}
@@ -155,117 +202,168 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {isOrg ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Building2 className="size-5 text-primary" />
-              <div>
-                <CardTitle className="text-lg">Organization Details</CardTitle>
-                <CardDescription>Your organization information</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Field label="Organization Name" value={form.organizationName} editing={editing} onChange={(v) => setForm({ ...form, organizationName: v })} icon={Building2} />
-            <Field label="Organization Email" value={form.organizationEmail} editing={editing} onChange={(v) => setForm({ ...form, organizationEmail: v })} icon={Mail} />
-            <Field label="Organization Phone" value={form.organizationPhone} editing={editing} onChange={(v) => setForm({ ...form, organizationPhone: v })} icon={Phone} />
-            <Field label="Organization Address" value={form.organizationAddress} editing={editing} onChange={(v) => setForm({ ...form, organizationAddress: v })} icon={MapPin} />
-            <Field label="Website" value={form.organizationWebsite} editing={editing} onChange={(v) => setForm({ ...form, organizationWebsite: v })} icon={Globe} />
-            <ProfessionField label="Your Role" value={form.organizationRole} editing={editing} options={PROFESSION_OPTIONS} onChange={(v) => setForm({ ...form, organizationRole: v })} icon={Briefcase} />
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <User className="size-5 text-primary" />
-              <div>
-                <CardTitle className="text-lg">Personal Details</CardTitle>
-                <CardDescription>Your contact information</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Field label="Name" value={form.name} editing={editing} onChange={(v) => setForm({ ...form, name: v })} icon={User} />
-            <Field label="Email" value={profile?.email || ""} editing={false} icon={Mail} />
-            <Field label="Phone" value={form.phone} editing={editing} onChange={(v) => setForm({ ...form, phone: v })} icon={Phone} />
-            <ProfessionField label="Profession" value={form.profession} editing={editing} options={PROFESSION_OPTIONS} onChange={(v) => setForm({ ...form, profession: v })} icon={Briefcase} />
-            <Field label="Address" value={form.address} editing={editing} onChange={(v) => setForm({ ...form, address: v })} icon={MapPin} />
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  )
-}
-
-function Field({ label, value, editing, onChange, icon: Icon }) {
-  return (
-    <div className="flex items-start gap-3 py-2">
-      <div className="flex items-center gap-2 min-w-[130px] shrink-0">
-        {Icon && <Icon className="size-3.5 text-muted-foreground" />}
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        {editing ? (
-          <Input value={value || ""} onChange={(e) => onChange(e.target.value)} className="h-9 text-sm" />
-        ) : (
-          <span className="text-sm">{value || "-"}</span>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function ProfessionField({ label, value, editing, options, onChange, icon: Icon }) {
-  return (
-    <div className="flex flex-col gap-2 py-2">
-      <div className="flex items-center gap-2">
-        {Icon && <Icon className="size-3.5 text-muted-foreground" />}
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
-      </div>
       {editing ? (
-        <div className="space-y-2">
-          <div className="grid grid-cols-3 gap-2">
-            {options.map(({ value: optVal, icon: OptIcon }) => {
-              const isSelected = value === optVal || (!options.find(o => o.value === value) && optVal === "Other")
-              const isOther = optVal === "Other"
-              return (
-                <button
-                  key={optVal}
-                  type="button"
-                  onClick={() => onChange(isOther ? "" : optVal)}
-                  className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all cursor-pointer active:scale-[0.97] ${
-                    isSelected
-                      ? "border-primary bg-primary/10 shadow-sm"
-                      : "border-border bg-card hover:border-muted-foreground/30 hover:bg-muted/50"
-                  }`}
-                >
-                  <div className={`flex size-8 items-center justify-center rounded-lg ${
-                    isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                  }`}>
-                    <OptIcon className="size-4" />
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <User className="size-5 text-primary" />
+                <div>
+                  <CardTitle className="text-lg">Basic Info</CardTitle>
+                  <CardDescription>Name and contact details</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <EditField icon={User} label="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+                <EditField icon={Mail} label="Email" value={profile?.email || ""} onChange={() => {}} type="email" />
+                <EditField icon={Phone} label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} type="tel" />
+                <EditField icon={MapPin} label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Briefcase className="size-5 text-primary" />
+                <div>
+                  <CardTitle className="text-lg">Profession</CardTitle>
+                  <CardDescription>Select or type your profession</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                {PROFESSION_OPTIONS.map(({ value: optVal, icon: OptIcon }) => {
+                  const isSelected = form.profession === optVal || (!PROFESSION_OPTIONS.some(o => o.value === form.profession) && optVal === "Other")
+                  const isOther = optVal === "Other"
+                  return (
+                    <button
+                      key={optVal}
+                      type="button"
+                      onClick={() => setForm({ ...form, profession: isOther ? "" : optVal })}
+                      className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all cursor-pointer active:scale-[0.97] ${
+                        isSelected
+                          ? "border-primary bg-primary/10 shadow-sm"
+                          : "border-border bg-card hover:border-muted-foreground/30 hover:bg-muted/50"
+                      }`}
+                    >
+                      <div className={`flex size-8 items-center justify-center rounded-lg ${
+                        isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                      }`}>
+                        <OptIcon className="size-4" />
+                      </div>
+                      <span className={`text-[10px] font-medium leading-tight text-center ${
+                        isSelected ? "text-primary" : "text-muted-foreground"
+                      }`}>
+                        {optVal}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              {!PROFESSION_OPTIONS.some(o => o.value === form.profession) && (
+                <Input
+                  value={form.profession || ""}
+                  onChange={(e) => setForm({ ...form, profession: e.target.value })}
+                  placeholder="Type your profession..."
+                  className="h-9"
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {isOrg && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Building2 className="size-5 text-primary" />
+                  <div>
+                    <CardTitle className="text-lg">Organization</CardTitle>
+                    <CardDescription>Your organization details</CardDescription>
                   </div>
-                  <span className={`text-[10px] font-medium leading-tight text-center ${
-                    isSelected ? "text-primary" : "text-muted-foreground"
-                  }`}>
-                    {optVal}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          {!options.find(o => o.value === value) && (
-            <Input
-              value={value || ""}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder={`Type your ${label.toLowerCase()}...`}
-              className="h-9 text-sm"
-            />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <EditField icon={Building2} label="Organization Name" value={form.organizationName} onChange={(v) => setForm({ ...form, organizationName: v })} />
+                  <EditField icon={Mail} label="Organization Email" value={form.organizationEmail} onChange={(v) => setForm({ ...form, organizationEmail: v })} type="email" />
+                  <EditField icon={Phone} label="Organization Phone" value={form.organizationPhone} onChange={(v) => setForm({ ...form, organizationPhone: v })} type="tel" />
+                  <EditField icon={MapPin} label="Organization Address" value={form.organizationAddress} onChange={(v) => setForm({ ...form, organizationAddress: v })} />
+                  <EditField icon={Globe} label="Website" value={form.organizationWebsite} onChange={(v) => setForm({ ...form, organizationWebsite: v })} />
+                  <EditField icon={Briefcase} label="Your Role" value={form.organizationRole} onChange={(v) => setForm({ ...form, organizationRole: v })} />
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       ) : (
-        <span className="text-sm">{value || "-"}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <User className="size-5 text-primary" />
+                <div>
+                  <CardTitle className="text-lg">Personal</CardTitle>
+                  <CardDescription>Your contact information</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="px-(--card-spacing)">
+                <InfoRow icon={User} label="Name" value={profile?.name} />
+                <InfoRow icon={Mail} label="Email" value={profile?.email} />
+                <InfoRow icon={Phone} label="Phone" value={profile?.phone} />
+                <InfoRow icon={Briefcase} label="Profession" value={profile?.profession} />
+                <InfoRow icon={MapPin} label="Address" value={profile?.address} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {isOrg ? (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Building2 className="size-5 text-primary" />
+                  <div>
+                    <CardTitle className="text-lg">Organization</CardTitle>
+                    <CardDescription>Your organization details</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="px-(--card-spacing)">
+                  <InfoRow icon={Building2} label="Name" value={profile?.organizationName} />
+                  <InfoRow icon={Mail} label="Email" value={profile?.organizationEmail} />
+                  <InfoRow icon={Phone} label="Phone" value={profile?.organizationPhone} />
+                  <InfoRow icon={MapPin} label="Address" value={profile?.organizationAddress} />
+                  <InfoRow icon={Globe} label="Website" value={profile?.organizationWebsite} href={profile?.organizationWebsite} />
+                  <InfoRow icon={Briefcase} label="Role" value={profile?.organizationRole} />
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Building2 className="size-5 text-primary" />
+                  <div>
+                    <CardTitle className="text-lg">Account</CardTitle>
+                    <CardDescription>Account type and status</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="px-(--card-spacing)">
+                  <InfoRow icon={User} label="Account Type" value={profile?.accountType === "organization" ? "Organization" : "Individual"} />
+                  <InfoRow icon={Check} label="Status" value={profile?.setupComplete ? "Active" : "Incomplete"} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
     </div>
   )

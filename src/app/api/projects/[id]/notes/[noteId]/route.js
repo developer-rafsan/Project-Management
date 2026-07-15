@@ -47,7 +47,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(populated);
   } catch (error) {
     console.error('PATCH /api/projects/[id]/notes/[noteId] error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -83,6 +83,6 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ message: 'Note deleted successfully' });
   } catch (error) {
     console.error('DELETE /api/projects/[id]/notes/[noteId] error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

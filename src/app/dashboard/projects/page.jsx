@@ -21,7 +21,6 @@ import ProjectTable from "@/components/projects/ProjectTable"
 import ProjectCard from "@/components/projects/ProjectCard"
 import ProjectForm from "@/components/projects/ProjectForm"
 import Pagination from "@/components/projects/Pagination"
-import TransferOwnershipDialog from "@/components/projects/TransferOwnershipDialog"
 import { StatusChangeDialog } from "@/components/projects/StatusChangeDialog"
 import ShareDialog from "@/components/projects/ShareDialog"
 import ShareListDialog from "@/components/projects/ShareListDialog"
@@ -59,7 +58,6 @@ export default function ProjectsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editProject, setEditProject] = useState(null)
   const [statusProject, setStatusProject] = useState(null)
-  const [transferOwnerProject, setTransferOwnerProject] = useState(null)
   const [shareProject, setShareProject] = useState(null)
   const [shareListOpen, setShareListOpen] = useState(false)
   const [shareSelectedIds, setShareSelectedIds] = useState([])
@@ -99,12 +97,12 @@ export default function ProjectsPage() {
       setEditProject(project)
     } else if (action === "duplicate") {
       try {
-        const { _id, createdAt, updatedAt, orderId, transferMonth, __v, owner, ...rest } = project
-        const pwRes = await getProjectPassword(project._id).catch(() => ({ password: "" }))
+        const { _id, createdAt, updatedAt, transferMonth, __v, owner, ...rest } = project
         const newProj = await createProject({
           ...rest,
+          orderId: project.orderId,
           projectName: `${project.projectName} (Copy)`,
-          websites: rest.websites || [],
+          confirmDuplicateOrderId: true,
         })
         dispatch(addProject(newProj))
         toast.success("Project duplicated")
@@ -122,8 +120,6 @@ export default function ProjectsPage() {
       }
     } else if (action === "status") {
       setStatusProject(project)
-    } else if (action === "transferOwner") {
-      setTransferOwnerProject(project)
     } else if (action === "share") {
       setShareProject(project)
     } else if (action === "progress") {
@@ -419,18 +415,6 @@ export default function ProjectsPage() {
             } catch (err) {
               toast.error(err.message || "Failed to update status")
             }
-          }}
-        />
-      )}
-
-      {transferOwnerProject && (
-        <TransferOwnershipDialog
-          project={transferOwnerProject}
-          open={!!transferOwnerProject}
-          onClose={() => setTransferOwnerProject(null)}
-          onSuccess={() => {
-            dispatch(fetchProjects({ month: selectedMonth, year: selectedYear }))
-            setTransferOwnerProject(null)
           }}
         />
       )}

@@ -32,6 +32,6 @@ export async function GET(request) {
     return NextResponse.json(users);
   } catch (error) {
     console.error('GET /api/users error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
