@@ -19,6 +19,7 @@ import RecentProjects from "@/components/dashboard/RecentProjects"
 import RecentUpdates from "@/components/dashboard/RecentUpdates"
 import StatusChart from "@/components/dashboard/StatusChart"
 import MonthlyProgressChart from "@/components/dashboard/MonthlyProgressChart"
+import DashboardScreenOptions, { getDefaultDashboardVisibility, filterUpdatesByVisibility } from "@/components/dashboard/DashboardScreenOptions"
 import { startOfMonth, endOfMonth, format, eachDayOfInterval } from "date-fns"
 import { getMonthRange } from "@/lib/dateUtils"
 
@@ -57,6 +58,22 @@ export default function DashboardPage() {
     }
     return 1
   })
+
+  const [visibility, setVisibility] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("dashboardScreenOptions")
+        if (saved) return { ...getDefaultDashboardVisibility(), ...JSON.parse(saved) }
+      } catch {}
+    }
+    return getDefaultDashboardVisibility()
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("dashboardScreenOptions", JSON.stringify(visibility))
+    } catch {}
+  }, [visibility])
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login")
@@ -145,14 +162,17 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {visibility.greeting !== false && (
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">
             Welcome back, {session?.user?.name}
           </h1>
           <p className="text-sm text-muted-foreground">Dashboard overview</p>
         </div>
+      )}
+      {visibility.filterBar !== false && (
         <div className="flex flex-wrap items-center gap-2">
+          <DashboardScreenOptions visibility={visibility} onChange={setVisibility} />
           <div className="flex rounded-lg border p-0.5">
             <Button
               variant={filterMode === "month" ? "default" : "ghost"}
@@ -221,7 +241,7 @@ export default function DashboardPage() {
                   : ""}
           </span>
         </div>
-      </div>
+      )}
 
       {loading ? (
         <div className="space-y-4 sm:space-y-6">
@@ -244,14 +264,24 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-4 sm:space-y-6">
-          <div className="animate-fade-in-up stagger-1"><StatsCards stats={stats} /></div>
-          <div className="animate-fade-in-up stagger-2"><RevenueSummary data={revenueData} highlight="net" showFiverrFee={localStorage.getItem("fiverrFeeEnabled") !== "false"} /></div>
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 animate-fade-in-up stagger-3">
-            <StatusChart data={chartData} />
-            <MonthlyProgressChart data={monthlyData} />
-          </div>
-          <div className="animate-fade-in-up stagger-4"><RecentProjects projects={recentProjects} /></div>
-          <div className="animate-fade-in-up stagger-5"><RecentUpdates updates={recentUpdates} /></div>
+          {visibility.statsCards !== false && (
+            <div className="animate-fade-in-up stagger-1"><StatsCards stats={stats} visibility={visibility} /></div>
+          )}
+          {visibility.revenueSummary !== false && (
+            <div className="animate-fade-in-up stagger-2"><RevenueSummary data={revenueData} highlight="net" showFiverrFee={localStorage.getItem("fiverrFeeEnabled") !== "false"} visibility={visibility} /></div>
+          )}
+          {(visibility.statusChart !== false || visibility.monthlyChart !== false) && (
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 animate-fade-in-up stagger-3">
+              {visibility.statusChart !== false && <StatusChart data={chartData} />}
+              {visibility.monthlyChart !== false && <MonthlyProgressChart data={monthlyData} />}
+            </div>
+          )}
+          {visibility.recentProjects !== false && (
+            <div className="animate-fade-in-up stagger-4"><RecentProjects projects={recentProjects} visibility={visibility} /></div>
+          )}
+          {visibility.recentUpdates !== false && (
+            <div className="animate-fade-in-up stagger-5"><RecentUpdates updates={filterUpdatesByVisibility(recentUpdates, visibility)} /></div>
+          )}
         </div>
       )}
     </div>

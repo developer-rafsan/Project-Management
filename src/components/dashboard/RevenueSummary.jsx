@@ -12,16 +12,25 @@ const cards = [
   { key: "net", label: "Net Revenue", icon: Landmark, color: "text-green-500", bg: "bg-green-500/10" },
 ]
 
-export default function RevenueSummary({ data, highlight, showFiverrFee = true }) {
+const revKeyMap = {
+  total: "revTotal",
+  delivered: "revDelivered",
+  inProgress: "revInProgress",
+  cancelled: "revCancelled",
+  fee: "revFee",
+  net: "revNet",
+}
+
+export default function RevenueSummary({ data, highlight, showFiverrFee = true, visibility = {} }) {
   if (!data) return null
 
   const visibleCards = cards.filter((item) => {
-    if (item.key === "fee") return showFiverrFee
-    return true
+    if (item.key === "fee" && !showFiverrFee) return false
+    return visibility[revKeyMap[item.key]] !== false
   })
 
   return (
-    <div className={`grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 ${showFiverrFee ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
+    <div className={`grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 ${visibleCards.length > 5 ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
       {visibleCards.map((item) => {
         const Icon = item.icon
         const val = data[item.key] ?? 0

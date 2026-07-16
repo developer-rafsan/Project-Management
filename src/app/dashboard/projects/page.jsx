@@ -19,6 +19,7 @@ import {
 import ProjectFilters from "@/components/projects/ProjectFilters"
 import ProjectTable from "@/components/projects/ProjectTable"
 import ProjectCard from "@/components/projects/ProjectCard"
+import DisplayOptions, { getDefaultVisibility } from "@/components/projects/DisplayOptions"
 import ProjectForm from "@/components/projects/ProjectForm"
 import Pagination from "@/components/projects/Pagination"
 import { StatusChangeDialog } from "@/components/projects/StatusChangeDialog"
@@ -45,7 +46,15 @@ export default function ProjectsPage() {
   const { items: allProjects, loading, fetched } = useSelector((s) => s.projects)
 
   const now = new Date()
-  const [filters, setFilters] = useState({})
+  const [filters, setFilters] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("projectFilters")
+        if (saved) return JSON.parse(saved)
+      } catch {}
+    }
+    return {}
+  })
   const [filterMode, setFilterMode] = useState("month")
   const [dateRange, setDateRange] = useState({
     from: startOfMonth(now),
@@ -55,6 +64,15 @@ export default function ProjectsPage() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
   const [page, setPage] = useState(1)
   const [viewMode, setViewMode] = useState("list")
+  const [visibility, setVisibility] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("projectDisplayOptions")
+        if (saved) return { ...getDefaultVisibility(), ...JSON.parse(saved) }
+      } catch {}
+    }
+    return getDefaultVisibility()
+  })
   const [createOpen, setCreateOpen] = useState(false)
   const [editProject, setEditProject] = useState(null)
   const [statusProject, setStatusProject] = useState(null)
@@ -143,6 +161,18 @@ export default function ProjectsPage() {
     if (!fetched) dispatch(fetchProjects())
   }, [fetched, dispatch])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem("projectFilters", JSON.stringify(filters))
+    } catch {}
+  }, [filters])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("projectDisplayOptions", JSON.stringify(visibility))
+    } catch {}
+  }, [visibility])
+
   const filtered = useMemo(() => {
     let list = [...allProjects]
 
@@ -155,14 +185,14 @@ export default function ProjectsPage() {
           (p.websites?.some(s => s.url && s.url.toLowerCase().includes(q)))
       )
     }
-    if (filters.status) {
-      list = list.filter((p) => p.status === filters.status)
+    if (filters.status?.length > 0) {
+      list = list.filter((p) => filters.status.includes(p.status))
     }
-    if (filters.priority) {
-      list = list.filter((p) => p.priority === filters.priority)
+    if (filters.priority?.length > 0) {
+      list = list.filter((p) => filters.priority.includes(p.priority))
     }
-    if (filters.cms) {
-      list = list.filter((p) => p.cms === filters.cms)
+    if (filters.cms?.length > 0) {
+      list = list.filter((p) => filters.cms.includes(p.cms))
     }
     if (filterMode === "month") {
       list = list.filter((p) => {
@@ -205,50 +235,53 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            <span className="font-medium text-foreground">{total}</span> {total === 1 ? "project" : "projects"} &middot; <span className="font-medium text-emerald-600 dark:text-emerald-400">${totalPrice.toFixed(2)}</span> total
-          </p>
+      {visibility.header !== false && (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Projects</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              <span className="font-medium text-foreground">{total}</span> {total === 1 ? "project" : "projects"} &middot; <span className="font-medium text-emerald-600 dark:text-emerald-400">${totalPrice.toFixed(2)}</span> total
+            </p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <DisplayOptions visibility={visibility} onChange={setVisibility} />
+            <Button
+              variant={selectMode ? "default" : "outline"}
+              size={selectMode ? "sm" : "default"}
+              onClick={() => {
+                if (selectMode) {
+                  setSelectedIds([])
+                  setSelectMode(false)
+                } else {
+                  setSelectMode(true)
+                }
+              }}
+              className={`shrink-0 gap-2 cursor-pointer transition-all active:scale-95 ${selectMode ? "bg-primary/90 hover:bg-primary shadow-sm" : ""}`}
+            >
+              {selectMode ? <X className="size-4" /> : <ListChecks className="size-4" />}
+              <span className="hidden sm:inline">{selectMode ? "Bulk action" : "Bulk action"}</span>
+              <span className="sm:hidden">{selectMode ? "Bulk" : "Bulk"}</span>
+            </Button>
+            {!selectMode && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShareListOpen(true)}
+                  className="shrink-0 gap-2 cursor-pointer border-dashed hover:border-primary/50 active:scale-95 transition-transform"
+                >
+                  <Link2 className="size-4" />
+                  <span className="hidden sm:inline">Share</span>
+                </Button>
+                <Button onClick={() => setCreateOpen(true)} className="shrink-0 gap-2 cursor-pointer shadow-sm active:scale-95 transition-transform">
+                  <Plus className="size-4" />
+                  <span className="hidden sm:inline">New Project</span>
+                  <span className="sm:hidden">New</span>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button
-            variant={selectMode ? "default" : "outline"}
-            size={selectMode ? "sm" : "default"}
-            onClick={() => {
-              if (selectMode) {
-                setSelectedIds([])
-                setSelectMode(false)
-              } else {
-                setSelectMode(true)
-              }
-            }}
-            className={`shrink-0 gap-2 cursor-pointer transition-all active:scale-95 ${selectMode ? "bg-primary/90 hover:bg-primary shadow-sm" : ""}`}
-          >
-            {selectMode ? <X className="size-4" /> : <ListChecks className="size-4" />}
-            <span className="hidden sm:inline">{selectMode ? "Bulk action" : "Bulk action"}</span>
-            <span className="sm:hidden">{selectMode ? "Bulk" : "Bulk"}</span>
-          </Button>
-          {!selectMode && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setShareListOpen(true)}
-                className="shrink-0 gap-2 cursor-pointer border-dashed hover:border-primary/50 active:scale-95 transition-transform"
-              >
-                <Link2 className="size-4" />
-                <span className="hidden sm:inline">Share</span>
-              </Button>
-              <Button onClick={() => setCreateOpen(true)} className="shrink-0 gap-2 cursor-pointer shadow-sm active:scale-95 transition-transform">
-                <Plus className="size-4" />
-                <span className="hidden sm:inline">New Project</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      )}
 
       <div className="rounded-xl border bg-card p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row sm:items-start gap-3">
@@ -257,81 +290,86 @@ export default function ProjectsPage() {
               filters={filters}
               onFilterChange={handleFilterChange}
               onSearch={handleSearch}
+              visibility={visibility}
             />
           </div>
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
-            <div className="flex rounded-lg border p-0.5 bg-muted/30">
-              <Button
-                variant={filterMode === "month" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => { setFilterMode("month"); setPage(1) }}
-                className="rounded-md px-2.5 text-xs"
-              >
-                Month
-              </Button>
-              <Button
-                variant={filterMode === "range" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => { setFilterMode("range"); setPage(1) }}
-                className="rounded-md px-2.5 text-xs"
-              >
-                Range
-              </Button>
-              <Button
-                variant={filterMode === "all" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => { setFilterMode("all"); setPage(1) }}
-                className="rounded-md px-2.5 text-xs"
-              >
-                All
-              </Button>
-            </div>
-            {filterMode === "month" && (
-              <div className="flex gap-1.5">
-                <Select value={String(selectedMonth)} onValueChange={(v) => { setSelectedMonth(Number(v)); setPage(1) }}>
-                  <SelectTrigger className="w-[100px] h-8">
-                    <SelectValue placeholder={format(new Date(2024, selectedMonth - 1), "MMM")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem key={m} value={String(m)}>
-                        {format(new Date(2024, m - 1), "MMMM")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); setPage(1) }}>
-                  <SelectTrigger className="w-[85px] h-8">
-                    <SelectValue placeholder="Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: new Date().getFullYear() - 2021 + 1 }, (_, i) => 2022 + i).map((y) => (
-                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {visibility.monthFilter !== false && (
+            <div className="flex items-center gap-2 flex-wrap shrink-0 w-full sm:w-auto">
+              <div className="flex w-full sm:w-auto rounded-lg border p-0.5 bg-muted/30">
+                <Button
+                  variant={filterMode === "month" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => { setFilterMode("month"); setPage(1) }}
+                  className="flex-1 sm:flex-none rounded-md px-2.5 text-xs"
+                >
+                  Month
+                </Button>
+                <Button
+                  variant={filterMode === "range" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => { setFilterMode("range"); setPage(1) }}
+                  className="flex-1 sm:flex-none rounded-md px-2.5 text-xs"
+                >
+                  Range
+                </Button>
+                <Button
+                  variant={filterMode === "all" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => { setFilterMode("all"); setPage(1) }}
+                  className="flex-1 sm:flex-none rounded-md px-2.5 text-xs"
+                >
+                  All
+                </Button>
               </div>
-            )}
-            {filterMode === "range" && (
-              <DateRangePicker value={dateRange} onChange={setDateRange} />
-            )}
-            <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">
-              {filterMode === "month"
-                ? (() => {
-                    const { from, to } = getMonthRange(selectedYear, selectedMonth, startDay)
-                    return `${format(from, "MMM d")} — ${format(to, "MMM d, yyyy")}`
-                  })()
-                : filterMode === "range" && dateRange?.from && dateRange?.to
-                  ? `${format(dateRange.from, "MMM d")} — ${format(dateRange.to, "MMM d, yyyy")}`
-                  : filterMode === "all"
-                    ? "All projects"
-                    : ""}
-            </span>
-          </div>
+              {filterMode === "month" && (
+                <div className="flex gap-1.5 w-full sm:w-auto">
+                  <Select value={String(selectedMonth)} onValueChange={(v) => { setSelectedMonth(Number(v)); setPage(1) }}>
+                    <SelectTrigger className="flex-1 sm:w-[100px] h-8">
+                      <SelectValue placeholder={format(new Date(2024, selectedMonth - 1), "MMM")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                        <SelectItem key={m} value={String(m)}>
+                          {format(new Date(2024, m - 1), "MMMM")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); setPage(1) }}>
+                    <SelectTrigger className="flex-1 sm:w-[85px] h-8">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: new Date().getFullYear() - 2021 + 1 }, (_, i) => 2022 + i).map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {filterMode === "range" && (
+                <div className="w-full sm:w-auto">
+                  <DateRangePicker value={dateRange} onChange={setDateRange} />
+                </div>
+              )}
+              <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">
+                {filterMode === "month"
+                  ? (() => {
+                      const { from, to } = getMonthRange(selectedYear, selectedMonth, startDay)
+                      return `${format(from, "MMM d")} — ${format(to, "MMM d, yyyy")}`
+                    })()
+                  : filterMode === "range" && dateRange?.from && dateRange?.to
+                    ? `${format(dateRange.from, "MMM d")} — ${format(dateRange.to, "MMM d, yyyy")}`
+                    : filterMode === "all"
+                      ? "All projects"
+                      : ""}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      {selectedIds.length > 0 && selectMode && (
+      {visibility.bulkActionBar !== false && selectedIds.length > 0 && selectMode && (
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/5 to-transparent px-3 sm:px-4 py-3 shadow-sm">
           <span className="text-xs sm:text-sm font-semibold text-foreground min-w-[4rem] sm:min-w-[5rem]">{selectedIds.length} selected</span>
           <div className="h-5 w-px bg-border/60 hidden sm:block" />
@@ -376,10 +414,10 @@ export default function ProjectsPage() {
           ))}
         </div>
       ) : (
-        <div className="animate-fade-in-up"><ProjectTable projects={paginated} page={page} pageSize={PAGE_SIZE} onAction={handleCardAction} selectedIds={selectedIds} onSelectionChange={setSelectedIds} selectMode={selectMode} /></div>
+        <div className="animate-fade-in-up"><ProjectTable projects={paginated} page={page} pageSize={PAGE_SIZE} onAction={handleCardAction} selectedIds={selectedIds} onSelectionChange={setSelectedIds} selectMode={selectMode} visibility={visibility} /></div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      {visibility.pagination !== false && <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />}
 
       <Dialog open={!!editProject} onOpenChange={(open) => !open && setEditProject(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-3 sm:p-4">

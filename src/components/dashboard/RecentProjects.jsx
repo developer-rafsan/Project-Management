@@ -32,7 +32,17 @@ const priorityColors = {
   Urgent: "bg-red-500/10 text-red-600 dark:text-red-400",
 }
 
-export default function RecentProjects({ projects }) {
+const RP_COLUMNS = [
+  { id: "rpOrderId", label: "Order ID", key: "orderId" },
+  { id: "rpName", label: "Project Name", key: "name" },
+  { id: "rpStatus", label: "Status", key: "status" },
+  { id: "rpPriority", label: "Priority", key: "priority" },
+  { id: "rpDate", label: "Start Date", key: "date" },
+]
+
+export default function RecentProjects({ projects, visibility = {} }) {
+  const cols = RP_COLUMNS.filter((c) => visibility[c.id] !== false)
+
   return (
     <Card>
       <CardHeader>
@@ -42,18 +52,16 @@ export default function RecentProjects({ projects }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order ID</TableHead>
-              <TableHead>Project Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Start Date</TableHead>
+              {cols.map((c) => (
+                <TableHead key={c.id}>{c.label}</TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {projects.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={cols.length}
                   className="text-center text-muted-foreground py-8"
                 >
                   No projects yet
@@ -62,42 +70,42 @@ export default function RecentProjects({ projects }) {
             ) : (
               projects.map((project) => (
                 <TableRow key={project._id}>
-                  <TableCell className="font-mono text-xs">
-                    {project.orderId || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/dashboard/projects/${project._id}`}
-                      className="font-medium hover:text-primary transition-colors"
-                    >
-                      {project.projectName}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border",
-                        statusColors[project.status] ||
-                          "bg-muted text-muted-foreground"
+                  {cols.map((c) => (
+                    <TableCell key={c.id} className={c.key === "orderId" ? "font-mono text-xs" : c.key === "date" ? "text-muted-foreground" : ""}>
+                      {c.key === "orderId" && (project.orderId || "—")}
+                      {c.key === "name" && (
+                        <Link
+                          href={`/dashboard/projects/${project._id}`}
+                          className="font-medium hover:text-primary transition-colors"
+                        >
+                          {project.projectName}
+                        </Link>
                       )}
-                    >
-                      {project.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                        priorityColors[project.priority] ||
-                          "bg-muted text-muted-foreground"
+                      {c.key === "status" && (
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border",
+                            statusColors[project.status] || "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {project.status}
+                        </span>
                       )}
-                    >
-                      {project.priority}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {project.currentProjectDate ? new Date(project.currentProjectDate).toLocaleDateString() : "-"}
-                  </TableCell>
+                      {c.key === "priority" && (
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                            priorityColors[project.priority] || "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {project.priority}
+                        </span>
+                      )}
+                      {c.key === "date" && (
+                        project.currentProjectDate ? new Date(project.currentProjectDate).toLocaleDateString() : "-"
+                      )}
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))
             )}

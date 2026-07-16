@@ -49,12 +49,23 @@ const cards = [
   },
 ]
 
-export default function StatsCards({ stats }) {
+const statKeyMap = {
+  totalProjects: "statTotal",
+  runningProjects: "statRunning",
+  completedProjects: "statDelivered",
+  pendingProjects: "statPending",
+  onHoldProjects: "statOnHold",
+  revisionProjects: "statRevision",
+}
+
+export default function StatsCards({ stats, visibility = {} }) {
   const formatNum = (n) => String(n ?? 0).padStart(2, "0")
+
+  const visibleCards = cards.filter((c) => visibility[statKeyMap[c.key]] !== false)
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-6">
-      {cards.map((card, i) => {
+      {visibleCards.map((card, i) => {
         const Icon = card.icon
         const val = formatNum(stats[card.key])
         return (
