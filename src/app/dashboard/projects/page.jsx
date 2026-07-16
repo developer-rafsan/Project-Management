@@ -376,6 +376,9 @@ export default function ProjectsPage() {
           <Button variant="secondary" size="xs" onClick={() => { setBulkStatusValue("Pending"); setBulkStatusOpen(true) }} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium cursor-pointer shadow-sm">
             <ArrowLeftRight className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Status</span>
           </Button>
+          <Button variant="secondary" size="xs" onClick={() => { setShareSelectedIds(selectedIds); setShareListOpen(true) }} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium cursor-pointer shadow-sm">
+            <Link2 className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Share</span>
+          </Button>
           <Button variant="secondary" size="xs" onClick={() => setBulkDeleteOpen(true)} className="gap-1 h-7 sm:h-8 text-[10px] sm:text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer shadow-sm">
             <Trash2 className="size-3 sm:size-3.5" /> <span className="hidden xs:inline">Delete</span>
           </Button>

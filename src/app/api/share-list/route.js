@@ -20,7 +20,7 @@ export async function GET(request) {
       .sort({ createdAt: -1 })
       .lean();
 
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
     const result = shares.map((s) => ({
       _id: s._id,
       token: s.token,
@@ -76,7 +76,7 @@ export async function POST(request) {
 
     const share = await Share.create(shareData);
 
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
     const url = `${baseUrl}/shared-list/${token}`;
 
     const savedCount = share.projects?.length || 0;

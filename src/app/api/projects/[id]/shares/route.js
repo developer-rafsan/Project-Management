@@ -52,7 +52,8 @@ export async function POST(request, { params }) {
       accessLevel,
     });
 
-    const url = `${process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/shared/${token}`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+    const url = `${baseUrl}/shared/${token}`;
 
     return NextResponse.json({ _id: share._id, token, url, expiresAt, accessLevel });
   } catch (error) {

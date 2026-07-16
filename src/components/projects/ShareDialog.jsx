@@ -82,7 +82,7 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to create share link")
-      const baseUrl = window.location.origin
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
       setShareUrl(data.url || `${baseUrl}/shared/${data.token}`)
       toast.success("Share link created")
     } catch (err) {
@@ -261,7 +261,7 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
               ) : (
                 links.map((link) => {
                   const active = !link.expiresAt || new Date(link.expiresAt) > new Date()
-                  const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
+                  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")
                   const url = link.url || `${baseUrl}/shared/${link.token}`
                   const level = link.accessLevel || "view"
                   return (
