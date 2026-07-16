@@ -60,8 +60,8 @@ const pageTitles = {
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
-  { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
+  { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
   { href: null, label: "Logout", icon: LogOut, logout: true },
 ]

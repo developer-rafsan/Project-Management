@@ -27,12 +27,14 @@ import {
   X,
   StickyNote,
   Settings,
+  User,
 } from "lucide-react"
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
+  { href: "/dashboard/profile", label: "Profile", icon: User, mobileOnly: true },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
   { href: null, label: "Logout", icon: LogOut, logout: true },
 ]
@@ -85,7 +87,7 @@ export default function Sidebar({ isOpen, onToggle }) {
             }
 
             return (
-              <Link key={item.href} href={item.href}>
+              <Link key={item.href} href={item.href} className={cn(item.mobileOnly && "lg:hidden")}>
                 <div
                   className={cn(
                     "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",

@@ -1,9 +1,10 @@
 "use client"
 
 import { useMemo } from "react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { Monitor, ChevronDown } from "lucide-react"
+import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Monitor, SlidersHorizontal, RotateCcw, Eye, EyeOff, X } from "lucide-react"
 
 const GROUPS = [
   {
@@ -92,24 +93,30 @@ export function getDefaultDashboardVisibility() {
   return defaults
 }
 
-function Checkbox({ checked }) {
+function Toggle({ checked, onChange }) {
   return (
-    <span className={cn(
-      "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-all duration-150",
-      checked
-        ? "border-primary bg-primary text-primary-foreground shadow-sm"
-        : "border-input bg-transparent group-hover:border-muted-foreground/40"
-    )}>
-      {checked && (
-        <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className={cn(
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        checked ? "bg-primary" : "bg-input"
       )}
-    </span>
+    >
+      <span
+        className={cn(
+          "pointer-events-none inline-block size-4 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ease-in-out",
+          checked ? "translate-x-4" : "translate-x-0"
+        )}
+      />
+    </button>
   )
 }
 
 export default function DashboardScreenOptions({ visibility, onChange }) {
+  const totalItems = getFlatItems().length
   const activeCount = useMemo(() =>
     getFlatItems().filter((o) => visibility[o.id]).length,
   [visibility])
@@ -118,63 +125,102 @@ export default function DashboardScreenOptions({ visibility, onChange }) {
     onChange({ ...visibility, [id]: !visibility[id] })
   }
 
+  const resetDefaults = () => {
+    onChange(getDefaultDashboardVisibility())
+  }
+
   return (
-    <Popover>
-      <PopoverTrigger className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-muted-foreground/30 transition-all select-none cursor-pointer group">
-        <Monitor className="size-3.5" />
-        <span className="hidden sm:inline">Screen</span>
-        <span className="sm:hidden">Scrn</span>
-        {activeCount > 0 && (
-          <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary leading-none">
-            {activeCount}
-          </span>
-        )}
-        <ChevronDown className="size-3.5 opacity-60 group-data-open:rotate-180 transition-transform" />
-      </PopoverTrigger>
-      <PopoverContent side="top" align="end" className="w-64 p-0 overflow-hidden rounded-xl" sideOffset={8}>
-        <div className="max-h-[70vh] overflow-y-auto">
-          {GROUPS.map((group) => {
-            const allOn = group.items.every((o) => visibility[o.id])
-            return (
-              <div key={group.label} className="border-b border-border/40 last:border-b-0">
-                <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">{group.label}</p>
-                  <button
-                    onClick={() => {
-                      const next = {}
-                      group.items.forEach((o) => { next[o.id] = !allOn })
-                      onChange({ ...visibility, ...next })
-                    }}
-                    className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-pointer"
-                  >
-                    {allOn ? "All" : "Off"}
-                  </button>
+    <Sheet>
+      <SheetTrigger className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-muted-foreground/30 hover:bg-accent/50 transition-all select-none cursor-pointer group">
+        <Monitor className="size-4" />
+        <span>Screen</span>
+        <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary leading-none">
+          {activeCount}
+        </span>
+      </SheetTrigger>
+      <SheetContent side="right" showCloseButton={false} className="w-full sm:max-w-sm p-0 gap-0 min-h-0">
+        <SheetHeader className="px-5 pt-5 pb-3 border-b border-border/50">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-base font-semibold flex items-center gap-2">
+              <SlidersHorizontal className="size-4 text-muted-foreground" />
+              Screen Options
+            </SheetTitle>
+            <SheetClose className="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-accent transition-colors cursor-pointer">
+              <X className="size-4" />
+            </SheetClose>
+          </div>
+          <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+            {activeCount} of {totalItems} items visible
+          </p>
+        </SheetHeader>
+        <ScrollArea className="flex-1 min-h-0 px-3 py-2">
+          <div className="space-y-1">
+            {GROUPS.map((group) => {
+              const allOn = group.items.every((o) => visibility[o.id])
+              const someOn = group.items.some((o) => visibility[o.id])
+              return (
+                <div key={group.label}>
+                  <div className="flex items-center justify-between px-2 py-2 mt-2 first:mt-0">
+                    <p className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-[0.12em]">
+                      {group.label}
+                    </p>
+                    <button
+                      onClick={() => {
+                        const next = {}
+                        group.items.forEach((o) => { next[o.id] = !allOn })
+                        onChange({ ...visibility, ...next })
+                      }}
+                      className={cn(
+                        "inline-flex items-center gap-1 text-[10px] transition-colors cursor-pointer",
+                        someOn
+                          ? "text-muted-foreground/40 hover:text-muted-foreground/70"
+                          : "text-muted-foreground/20"
+                      )}
+                    >
+                      {allOn ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                      {allOn ? "All" : "Off"}
+                    </button>
+                  </div>
+                  <div className="rounded-lg bg-muted/30 border border-border/30 overflow-hidden divide-y divide-border/20">
+                    {group.items.map((o) => {
+                      const isOn = visibility[o.id]
+                      return (
+                        <div
+                          key={o.id}
+                          onClick={() => toggle(o.id)}
+                          className={cn(
+                            "flex items-center justify-between px-3 py-2.5 cursor-pointer select-none transition-colors",
+                            isOn
+                              ? "bg-background/80"
+                              : "bg-transparent opacity-60 hover:opacity-100"
+                          )}
+                        >
+                          <span className={cn(
+                            "text-xs transition-colors",
+                            isOn ? "text-foreground font-medium" : "text-muted-foreground"
+                          )}>
+                            {o.label}
+                          </span>
+                          <Toggle checked={isOn} onChange={() => toggle(o.id)} />
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div className="px-2 pb-2 grid grid-cols-2 gap-0.5">
-                  {group.items.map((o) => {
-                    const isOn = visibility[o.id]
-                    return (
-                      <button
-                        key={o.id}
-                        onClick={() => toggle(o.id)}
-                        className={cn(
-                          "group flex items-center gap-2 rounded-md px-2.5 py-2 text-xs text-left transition-all cursor-pointer select-none",
-                          isOn
-                            ? "bg-primary/[0.04] text-foreground font-medium"
-                            : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/60"
-                        )}
-                      >
-                        <Checkbox checked={isOn} />
-                        {o.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
+              )
+            })}
+          </div>
+        </ScrollArea>
+        <SheetFooter className="px-4 py-3 border-t border-border/50">
+          <button
+            onClick={resetDefaults}
+            className="inline-flex items-center justify-center gap-1.5 w-full rounded-lg border border-border/50 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent hover:border-border transition-all cursor-pointer"
+          >
+            <RotateCcw className="size-3.5" />
+            Reset to Default
+          </button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }
