@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Smartphone, CheckCircle, XCircle, Loader2, Link2, Unlink, WebhookIcon } from "lucide-react"
+import { Smartphone, CheckCircle, XCircle, Loader2, Link2, Unlink, WebhookIcon, Copy, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 
 interface TelegramStatus {
@@ -18,8 +18,10 @@ export function TelegramSettings() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [webhookLoading, setWebhookLoading] = useState(false)
+  const [connectCode, setConnectCode] = useState<string | null>(null)
+  const [codeLoading, setCodeLoading] = useState(false)
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/telegram/status")
       const data = await res.json()
@@ -29,11 +31,29 @@ export function TelegramSettings() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  const fetchCode = useCallback(async () => {
+    setCodeLoading(true)
+    try {
+      const res = await fetch("/api/telegram/code")
+      const data = await res.json()
+      if (res.ok) {
+        setConnectCode(data.code)
+      }
+    } catch {
+      // silent
+    } finally {
+      setCodeLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     fetchStatus()
-  }, [])
+    if (!status?.isConnected) {
+      fetchCode()
+    }
+  }, [fetchStatus, fetchCode, status?.isConnected])
 
   const handleDisconnect = async () => {
     setActionLoading(true)
@@ -110,6 +130,73 @@ export function TelegramSettings() {
         )}
       </div>
 
+      {!status?.isConnected && (
+        <>
+          <div className="rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
+            <p className="text-xs font-medium text-emerald-600 uppercase tracking-wider">Your Connect Code</p>
+            <div className="flex items-center justify-center gap-3">
+              {codeLoading ? (
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              ) : (
+                <span className="text-3xl font-mono font-bold tracking-[0.25em] select-all">
+                  {connectCode}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (connectCode) {
+                    navigator.clipboard.writeText(connectCode)
+                    toast.success("Code copied!")
+                  }
+                }}
+                disabled={!connectCode}
+                className="gap-1.5"
+              >
+                <Copy className="size-3.5" />
+                Copy
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setCodeLoading(true)
+                  try {
+                    const res = await fetch("/api/telegram/code", { method: "POST" })
+                    const data = await res.json()
+                    if (res.ok) {
+                      setConnectCode(data.code)
+                      toast.success("New code generated")
+                    }
+                  } catch {
+                    toast.error("Failed to regenerate code")
+                  } finally {
+                    setCodeLoading(false)
+                  }
+                }}
+                disabled={codeLoading}
+                className="gap-1.5"
+              >
+                <RefreshCw className="size-3.5" />
+                Regenerate
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
+            <p><strong>How to connect:</strong></p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Click <strong>Open Bot</strong> above</li>
+              <li>Send <strong>/start</strong> to the bot</li>
+              <li>Send this code: <strong className="text-foreground font-mono">{connectCode}</strong></li>
+            </ol>
+          </div>
+        </>
+      )}
+
       <div className="rounded-xl border border-border/60 p-4 space-y-3">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bot Setup</p>
         <div className="flex items-center gap-3">
@@ -132,15 +219,6 @@ export function TelegramSettings() {
             {webhookLoading ? <Loader2 className="size-3.5 animate-spin" /> : <WebhookIcon className="size-3.5" />}
             Setup Webhook
           </Button>
-        </div>
-        <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-          <strong>How to connect:</strong>
-          <ol className="list-decimal list-inside mt-1 space-y-1">
-            <li>Click <strong>Setup Webhook</strong> above (required once)</li>
-            <li>Click <strong>Open Bot</strong> to start chatting on Telegram</li>
-            <li>Send <strong>/start</strong> to see welcome message</li>
-            <li>Go to Dashboard → AI Assistant → Settings and connect your Telegram account</li>
-          </ol>
         </div>
       </div>
 

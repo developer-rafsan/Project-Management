@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { TelegramRepository } from '@/lib/repositories/TelegramRepository'
+import { AISettingsRepository } from '@/lib/repositories/AISettingsRepository'
 import { TelegramService } from '@/lib/services/TelegramService'
 import { AIService } from '@/lib/services/AIService'
 import { sanitizeInput, validateAIMessage } from '@/lib/validators'
@@ -8,6 +9,7 @@ import { logger } from '@/lib/utils/logger'
 import { config } from '@/lib/config'
 
 const telegramRepo = new TelegramRepository()
+const aiSettingsRepo = new AISettingsRepository()
 const telegramService = new TelegramService()
 const aiService = new AIService()
 
@@ -68,19 +70,25 @@ export async function POST(request: NextRequest) {
         const isCode = /^\d{6,}$/.test(text)
         if (isCode) {
           try {
+            const settings = await aiSettingsRepo.findByConnectCode(text)
+            if (!settings) {
+              await telegramService.sendMessage(chatId, '❌ Invalid or expired code. Please generate a new code from the dashboard.')
+              return NextResponse.json({ ok: true })
+            }
             await telegramRepo.connect({
-              userId: text,
+              userId: settings.userId.toString(),
               telegramId,
               username,
               chatId,
             })
+            await aiSettingsRepo.clearConnectCode(settings.userId.toString())
             await telegramService.sendMessage(
               chatId,
               '✅ <b>Telegram connected successfully!</b>\n\nYou can now manage your projects through Telegram.'
             )
             return NextResponse.json({ ok: true })
           } catch {
-            await telegramService.sendMessage(chatId, '❌ Invalid or expired code. Please try again from the dashboard.')
+            await telegramService.sendMessage(chatId, '❌ Failed to connect. Please try again from the dashboard.')
             return NextResponse.json({ ok: true })
           }
         }

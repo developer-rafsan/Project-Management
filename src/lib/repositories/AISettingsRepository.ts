@@ -33,4 +33,16 @@ export class AISettingsRepository extends BaseRepository<any> {
       { returnDocument: 'after' }
     ).exec()
   }
+
+  async findByConnectCode(code: string) {
+    return this.findOne({ telegramConnectCode: code })
+  }
+
+  async setConnectCode(userId: string, code: string) {
+    return this.updateOne({ userId }, { telegramConnectCode: code })
+  }
+
+  async clearConnectCode(userId: string) {
+    return this.updateOne({ userId }, { telegramConnectCode: null })
+  }
 }
