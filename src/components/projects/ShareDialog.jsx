@@ -11,13 +11,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Copy, Check, Link, Clock, Infinity, CalendarDays, Trash2, Plus, Eye, Settings, ShieldCheck } from "lucide-react"
+import { Copy, Check, Link, Clock, Infinity, CalendarDays, Timer, Trash2, Plus, Eye, Settings, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 import { DatePicker } from "@/components/ui/date-picker"
 
 const EXPIRY_OPTIONS = [
   { value: "1h", label: "1 Hour", icon: Clock },
   { value: "24h", label: "24 Hours", icon: Clock },
+  { value: "hours", label: "Hours", icon: Timer },
   { value: "never", label: "Until Revoked", icon: Infinity },
   { value: "custom", label: "Custom", icon: CalendarDays },
 ]
@@ -41,6 +42,7 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
   const [step, setStep] = useState("list")
   const [selectedExpiry, setSelectedExpiry] = useState("24h")
   const [customDate, setCustomDate] = useState(null)
+  const [hoursValue, setHoursValue] = useState(1)
   const [accessLevel, setAccessLevel] = useState("view")
   const [loading, setLoading] = useState(false)
   const [shareUrl, setShareUrl] = useState(null)
@@ -55,6 +57,7 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
     setCopied(false)
     setSelectedExpiry("24h")
     setCustomDate(null)
+    setHoursValue(1)
     setAccessLevel("view")
     setFetching(true)
 
@@ -74,6 +77,9 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
       }
       if (selectedExpiry === "custom" && customDate) {
         body.customDate = customDate.toISOString()
+      }
+      if (selectedExpiry === "hours" && hoursValue > 0) {
+        body.hoursValue = hoursValue
       }
       const res = await fetch(`/api/projects/${projectId}/shares`, {
         method: "POST",
@@ -120,6 +126,7 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
   const handleClose = () => {
     setStep("list")
     setShareUrl(null)
+    setHoursValue(1)
     setCopied(false)
     setSelectedExpiry("24h")
     setCustomDate(null)
@@ -149,7 +156,7 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
               <div className="space-y-4 py-2">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-2">Link expiry</p>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     {EXPIRY_OPTIONS.map((opt) => {
                       const Icon = opt.icon
                       return (
@@ -179,6 +186,19 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
                       />
                     </div>
                   )}
+                  {selectedExpiry === "hours" && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={8760}
+                        value={hoursValue}
+                        onChange={(e) => setHoursValue(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-20 h-9 text-sm"
+                      />
+                      <span className="text-xs text-muted-foreground">hour(s)</span>
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground/60 mt-2">
                     {selectedExpiry === "never"
                       ? "Link works until you revoke it"
@@ -186,9 +206,11 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
                         ? "Link expires in 1 hour"
                         : selectedExpiry === "24h"
                           ? "Link expires in 24 hours"
-                          : customDate
-                            ? `Link expires on ${customDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-                            : "Select a custom expiry date"}
+                          : selectedExpiry === "hours"
+                            ? `Link expires in ${hoursValue} hour${hoursValue > 1 ? "s" : ""}`
+                            : customDate
+                              ? `Link expires on ${customDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                              : "Select a custom expiry date"}
                   </p>
                 </div>
 
@@ -237,7 +259,7 @@ export default function ShareDialog({ open, onOpenChange, projectId, projectName
               {!shareUrl ? (
                 <>
                   <Button variant="outline" onClick={() => setStep("list")}>Back</Button>
-                  <Button onClick={handleGenerate} disabled={loading || (selectedExpiry === "custom" && !customDate)}>
+                  <Button onClick={handleGenerate} disabled={loading || (selectedExpiry === "custom" && !customDate) || (selectedExpiry === "hours" && (!hoursValue || hoursValue < 1))}>
                     {loading ? "Generating..." : "Generate Link"}
                   </Button>
                 </>

@@ -57,6 +57,8 @@ export async function POST(request) {
       expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     } else if (body.expiresIn === '24h') {
       expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    } else if (body.expiresIn === 'hours' && body.hoursValue > 0) {
+      expiresAt = new Date(Date.now() + body.hoursValue * 60 * 60 * 1000);
     } else if (body.expiresIn === 'custom' && body.customDate) {
       expiresAt = new Date(body.customDate);
     }

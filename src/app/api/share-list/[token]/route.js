@@ -111,7 +111,13 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Share link not found' }, { status: 404 });
     }
 
+    const projectIds = (share.projects || []).map(p => p.toString ? p.toString() : p);
+
     await Share.findByIdAndDelete(share._id);
+
+    if (projectIds.length > 0) {
+      await Share.deleteMany({ type: 'project', project: { $in: projectIds }, createdBy: session.user.id });
+    }
 
     return NextResponse.json({ message: 'Share link revoked' });
   } catch (error) {

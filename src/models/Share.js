@@ -40,8 +40,32 @@ const shareSchema = new mongoose.Schema({
 
 export async function cleanupExpiredShares() {
   const now = new Date();
-  const result = await mongoose.models.Share.deleteMany({ expiresAt: { $lte: now } });
-  return result.deletedCount;
+  const expiredCount = await mongoose.models.Share.deleteMany({ expiresAt: { $lte: now } });
+
+  const activeListIds = await mongoose.models.Share.find({
+    type: 'list', $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }]
+  }).distinct('projects').lean();
+
+  const activeProjectIds = new Set();
+  for (const ids of activeListIds) {
+    for (const id of (ids || [])) {
+      activeProjectIds.add(id.toString());
+    }
+  }
+
+  const orphaned = await mongoose.models.Share.find({
+    type: 'project', expiresAt: null, project: { $exists: true }
+  }).lean();
+
+  let orphanedCount = 0;
+  for (const s of orphaned) {
+    if (!activeProjectIds.has(s.project.toString())) {
+      await mongoose.models.Share.findByIdAndDelete(s._id);
+      orphanedCount++;
+    }
+  }
+
+  return expiredCount + orphanedCount;
 }
 
 export default mongoose.models.Share || mongoose.model('Share', shareSchema);
