@@ -9,12 +9,13 @@ const settingsRepo = new AISettingsRepository()
 const conversationRepo = new AIConversationRepository()
 
 export class AIService {
-  private getClient(provider: string) {
+  private getClient(provider: string, apiKey?: string | null) {
+    const key = apiKey || config.openrouter.apiKey
     switch (provider) {
       case 'openrouter':
-        return new OpenAI({ apiKey: config.openrouter.apiKey, baseURL: config.openrouter.baseURL })
+        return new OpenAI({ apiKey: key, baseURL: config.openrouter.baseURL })
       default:
-        return new OpenAI({ apiKey: config.openrouter.apiKey, baseURL: config.openrouter.baseURL })
+        return new OpenAI({ apiKey: key, baseURL: config.openrouter.baseURL })
     }
   }
 
@@ -69,12 +70,12 @@ export class AIService {
 
   private async callProvider(provider: string, messages: any[], tools: any[], settings: any) {
     const p = this.isValidProvider(provider) ? provider : config.ai.defaultProvider
-    const client = this.getClient(p)
+    const client = this.getClient(p, settings.apiKey)
     return this.callOpenAICompatible(client, messages, tools, settings)
   }
 
   private async callFollowUp(provider: string, messages: any[], replyMessage: any, toolResults: any[], settings: any) {
-    const client = this.getClient(provider)
+    const client = this.getClient(provider, settings.apiKey)
     return this.handleFollowUp(client, messages, replyMessage, toolResults, settings)
   }
 

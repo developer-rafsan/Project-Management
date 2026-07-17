@@ -10,6 +10,8 @@ interface ITelegramConnection {
   isConnected: boolean
   connectedAt: Date
   disconnectedAt?: Date
+  botToken?: string
+  botUsername?: string
 }
 
 export class TelegramRepository extends BaseRepository<any> {
@@ -30,6 +32,8 @@ export class TelegramRepository extends BaseRepository<any> {
     telegramId: string
     username?: string
     chatId: string
+    botToken?: string
+    botUsername?: string
   }): Promise<ITelegramConnection> {
     const existing = await this.findOne({ userId: data.userId })
     if (existing) {
@@ -42,6 +46,8 @@ export class TelegramRepository extends BaseRepository<any> {
           isConnected: true,
           disconnectedAt: null,
           connectedAt: new Date(),
+          ...(data.botToken ? { botToken: data.botToken } : {}),
+          ...(data.botUsername ? { botUsername: data.botUsername } : {}),
         }
       )
       return this.findByUserId(data.userId) as unknown as ITelegramConnection
@@ -53,6 +59,21 @@ export class TelegramRepository extends BaseRepository<any> {
     }) as unknown as ITelegramConnection
   }
 
+  async saveBotConfig(userId: string, botToken: string, botUsername: string) {
+    return this.updateOne(
+      { userId },
+      { botToken, botUsername }
+    )
+  }
+
+  async getBotConfig(userId: string) {
+    const conn = await this.findOne({ userId })
+    return {
+      botToken: conn?.botToken || null,
+      botUsername: conn?.botUsername || null,
+    }
+  }
+
   async disconnect(userId: string) {
     return this.updateOne(
       { userId },
@@ -61,11 +82,13 @@ export class TelegramRepository extends BaseRepository<any> {
   }
 
   async getConnectionStatus(userId: string) {
-    const connection = await this.findByUserId(userId)
+    const connection = await this.findOne({ userId })
     return {
-      isConnected: !!connection,
+      isConnected: !!connection?.isConnected,
       telegramUsername: connection?.username || null,
       connectedAt: connection?.connectedAt || null,
+      hasBotToken: !!connection?.botToken,
+      botUsername: connection?.botUsername || null,
     }
   }
 }

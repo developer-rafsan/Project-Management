@@ -18,6 +18,8 @@ export async function GET() {
     await connectDB()
     const settings = await settingsRepo.getSettings(session.user.id)
 
+    const envKey = process.env.OPENROUTER_API_KEY || ''
+
     return NextResponse.json({
       enabled: settings.enabled,
       provider: settings.provider || 'openai',
@@ -27,6 +29,8 @@ export async function GET() {
       promptTemplate: settings.promptTemplate,
       totalTokensUsed: settings.totalTokensUsed || 0,
       totalTokensLimit: settings.totalTokensLimit || 7000000,
+      apiKey: settings.apiKey || envKey || '',
+      hasApiKey: !!settings.apiKey || !!envKey,
     })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to get settings' }, { status: 500 })
@@ -41,7 +45,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const allowed = ['enabled', 'provider', 'model', 'temperature', 'maxTokens', 'promptTemplate']
+    const allowed = ['enabled', 'provider', 'model', 'temperature', 'maxTokens', 'promptTemplate', 'apiKey']
     const updates: Record<string, unknown> = {}
 
     for (const key of allowed) {

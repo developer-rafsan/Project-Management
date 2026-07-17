@@ -1,31 +1,31 @@
 "use client"
 
-import { Bot, Smartphone, Settings, MessageSquareText } from "lucide-react"
+import { Bot, Settings, MessageSquareText, Radio } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { AIChat } from "@/components/ai/AIChat"
-import { TelegramSettings } from "@/components/ai/TelegramSettings"
+import { Channels } from "@/components/ai/Channels"
 import { AISettings } from "@/components/ai/AISettings"
 
 export default function AIAssistantPage() {
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)]">
-      <div className="mb-4">
+    <div className="flex flex-col min-h-[calc(100vh-10rem)] max-h-[calc(100vh-10rem)]">
+      <div className="mb-3 sm:mb-4 shrink-0">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Bot className="size-6 text-primary" />
+          <Bot className="size-5 sm:size-6 text-primary" />
           AI Assistant
         </h1>
-        <p className="text-sm text-muted-foreground">Your intelligent project management assistant</p>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Your intelligent project management assistant</p>
       </div>
 
-      <Tabs defaultValue="ai-chat" orientation="vertical" className="flex-1 flex gap-4 min-h-0">
-        <TabsList variant="line" className="h-fit py-1 min-w-[160px]">
-          <TabsTrigger value="ai-chat" className="justify-start px-3 py-2">
+      <Tabs defaultValue="ai-chat" orientation="vertical" className="flex-1 flex-col lg:flex-row gap-3 lg:gap-4 min-h-0">
+        <TabsList variant="line" className="h-fit py-1 flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible lg:min-w-[160px] shrink-0">
+          <TabsTrigger value="ai-chat" className="px-3 py-2 shrink-0">
             <MessageSquareText className="size-4" /> AI Chat
           </TabsTrigger>
-          <TabsTrigger value="telegram" className="justify-start px-3 py-2">
-            <Smartphone className="size-4" /> Telegram
+          <TabsTrigger value="channels" className="px-3 py-2 shrink-0">
+            <Radio className="size-4" /> Channels
           </TabsTrigger>
-          <TabsTrigger value="settings" className="justify-start px-3 py-2">
+          <TabsTrigger value="settings" className="px-3 py-2 shrink-0">
             <Settings className="size-4" /> Settings
           </TabsTrigger>
         </TabsList>
@@ -34,11 +34,11 @@ export default function AIAssistantPage() {
           <AIChat />
         </TabsContent>
 
-        <TabsContent value="telegram" className="flex-1 min-h-0">
-          <TelegramSettings />
+        <TabsContent value="channels" className="flex-1 min-h-0 overflow-y-auto">
+          <Channels />
         </TabsContent>
 
-        <TabsContent value="settings" className="flex-1 min-h-0">
+        <TabsContent value="settings" className="flex-1 min-h-0 overflow-y-auto">
           <AISettings />
         </TabsContent>
       </Tabs>

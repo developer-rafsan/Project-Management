@@ -19,6 +19,8 @@ const telegramConnectionSchema = new mongoose.Schema({
   isConnected: { type: Boolean, default: true },
   connectedAt: { type: Date, default: Date.now },
   disconnectedAt: { type: Date, default: null },
+  botToken: { type: String, default: null },
+  botUsername: { type: String, default: null },
 }, { timestamps: true })
 
 export default mongoose.models.TelegramConnection || mongoose.model('TelegramConnection', telegramConnectionSchema)

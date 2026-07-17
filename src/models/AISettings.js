@@ -23,6 +23,7 @@ Be concise and friendly.`,
   totalTokensUsed: { type: Number, default: 0 },
   totalTokensLimit: { type: Number, default: 7000000 },
   telegramConnectCode: { type: String, default: null, index: true, sparse: true },
+  apiKey: { type: String, default: null },
 }, { timestamps: true })
 
 export default mongoose.models.AISettings || mongoose.model('AISettings', aiSettingsSchema)

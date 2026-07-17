@@ -10,8 +10,12 @@ import { config } from '@/lib/config'
 
 const telegramRepo = new TelegramRepository()
 const aiSettingsRepo = new AISettingsRepository()
-const telegramService = new TelegramService()
+const tsService = new TelegramService()
 const aiService = new AIService()
+
+function getBotToken(connection: any): string | undefined {
+  return connection?.botToken || undefined
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,16 +28,19 @@ export async function POST(request: NextRequest) {
       const telegramId = String(msg.from.id)
       const username = msg.from.username || msg.from.first_name || ''
 
+      const connection = await telegramRepo.findByTelegramId(telegramId)
+      const token = getBotToken(connection)
+
       if (!text) {
-        await telegramService.sendMessage(chatId, 'Please send a text message.')
+        await tsService.sendMessage(chatId, 'Please send a text message.', 'HTML', token)
         return NextResponse.json({ ok: true })
       }
 
       if (text === '/start') {
-        await telegramService.sendMessage(
+        await tsService.sendMessage(
           chatId,
           `👋 <b>Welcome to ${config.app.name} AI Assistant!</b>\n\n` +
-          'I can help you manage your projects.\n\n' +
+          'I can help you manage your projectsService.\n\n' +
           'First, connect your Telegram account to the platform:\n' +
           '1. Go to Dashboard → AI Assistant Settings\n' +
           '2. Click "Connect Telegram"\n' +
@@ -42,7 +49,9 @@ export async function POST(request: NextRequest) {
           '• Create, update, and manage projects\n' +
           '• Assign team members\n' +
           '• View project summaries\n' +
-          '• And much more!'
+          '• And much more!',
+          'HTML',
+          token
         )
         return NextResponse.json({ ok: true })
       }
@@ -61,18 +70,17 @@ export async function POST(request: NextRequest) {
           '📊 <b>Reports:</b>\n' +
           '• "Give me a project summary"\n' +
           '• "Show project status breakdown"'
-        await telegramService.sendMessage(chatId, helpText)
+        await tsService.sendMessage(chatId, helpText, 'HTML', token)
         return NextResponse.json({ ok: true })
       }
 
-      const connection = await telegramRepo.findByTelegramId(telegramId)
       if (!connection) {
         const isCode = /^\d{6,}$/.test(text)
         if (isCode) {
           try {
             const settings = await aiSettingsRepo.findByConnectCode(text)
             if (!settings) {
-              await telegramService.sendMessage(chatId, '❌ Invalid or expired code. Please generate a new code from the dashboard.')
+              await tsService.sendMessage(chatId, '❌ Invalid or expired code. Please generate a new code from the dashboard.', 'HTML', token)
               return NextResponse.json({ ok: true })
             }
             await telegramRepo.connect({
@@ -82,29 +90,34 @@ export async function POST(request: NextRequest) {
               chatId,
             })
             await aiSettingsRepo.clearConnectCode(settings.userId.toString())
-            await telegramService.sendMessage(
+            await tsService.sendMessage(
               chatId,
-              '✅ <b>Telegram connected successfully!</b>\n\nYou can now manage your projects through Telegram.'
+              '✅ <b>Telegram connected successfully!</b>\n\nYou can now manage your projects through Telegram.',
+              'HTML',
+              token
             )
             return NextResponse.json({ ok: true })
           } catch {
-            await telegramService.sendMessage(chatId, '❌ Failed to connect. Please try again from the dashboard.')
+            await tsService.sendMessage(chatId, '❌ Failed to connect. Please try again from the dashboard.', 'HTML', token)
             return NextResponse.json({ ok: true })
           }
         }
 
-        await telegramService.sendMessage(
+        await tsService.sendMessage(
           chatId,
-          '⚠️ Your Telegram is not connected.\n\nConnect from Dashboard → AI Assistant Settings, then send the code here.'
+          '⚠️ Your Telegram is not connected.\n\nConnect from Dashboard → AI Assistant Settings, then send the code here.',
+          'HTML',
+          token
         )
         return NextResponse.json({ ok: true })
       }
 
-      await telegramService.sendChatAction(chatId)
+      const userToken = getBotToken(connection)
+      await tsService.sendChatAction(chatId, 'typing', userToken)
 
       const validation = validateAIMessage(text)
       if (!validation.valid) {
-        await telegramService.sendMessage(chatId, `❌ ${validation.error}`)
+        await tsService.sendMessage(chatId, `❌ ${validation.error}`, 'HTML', userToken)
         return NextResponse.json({ ok: true })
       }
 
@@ -112,12 +125,14 @@ export async function POST(request: NextRequest) {
 
       try {
         const result = await aiService.chat(connection.userId.toString(), cleanMessage)
-        await telegramService.sendMessage(chatId, result.reply)
+        await tsService.sendMessage(chatId, result.reply, 'HTML', userToken)
       } catch (aiError: any) {
         logger.error('AI chat error in Telegram webhook', aiError)
-        await telegramService.sendMessage(
+        await tsService.sendMessage(
           chatId,
-          '❌ Sorry, I encountered an error. Please try again later.'
+          '❌ Sorry, I encountered an error. Please try again later.',
+          'HTML',
+          userToken
         )
       }
     }

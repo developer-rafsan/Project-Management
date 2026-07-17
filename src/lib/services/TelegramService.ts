@@ -2,15 +2,22 @@ import { config } from '@/lib/config'
 import { logger } from '@/lib/utils/logger'
 
 export class TelegramService {
-  private baseUrl: string
-
-  constructor() {
-    this.baseUrl = `${config.telegram.apiBase}${config.telegram.botToken}`
+  private getBaseUrl(botToken?: string) {
+    const token = botToken || config.telegram.botToken
+    if (!token) throw new Error('No Telegram bot token configured')
+    return `${config.telegram.apiBase}${token}`
   }
 
-  async sendMessage(chatId: string, text: string, parseMode: 'HTML' | 'Markdown' | '' = 'HTML') {
+  async getMe(botToken: string) {
+    const res = await fetch(`${config.telegram.apiBase}${botToken}/getMe`)
+    const data = await res.json()
+    if (!data.ok) throw new Error(data.description || 'Invalid bot token')
+    return data.result
+  }
+
+  async sendMessage(chatId: string, text: string, parseMode: 'HTML' | 'Markdown' | '' = 'HTML', botToken?: string) {
     try {
-      const res = await fetch(`${this.baseUrl}/sendMessage`, {
+      const res = await fetch(`${this.getBaseUrl(botToken)}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -30,9 +37,9 @@ export class TelegramService {
     }
   }
 
-  async sendChatAction(chatId: string, action: 'typing' | 'upload_photo' | 'record_video' = 'typing') {
+  async sendChatAction(chatId: string, action: 'typing' | 'upload_photo' | 'record_video' = 'typing', botToken?: string) {
     try {
-      await fetch(`${this.baseUrl}/sendChatAction`, {
+      await fetch(`${this.getBaseUrl(botToken)}/sendChatAction`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: chatId, action }),
@@ -42,8 +49,8 @@ export class TelegramService {
     }
   }
 
-  async setWebhook(url: string) {
-    const res = await fetch(`${this.baseUrl}/setWebhook`, {
+  async setWebhook(url: string, botToken?: string) {
+    const res = await fetch(`${this.getBaseUrl(botToken)}/setWebhook`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, drop_pending_updates: true }),
