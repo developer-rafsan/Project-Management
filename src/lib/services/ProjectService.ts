@@ -35,6 +35,7 @@ export class ProjectService {
     await Activity.create({
       project: project._id,
       type: 'project_created',
+      performedBy: userId,
       user: userId,
       description: `Project "${data.projectName}" created`,
     })
@@ -53,6 +54,7 @@ export class ProjectService {
     await Activity.create({
       project: project._id,
       type: 'project_updated',
+      performedBy: userId,
       user: userId,
       description: `Project "${project.projectName}" updated`,
     })
@@ -67,6 +69,7 @@ export class ProjectService {
     await Activity.create({
       project: project._id,
       type: 'project_deleted',
+      performedBy: userId,
       user: userId,
       description: `Project "${project.projectName}" deleted`,
     })
@@ -90,6 +93,7 @@ export class ProjectService {
     await Activity.create({
       project: project._id,
       type: 'person_transfer',
+      performedBy: userId,
       user: userId,
       description: `${developerData.name} assigned to "${project.projectName}"`,
     })

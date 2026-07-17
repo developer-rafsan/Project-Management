@@ -79,7 +79,7 @@ export class AIService {
     return this.handleFollowUp(client, messages, replyMessage, toolResults, settings)
   }
 
-  async chat(userId: string, message: string, sessionId?: string) {
+  async chat(userId: string, message: string, sessionId?: string, userName?: string) {
     const sid = sessionId || crypto.randomUUID()
     const settings = await settingsRepo.getSettings(userId)
     if (!settings.enabled) {
@@ -95,7 +95,9 @@ export class AIService {
     await conversationRepo.addMessage(userId, sid, { role: 'user', content: message })
 
     const agent = new AIAgentService(userId)
-    const systemPrompt = settings.promptTemplate || ''
+    const basePrompt = settings.promptTemplate || ''
+    const userNameLine = userName ? `\n\nThe current user's name is: ${userName}. Use this name as performedBy when creating projects or logging activities. Do NOT ask for the user's name.` : ''
+    const systemPrompt = basePrompt + userNameLine
 
     const messages = this.buildMessages(history, systemPrompt, message, settings)
     const tools = agent.getToolDefinitions()

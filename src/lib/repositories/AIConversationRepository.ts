@@ -66,4 +66,8 @@ export class AIConversationRepository extends BaseRepository<any> {
       { messages: [], updatedAt: new Date() }
     )
   }
+
+  async clearAllSessions(userId: string) {
+    return this.model.deleteMany({ userId }).exec()
+  }
 }

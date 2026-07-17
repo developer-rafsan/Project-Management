@@ -124,7 +124,8 @@ export async function POST(request: NextRequest) {
       const cleanMessage = sanitizeInput(text)
 
       try {
-        const result = await aiService.chat(connection.userId.toString(), cleanMessage)
+        const userName = connection.username || 'User'
+        const result = await aiService.chat(connection.userId.toString(), cleanMessage, undefined, userName)
         await tsService.sendMessage(chatId, result.reply, 'HTML', userToken)
       } catch (aiError: any) {
         logger.error('AI chat error in Telegram webhook', aiError)

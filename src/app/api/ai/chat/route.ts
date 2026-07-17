@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
 
     await connectDB()
 
-    const result = await aiService.chat(session.user.id, cleanMessage, sessionId)
+    const userName = session.user.name || session.user.email || 'User'
+    const result = await aiService.chat(session.user.id, cleanMessage, sessionId, userName)
 
     logger.info('AI chat completed', { userId: session.user.id, sessionId: result.sessionId })
 

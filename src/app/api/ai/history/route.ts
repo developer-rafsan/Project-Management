@@ -49,14 +49,16 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('sessionId')
-    if (!sessionId) {
-      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 })
-    }
 
     await connectDB()
-    await conversationRepo.clearSession(session.user.id, sessionId)
 
-    return NextResponse.json({ success: true, message: 'Conversation cleared' })
+    if (sessionId) {
+      await conversationRepo.clearSession(session.user.id, sessionId)
+      return NextResponse.json({ success: true, message: 'Conversation cleared' })
+    }
+
+    await conversationRepo.clearAllSessions(session.user.id)
+    return NextResponse.json({ success: true, message: 'All conversations cleared' })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to clear history' }, { status: 500 })
   }
