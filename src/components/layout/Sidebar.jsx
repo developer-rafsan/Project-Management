@@ -28,6 +28,7 @@ import {
   StickyNote,
   Settings,
   User,
+  Bot,
 } from "lucide-react"
 
 const menuItems = [
@@ -35,6 +36,7 @@ const menuItems = [
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/profile", label: "Profile", icon: User, mobileOnly: true },
+  { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
   { href: null, label: "Logout", icon: LogOut, logout: true },
 ]
