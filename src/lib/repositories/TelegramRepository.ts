@@ -24,6 +24,10 @@ export class TelegramRepository extends BaseRepository<any> {
   }
 
   async findByTelegramId(telegramId: string) {
+    return this.findOne({ telegramId })
+  }
+
+  async findByTelegramIdConnected(telegramId: string) {
     return this.findOne({ telegramId, isConnected: true })
   }
 
@@ -60,10 +64,11 @@ export class TelegramRepository extends BaseRepository<any> {
   }
 
   async saveBotConfig(userId: string, botToken: string, botUsername: string) {
-    return this.updateOne(
+    return this.model.findOneAndUpdate(
       { userId },
-      { botToken, botUsername }
-    )
+      { $set: { botToken, botUsername } },
+      { returnDocument: 'after', upsert: true }
+    ).exec()
   }
 
   async getBotConfig(userId: string) {

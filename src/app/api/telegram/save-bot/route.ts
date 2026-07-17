@@ -44,10 +44,12 @@ export async function POST(request: NextRequest) {
       botInfo.username || ''
     )
 
+    const baseUrl = config.telegram.webhookUrl || `${config.app.url}/api/telegram/webhook`
+    const webhookUrl = `${baseUrl.replace(/\/+$/, '')}/${session.user.id}`
+
     const isDev = config.env === 'development' || !config.env
 
     if (isDev) {
-      const webhookUrl = config.telegram.webhookUrl || ''
       if (webhookUrl.startsWith('https://')) {
         const whResult = await telegramService.setWebhook(webhookUrl, botToken)
         return NextResponse.json({
@@ -71,13 +73,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const webhookUrl = config.telegram.webhookUrl || `${config.app.url}/api/telegram/webhook`
     if (!webhookUrl.startsWith('https://')) {
       return NextResponse.json(
         { error: 'Production requires HTTPS. Set TELEGRAM_WEBHOOK_URL to your HTTPS domain in .env.local' },
         { status: 400 }
       )
     }
+    logger.info('Setting webhook', { webhookUrl, botUsername: botInfo.username })
 
     const whResult = await telegramService.setWebhook(webhookUrl, botToken)
 

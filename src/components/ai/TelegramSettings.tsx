@@ -39,8 +39,10 @@ export function TelegramSettings() {
       const data = await res.json()
       setStatus(data)
       setSavedBotUsername(data.botUsername || null)
+      return data
     } catch {
       setStatus({ isConnected: false })
+      return { isConnected: false }
     } finally {
       setLoading(false)
     }
@@ -62,6 +64,16 @@ export function TelegramSettings() {
   useEffect(() => {
     fetchStatus()
   }, [fetchStatus])
+
+  useEffect(() => {
+    if (status?.isConnected || !status) return
+    const interval = setInterval(async () => {
+      if (document.hidden) return
+      const s = await fetchStatus()
+      if (s?.isConnected) clearInterval(interval)
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [fetchStatus, status?.isConnected, status])
 
   useEffect(() => {
     if (!loading && !status?.isConnected && !connectCode) {
@@ -207,9 +219,9 @@ export function TelegramSettings() {
             <div className="space-y-1">
               <p className="text-xs font-medium text-foreground/70">1. Start ngrok:</p>
               <pre className="text-[11px] bg-background/80 rounded px-2 py-1.5 font-mono select-all">ngrok http 3000</pre>
-              <p className="text-xs font-medium text-foreground/70 mt-1">2. Copy the HTTPS URL and add to <code className="text-[11px] bg-background/80 px-1 rounded font-mono">.env.local</code>:</p>
+               <p className="text-xs font-medium text-foreground/70 mt-1">2. Copy the HTTPS URL and add to <code className="text-[11px] bg-background/80 px-1 rounded font-mono">.env.local</code>:</p>
               <pre className="text-[11px] bg-background/80 rounded px-2 py-1.5 font-mono select-all break-all">TELEGRAM_WEBHOOK_URL=https://abc123.ngrok-free.app/api/telegram/webhook</pre>
-              <p className="text-xs font-medium text-foreground/70 mt-1">3. Restart server and click <strong>Save & Activate</strong> again.</p>
+              <p className="text-xs font-medium text-foreground/70 mt-1">3. Restart server and click <strong>Save & Activate</strong> again. (Your user ID will be appended automatically.)</p>
             </div>
           </div>
         )}
@@ -269,11 +281,11 @@ export function TelegramSettings() {
                 <div className="flex items-center justify-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => { if (connectCode) { navigator.clipboard.writeText(connectCode); toast.success("Code copied!") } }} disabled={!connectCode} className="gap-1.5">
                     <Copy className="size-3.5" />
-                    <span className="hidden xs:inline">Copy</span>
+                    <span className="hidden sm:inline">Copy</span>
                   </Button>
                   <Button variant="outline" size="sm" onClick={async () => { setCodeLoading(true); try { const res = await fetch("/api/telegram/code", { method: "POST" }); const data = await res.json(); if (res.ok) { setConnectCode(data.code); toast.success("New code generated") } } catch { toast.error("Failed to regenerate code") } finally { setCodeLoading(false) } }} disabled={codeLoading} className="gap-1.5">
                     <RefreshCw className="size-3.5" />
-                    <span className="hidden xs:inline">Regenerate</span>
+                    <span className="hidden sm:inline">Regenerate</span>
                   </Button>
                 </div>
               </div>
