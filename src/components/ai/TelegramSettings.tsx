@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Smartphone, CheckCircle2, XCircle, Loader2, Link2, Unlink,
@@ -34,6 +34,7 @@ export function TelegramSettings() {
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
   const [webhookSet, setWebhookSet] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const tokenInitialized = useRef(false)
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -41,6 +42,10 @@ export function TelegramSettings() {
       const data = await res.json()
       setStatus(data)
       setSavedBotUsername(data.botUsername || null)
+      if (data.hasBotToken && !tokenInitialized.current) {
+        tokenInitialized.current = true
+        setBotToken('••••••••••••••••')
+      }
       return data
     } catch {
       setStatus({ isConnected: false })
@@ -219,7 +224,8 @@ export function TelegramSettings() {
               type={showToken ? "text" : "password"}
               value={botToken}
               onChange={(e) => { setBotToken(e.target.value); setBotStatus('idle') }}
-              placeholder={status?.hasBotToken ? "Bot token saved" : "Enter bot token from @BotFather..."}
+              onFocus={() => { if (botToken === '••••••••••••••••') { setBotToken(''); setShowToken(true) } }}
+              placeholder="Enter bot token from @BotFather..."
               className="flex-1 h-8 border-0 bg-transparent px-0.5 text-sm shadow-none focus-visible:outline-none placeholder:text-muted-foreground/40"
             />
             <button type="button" onClick={() => setShowToken(!showToken)} className="p-1 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
@@ -259,7 +265,7 @@ export function TelegramSettings() {
             </div>
           )}
 
-          {botUsername && !webhookSet && (
+          {botUsername && !webhookSet && process.env.NODE_ENV !== 'production' && (
             <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 space-y-2">
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
