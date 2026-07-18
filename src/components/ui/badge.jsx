@@ -30,9 +30,10 @@ const badgeVariants = cva(
 function Badge({
   className,
   variant = "default",
-  render,
+  render: renderProp,
   ...props
 }) {
+  const render = renderProp ?? undefined
   return useRender({
     defaultTagName: "span",
     props: mergeProps({

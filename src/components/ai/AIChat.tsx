@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Bot, Send, User, Loader2, Trash2, Sparkles, Cpu, Coins, History, Plus, ChevronLeft, Clock } from "lucide-react"
+import { Bot, Send, User, Loader2, Trash2, Sparkles, Cpu, Coins, History, Plus, ChevronLeft, Clock, Copy, CheckCircle2, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -23,6 +23,10 @@ function formatNumber(n: number) {
   return n.toLocaleString()
 }
 
+function formatTime(date: Date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
 interface Session {
   _id: string
   sessionId: string
@@ -37,8 +41,18 @@ function getSessionTitle(s: Session): string {
   return first.length > 36 ? first.slice(0, 36) + "…" : first
 }
 
+function TypingDots() {
+  return (
+    <span className="inline-flex items-center gap-0.5 ml-1">
+      <span className="size-1.5 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+      <span className="size-1.5 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+      <span className="size-1.5 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+    </span>
+  )
+}
+
 export function AIChat() {
-  const [messages, setMessages] = useState<{ role: string; text: string }[]>([])
+  const [messages, setMessages] = useState<{ role: string; text: string; time?: Date }[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -49,6 +63,7 @@ export function AIChat() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [sessionsOpen, setSessionsOpen] = useState(false)
   const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const sessionsFetchedRef = useRef(false)
@@ -75,8 +90,9 @@ export function AIChat() {
       const msgs = (data.messages || []).filter((m: any) => m.role !== 'system').map((m: any) => ({
         role: m.role,
         text: m.content || '',
+        time: new Date(),
       }))
-      setMessages(msgs.length ? msgs : [{ role: "assistant", text: "Hi! I'm your AI assistant. Ask me anything about your projects." }])
+      setMessages(msgs.length ? msgs : [{ role: "assistant", text: "Hi! I'm your AI assistant. Ask me anything about your projects.", time: new Date() }])
       setSessionId(sid)
     } catch {
       toast.error("Failed to load conversation")
@@ -85,7 +101,7 @@ export function AIChat() {
 
   const newChat = () => {
     setSessionId(null)
-    setMessages([{ role: "assistant", text: "Hi! I'm your AI assistant. Ask me anything about your projects." }])
+    setMessages([{ role: "assistant", text: "Hi! I'm your AI assistant. Ask me anything about your projects.", time: new Date() }])
     setSessionsOpen(false)
     inputRef.current?.focus()
   }
@@ -118,6 +134,7 @@ export function AIChat() {
         const msgs = (msgData.messages || []).filter((m: any) => m.role !== 'system').map((m: any) => ({
           role: m.role,
           text: m.content || '',
+          time: new Date(),
         }))
         if (msgs.length) setMessages(msgs)
       }
@@ -140,7 +157,7 @@ export function AIChat() {
 
   const handleSend = async () => {
     if (!input.trim() || loading) return
-    const userMsg = { role: "user", text: input.trim() }
+    const userMsg = { role: "user" as const, text: input.trim(), time: new Date() }
     setMessages((prev) => [...prev, userMsg])
     setInput("")
     setLoading(true)
@@ -164,14 +181,14 @@ export function AIChat() {
       if (data.usage?.totalTokens) {
         setTokenUsed((prev) => prev + data.usage.totalTokens)
       }
-      setMessages((prev) => [...prev, { role: "assistant", text: data.reply }])
+      setMessages((prev) => [...prev, { role: "assistant", text: data.reply, time: new Date() }])
       if (sessionsFetchedRef.current) {
         sessionsFetchedRef.current = false
         fetchSessions()
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to get response")
-      setMessages((prev) => [...prev, { role: "assistant", text: "Sorry, I encountered an error. Please try again." }])
+      setMessages((prev) => [...prev, { role: "assistant", text: "Sorry, I encountered an error. Please try again.", time: new Date() }])
     } finally {
       setLoading(false)
     }
@@ -191,7 +208,7 @@ export function AIChat() {
       } catch {}
     }
     setSessionId(null)
-    setMessages([{ role: "assistant", text: "Hi! I'm your AI assistant. Ask me anything about your projects." }])
+    setMessages([{ role: "assistant", text: "Hi! I'm your AI assistant. Ask me anything about your projects.", time: new Date() }])
     fetchSessions()
     toast.success("Conversation cleared")
   }
@@ -202,7 +219,7 @@ export function AIChat() {
       await fetch("/api/ai/history", { method: "DELETE" })
     } catch {}
     setSessionId(null)
-    setMessages([{ role: "assistant", text: "Hi! I'm your AI assistant. Ask me anything about your projects." }])
+    setMessages([{ role: "assistant", text: "Hi! I'm your AI assistant. Ask me anything about your projects.", time: new Date() }])
     setSessions([])
     toast.success("All conversations cleared")
   }
@@ -215,10 +232,22 @@ export function AIChat() {
     }
   }
 
+  const copyMessage = (text: string, index: number) => {
+    navigator.clipboard.writeText(text)
+    setCopiedIndex(index)
+    setTimeout(() => setCopiedIndex(null), 2000)
+  }
+
   if (settingsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/10 rounded-full blur-lg animate-pulse" />
+            <Loader2 className="size-6 animate-spin text-primary relative" />
+          </div>
+          <p className="text-xs text-muted-foreground/60">Loading chat...</p>
+        </div>
       </div>
     )
   }
@@ -226,22 +255,25 @@ export function AIChat() {
   return (
     <div className="flex gap-0 sm:gap-3 h-full relative">
       {sessionsOpen && (
-        <div className="fixed inset-0 bg-black/20 z-10 sm:hidden" onClick={() => setSessionsOpen(false)} />
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-10 sm:hidden" onClick={() => setSessionsOpen(false)} />
       )}
       <div className={cn(
         "flex flex-col shrink-0 border-r sm:border-r-0 sm:border sm:bg-card/30 sm:rounded-xl overflow-hidden transition-all duration-300 ease-out z-20",
         "fixed sm:static inset-y-0 left-0 bg-background sm:bg-transparent",
+        "shadow-xl sm:shadow-none",
         sessionsOpen ? "w-72 sm:w-56 translate-x-0" : "w-72 sm:w-56 -translate-x-full sm:translate-x-0 sm:w-0 sm:overflow-hidden"
       )}>
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/40 shrink-0">
-          <span className="text-xs font-semibold text-muted-foreground">History</span>
+          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+            <History className="size-3.5" /> History
+          </span>
           <div className="flex items-center gap-0.5">
             {sessions.length > 0 && (
               <Button
                 variant="ghost"
                 size="xs"
                 onClick={handleClearAll}
-                className="size-6 p-0 text-muted-foreground/40 hover:text-destructive"
+                className="size-6 p-0 text-muted-foreground/40 hover:text-destructive transition-colors"
                 title="Clear all history"
                 aria-label="Clear all history"
               >
@@ -257,8 +289,10 @@ export function AIChat() {
           <button
             onClick={newChat}
             className={cn(
-              "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-xs transition-colors text-left",
-              !sessionId ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-accent"
+              "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-xs transition-all text-left",
+              !sessionId
+                ? "bg-gradient-to-r from-primary/10 to-primary/5 text-primary font-medium border border-primary/10"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
             aria-label="Start new chat"
           >
@@ -266,11 +300,14 @@ export function AIChat() {
             New Chat
           </button>
           {sessionsLoading ? (
-            <div className="flex justify-center py-4">
+            <div className="flex justify-center py-6">
               <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
             </div>
           ) : sessions.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground/40 text-center py-4">No conversations yet</p>
+            <div className="text-center py-8">
+              <MessageSquare className="size-6 mx-auto text-muted-foreground/20 mb-2" />
+              <p className="text-[11px] text-muted-foreground/40">No conversations yet</p>
+            </div>
           ) : (
             sessions.map((s) => {
               const title = getSessionTitle(s)
@@ -280,8 +317,10 @@ export function AIChat() {
                   key={s.sessionId}
                   onClick={() => { loadSession(s.sessionId); setSessionsOpen(false) }}
                   className={cn(
-                    "flex flex-col gap-0.5 w-full rounded-lg px-2.5 py-2 text-xs transition-colors text-left",
-                    s.sessionId === sessionId ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-accent"
+                    "flex flex-col gap-0.5 w-full rounded-lg px-2.5 py-2 text-xs transition-all text-left group",
+                    s.sessionId === sessionId
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   )}
                 >
                   <span className="truncate font-medium">{title}</span>
@@ -298,12 +337,12 @@ export function AIChat() {
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 shrink-0">
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-            <button onClick={toggleSessions} className="sm:hidden p-1 -ml-1 text-muted-foreground hover:text-foreground" aria-label="Toggle history">
+            <button onClick={toggleSessions} className="sm:hidden p-1.5 -ml-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors" aria-label="Toggle history">
               <History className="size-4" />
             </button>
             <div className="relative shrink-0">
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-md" />
-              <div className="relative flex size-8 sm:size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-sm">
+              <div className="absolute inset-0 bg-primary/20 rounded-full blur-lg" />
+              <div className="relative flex size-8 sm:size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20">
                 <Bot className="size-4 sm:size-4.5 text-white" />
               </div>
             </div>
@@ -311,7 +350,7 @@ export function AIChat() {
               <p className="text-sm font-semibold">AI Chat</p>
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 {settings && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/8 px-2 py-0.5 text-[10px] font-medium text-primary border border-primary/15">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-primary/8 to-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary border border-primary/15">
                     <Cpu className="size-2.5" />
                     <span className="hidden xs:inline">{MODEL_LABELS[settings.provider] || settings.provider} · </span>
                     {settings.model}
@@ -358,15 +397,15 @@ export function AIChat() {
 
         <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 pr-0.5 mb-3 sm:mb-4">
           {messages.length === 1 && !loading && (
-            <div className="flex flex-col items-center justify-center py-6 sm:py-12 text-center px-2 animate-fade-in-up">
-              <div className="relative mb-3 sm:mb-5">
-                <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl" />
-                <div className="relative flex size-12 sm:size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10">
-                  <Sparkles className="size-5 sm:size-7 text-primary" />
+            <div className="flex flex-col items-center justify-center py-8 sm:py-16 text-center px-4 animate-fade-in-up">
+              <div className="relative mb-4 sm:mb-6">
+                <div className="absolute inset-0 bg-primary/10 rounded-full blur-2xl" />
+                <div className="relative flex size-14 sm:size-20 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border-2 border-primary/10 shadow-inner">
+                  <Sparkles className="size-6 sm:size-8 text-primary" />
                 </div>
               </div>
-              <p className="text-sm font-medium text-foreground/80 mb-1">How can I help you today?</p>
-              <p className="text-xs text-muted-foreground/60 max-w-[220px] sm:max-w-xs">
+              <p className="text-base sm:text-lg font-semibold text-foreground/80 mb-1.5">How can I help you today?</p>
+              <p className="text-xs sm:text-sm text-muted-foreground/60 max-w-[260px] sm:max-w-sm">
                 Ask me to create projects, update status, assign developers, or get summaries.
               </p>
             </div>
@@ -376,26 +415,52 @@ export function AIChat() {
             <div
               key={i}
               className={cn(
-                "flex gap-2 sm:gap-3 animate-fade-in-up",
+                "flex gap-2 sm:gap-3 animate-fade-in-up group",
                 msg.role === "user" ? "justify-end" : "justify-start"
               )}
               style={{ animationDelay: `${i * 30}ms` }}
             >
               {msg.role === "assistant" && (
-                <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10 mt-1 shadow-xs">
+                <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10 mt-1 shadow-sm">
                   <Bot className="size-4 text-primary" />
                 </div>
               )}
               <div className={cn(
-                "max-w-[88%] sm:max-w-[78%] lg:max-w-[70%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap leading-relaxed shadow-xs break-words",
+                "max-w-[88%] sm:max-w-[78%] lg:max-w-[70%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed break-words relative",
                 msg.role === "user"
-                  ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-md"
-                  : "bg-card border border-border/50 text-foreground rounded-bl-md"
+                  ? "bg-gradient-to-br from-primary to-primary/85 text-primary-foreground rounded-br-md shadow-lg shadow-primary/20"
+                  : "bg-card border border-border/40 text-foreground rounded-bl-md shadow-sm"
               )}>
-                {msg.text}
+                <div className="relative">
+                  {msg.text}
+                </div>
+                <div className={cn(
+                  "flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-all duration-200",
+                  msg.role === "user" ? "justify-end" : "justify-start"
+                )}>
+                  <button
+                    onClick={() => copyMessage(msg.text, i)}
+                    className={cn(
+                      "text-[10px] transition-all flex items-center gap-0.5 px-1.5 py-0.5 rounded",
+                      copiedIndex === i
+                        ? "text-emerald-500 bg-emerald-500/10"
+                        : "text-muted-foreground/30 hover:text-muted-foreground hover:bg-muted/50"
+                    )}
+                    title="Copy message"
+                  >
+                    {copiedIndex === i ? (
+                      <CheckCircle2 className="size-3" />
+                    ) : (
+                      <Copy className="size-3" />
+                    )}
+                  </button>
+                  {msg.time && (
+                    <span className="text-[10px] text-muted-foreground/20 group-hover:text-muted-foreground/40 transition-colors">{formatTime(msg.time)}</span>
+                  )}
+                </div>
               </div>
               {msg.role === "user" && (
-                <div className="flex size-7 sm:size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent/70 border border-border/50 mt-1 shadow-xs">
+                <div className="flex size-7 sm:size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent/70 border border-border/40 mt-1 shadow-sm">
                   <User className="size-3.5 sm:size-4 text-muted-foreground" />
                 </div>
               )}
@@ -407,10 +472,13 @@ export function AIChat() {
               <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10 mt-1">
                 <Bot className="size-4 text-primary" />
               </div>
-              <div className="max-w-[88%] sm:max-w-[78%] rounded-2xl rounded-bl-md px-4 sm:px-5 py-3 sm:py-3.5 bg-card border border-border/50">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="size-4 animate-spin text-primary" />
-                  <span className="text-xs text-muted-foreground animate-pulse">Thinking...</span>
+              <div className="max-w-[88%] sm:max-w-[78%] rounded-2xl rounded-bl-md px-4 sm:px-5 py-3.5 sm:py-4 bg-card border border-border/40 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-primary/10 rounded-full blur-sm" />
+                    <Loader2 className="size-4 animate-spin text-primary relative" />
+                  </div>
+                  <span className="text-xs text-muted-foreground">Thinking<TypingDots /></span>
                 </div>
               </div>
             </div>
@@ -419,12 +487,12 @@ export function AIChat() {
         </div>
 
         {messages.length === 1 && !loading && (
-          <div className="flex gap-2 mb-3 sm:mb-4 shrink-0 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none">
+          <div className="flex gap-2 mb-3 sm:mb-4 shrink-0 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory hide-scrollbar">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => { setInput(s); inputRef.current?.focus() }}
-                className="snap-start shrink-0 rounded-full border border-border/50 bg-card/50 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border hover:bg-card transition-all duration-200 cursor-pointer shadow-xs whitespace-nowrap"
+                className="snap-start shrink-0 rounded-full border border-border/40 bg-gradient-to-r from-card/80 to-card/40 px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 hover:from-primary/5 hover:to-card/60 transition-all duration-200 cursor-pointer shadow-xs whitespace-nowrap"
               >
                 {s}
               </button>
@@ -433,7 +501,7 @@ export function AIChat() {
         )}
 
         <div className="relative shrink-0">
-          <div className="flex items-end gap-2 rounded-xl sm:rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm px-2 sm:px-3 py-1.5 sm:py-2 shadow-xs transition-all duration-200 focus-within:border-primary/40 focus-within:shadow-md focus-within:ring-1 focus-within:ring-primary/20">
+          <div className="flex items-end gap-2 rounded-xl sm:rounded-2xl border border-border/50 bg-card/90 backdrop-blur-md px-3 sm:px-3 py-2 sm:py-2 shadow-sm transition-all duration-200 focus-within:border-primary/40 focus-within:shadow-lg focus-within:shadow-primary/5 focus-within:ring-1 focus-within:ring-primary/20">
             <textarea
               ref={inputRef}
               value={input}
@@ -448,7 +516,7 @@ export function AIChat() {
               size="icon"
               onClick={handleSend}
               disabled={!input.trim() || loading}
-              className="size-8 sm:size-9 shrink-0 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-sm transition-all duration-200 disabled:opacity-40"
+              className="size-8 sm:size-9 shrink-0 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200 disabled:opacity-40 disabled:shadow-none"
               aria-label="Send message"
             >
               <Send className="size-3.5 sm:size-4" />

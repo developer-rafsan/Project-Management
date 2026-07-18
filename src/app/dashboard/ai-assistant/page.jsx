@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bot, Settings, MessageSquareText, Radio, Sparkles } from "lucide-react"
+import { Bot, Settings, MessageSquareText, Radio } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { AIChat } from "@/components/ai/AIChat"
 import { Channels } from "@/components/ai/Channels"
@@ -32,13 +32,15 @@ export default function AIAssistantPage() {
       <div className="mb-4 sm:mb-5 shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 rounded-full blur-md" />
-            <div className="relative flex size-9 sm:size-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-sm">
+            <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative flex size-9 sm:size-10 items-center justify-center rounded-full bg-gradient-to-br from-primary via-primary/80 to-primary/60 shadow-lg shadow-primary/20">
               <Bot className="size-4.5 sm:size-5 text-white" />
             </div>
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight">AI Assistant</h1>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              AI Assistant
+            </h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Your intelligent project management assistant</p>
           </div>
         </div>
@@ -47,7 +49,7 @@ export default function AIAssistantPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} orientation={orientation} className="flex-1 flex-col lg:flex-row gap-3 lg:gap-5 min-h-0">
         <TabsList variant="line" className="h-fit py-1 flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible lg:min-w-[160px] shrink-0 gap-0.5">
           {TABS.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} className="px-3 py-2.5 shrink-0 gap-2 text-xs lg:text-sm">
+            <TabsTrigger key={tab.id} value={tab.id} className="px-3 py-2.5 shrink-0 gap-2 text-xs lg:text-sm data-active:bg-gradient-to-r data-active:from-primary/10 data-active:to-transparent data-active:border-primary/20 transition-all duration-200">
               <tab.icon className="size-4" />
               {tab.label}
             </TabsTrigger>
@@ -55,15 +57,16 @@ export default function AIAssistantPage() {
         </TabsList>
 
         <div className="flex-1 min-h-0 relative">
-          <div className="absolute inset-0 rounded-2xl border border-border/30 bg-gradient-to-br from-card/50 to-card/10 pointer-events-none" />
+          <div className="absolute inset-0 rounded-2xl border border-border/30 bg-gradient-to-br from-card/60 via-card/30 to-card/5 pointer-events-none shadow-sm" />
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.02] to-transparent pointer-events-none" />
           <div className="relative h-full p-3 sm:p-4">
-            <TabsContent value="ai-chat" className="h-full">
+            <TabsContent value="ai-chat" className="h-full animate-fade-in-up">
               {activeTab === "ai-chat" && <AIChat />}
             </TabsContent>
-            <TabsContent value="channels" className="h-full overflow-y-auto">
+            <TabsContent value="channels" className="h-full overflow-y-auto animate-fade-in-up">
               {activeTab === "channels" && <Channels />}
             </TabsContent>
-            <TabsContent value="settings" className="h-full overflow-y-auto">
+            <TabsContent value="settings" className="h-full overflow-y-auto animate-fade-in-up">
               {activeTab === "settings" && <AISettings />}
             </TabsContent>
           </div>

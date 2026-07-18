@@ -1,152 +1,113 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { Bot, Loader2, RefreshCw, QrCode, Link, Globe, Terminal, Eye, EyeOff, CheckCircle2, Wifi, WifiOff, ArrowRight, Copy, KeyRound, User, Server, Clock, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Smartphone, CheckCircle2, XCircle, Loader2, Link2, Unlink,
-  Copy, RefreshCw, Bot, KeyRound, Eye, EyeOff, Globe,
-  ArrowUpRight, ShieldCheck, Clock, User, ChevronDown, ChevronUp,
-} from "lucide-react"
-import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
-interface TelegramStatus {
+function formatDate(dateStr: string) {
+  if (!dateStr) return "—"
+  const d = new Date(dateStr)
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+}
+
+interface Connection {
+  _id: string
+  botUsername?: string
+  botToken?: string
+  phoneNumber?: string
+  apiId?: string
+  apiHash?: string
+  chatId?: string
+  webhookUrl?: string
   isConnected: boolean
-  telegramUsername?: string | null
-  connectedAt?: string | null
-  hasBotToken?: boolean
-  botUsername?: string | null
+  status?: string
+  connectedAt?: string
+  lastActiveAt?: string
+  type?: string
 }
 
 export function TelegramSettings() {
-  const [status, setStatus] = useState<TelegramStatus | null>(null)
+  const [connection, setConnection] = useState<Connection | null>(null)
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
-  const [connectCode, setConnectCode] = useState<string | null>(null)
-  const [codeLoading, setCodeLoading] = useState(false)
-
-  const [botToken, setBotToken] = useState('')
+  const [connecting, setConnecting] = useState(false)
   const [showToken, setShowToken] = useState(false)
-  const [savingBot, setSavingBot] = useState(false)
-  const [botStatus, setBotStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
-  const [botMsg, setBotMsg] = useState('')
-  const [savedBotUsername, setSavedBotUsername] = useState<string | null>(null)
-  const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
-  const [webhookSet, setWebhookSet] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const tokenInitialized = useRef(false)
+  const [ngrokOpen, setNgrokOpen] = useState(false)
 
-  const fetchStatus = useCallback(async () => {
+  const fetchConnection = useCallback(async () => {
     try {
-      const res = await fetch("/api/telegram/status")
+      const res = await fetch("/api/telegram/connections")
+      if (!res.ok) throw new Error("Failed to fetch")
       const data = await res.json()
-      setStatus(data)
-      setSavedBotUsername(data.botUsername || null)
-      if (data.hasBotToken && !tokenInitialized.current) {
-        tokenInitialized.current = true
-        setBotToken('••••••••••••••••')
-      }
-      return data
+      const list = Array.isArray(data.connections) ? data.connections : Array.isArray(data) ? data : []
+      const active = list.find(
+        (c: any) => c.isConnected || c.status === "active" || c.status === "connected"
+      ) || list[0] || null
+      setConnection(active)
     } catch {
-      setStatus({ isConnected: false })
-      return { isConnected: false }
+      // silent
     } finally {
       setLoading(false)
     }
   }, [])
 
-  const fetchCode = useCallback(async () => {
-    setCodeLoading(true)
-    try {
-      const res = await fetch("/api/telegram/code")
-      const data = await res.json()
-      if (res.ok) setConnectCode(data.code)
-    } catch {
-      // silent
-    } finally {
-      setCodeLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { fetchStatus() }, [fetchStatus])
-
   useEffect(() => {
-    if (status?.isConnected || !status) return
-    const interval = setInterval(async () => {
-      if (document.hidden) return
-      const s = await fetchStatus()
-      if (s?.isConnected) clearInterval(interval)
-    }, 4000)
+    fetchConnection()
+    const interval = setInterval(fetchConnection, 15000)
     return () => clearInterval(interval)
-  }, [fetchStatus, status?.isConnected, status])
+  }, [fetchConnection])
 
-  useEffect(() => {
-    if (!loading && !status?.isConnected && !connectCode) {
-      fetchCode()
-    }
-  }, [loading, status?.isConnected, connectCode, fetchCode])
-
-  const handleSaveBot = async () => {
-    if (!botToken.trim()) {
-      toast.error('Enter your Telegram bot token')
-      return
-    }
-    setSavingBot(true)
-    setBotStatus('testing')
-    setBotMsg('')
+  const handleConnect = async () => {
+    setConnecting(true)
     try {
-      const res = await fetch('/api/telegram/save-bot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ botToken: botToken.trim() }),
+      const res = await fetch("/api/telegram/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "telegram" }),
       })
-      const data = await res.json()
-      if (res.ok) {
-        setBotStatus('success')
-        setBotMsg(`@${data.botUsername} — ${data.message}`)
-        setSavedBotUsername(data.botUsername)
-        setWebhookUrl(data.webhookUrl || null)
-        setWebhookSet(data.webhookSet || false)
-        if (data.webhookSet) {
-          toast.success('Bot configured and webhook registered!')
-        } else {
-          toast.success('Bot saved! Set up ngrok to activate webhook.')
-        }
-        fetchStatus()
-      } else {
-        setBotStatus('error')
-        setBotMsg(data.error || 'Failed to configure bot')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || err.error || "Connection failed")
       }
-    } catch {
-      setBotStatus('error')
-      setBotMsg('Failed to connect. Check the token and try again.')
+      toast.success("Telegram connected successfully!")
+      await fetchConnection()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to connect Telegram")
     } finally {
-      setSavingBot(false)
+      setConnecting(false)
     }
   }
 
   const handleDisconnect = async () => {
-    setActionLoading(true)
+    if (!connection) return
+    setConnecting(true)
     try {
-      const res = await fetch("/api/telegram/disconnect", { method: "POST" })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+      const res = await fetch(`/api/telegram/connect`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId: connection._id }),
+      })
+      if (!res.ok) throw new Error("Disconnect failed")
       toast.success("Telegram disconnected")
-      fetchStatus()
+      setConnection(null)
     } catch (err: any) {
       toast.error(err.message || "Failed to disconnect")
     } finally {
-      setActionLoading(false)
+      setConnecting(false)
     }
   }
 
-  const botUsername = savedBotUsername || status?.botUsername
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center py-16">
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/10 rounded-full blur-lg animate-pulse" />
+            <Loader2 className="size-5 animate-spin text-primary relative" />
+          </div>
           <p className="text-xs text-muted-foreground/60">Loading Telegram settings...</p>
         </div>
       </div>
@@ -154,231 +115,158 @@ export function TelegramSettings() {
   }
 
   return (
-    <div className="space-y-4 max-w-xl pb-4">
-      {/* Connection Status Card */}
-      <div className={cn(
-        "rounded-xl border p-4 transition-all duration-300",
-        status?.isConnected
-          ? "border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-emerald-500/[0.02]"
-          : "border-border/60 bg-card/30"
-      )}>
-        <div className="flex items-center gap-3">
-          <div className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors",
-            status?.isConnected ? "bg-emerald-500/10" : "bg-muted/60"
-          )}>
-            <Smartphone className={cn("size-5", status?.isConnected ? "text-emerald-500" : "text-muted-foreground")} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">Telegram</p>
-              {status?.isConnected ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-500 border border-emerald-500/20">
-                  <CheckCircle2 className="size-2.5" />
-                  Connected
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                  Disconnected
-                </span>
-              )}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="relative">
+            <div className="absolute inset-0 bg-sky-500/20 rounded-full blur-lg" />
+            <div className="relative flex size-8 sm:size-9 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-sky-600 shadow-lg shadow-sky-500/20">
+              <Bot className="size-4 sm:size-4.5 text-white" />
             </div>
-            {status?.isConnected && status?.telegramUsername ? (
-              <p className="text-xs text-emerald-500/80 mt-0.5">Connected as @{status.telegramUsername}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground mt-0.5">Connect your Telegram account to manage projects on the go</p>
-            )}
           </div>
-          {status?.isConnected && (
-            <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={actionLoading} className="gap-1.5 shrink-0 border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive px-2 sm:px-2.5">
-              {actionLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Unlink className="size-3.5" />}
-              <span className="hidden sm:inline">Disconnect</span>
-            </Button>
-          )}
+          <div>
+            <h4 className="text-sm font-semibold">Telegram Bot</h4>
+            <p className="text-[11px] text-muted-foreground/60">Configure your Telegram bot connection</p>
+          </div>
         </div>
+        {connection?.isConnected && (
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={fetchConnection}
+            className="text-muted-foreground/40 hover:text-foreground h-7 w-7 p-0 rounded-lg"
+            aria-label="Refresh connection"
+          >
+            <RefreshCw className="size-3.5" />
+          </Button>
+        )}
       </div>
 
-      {/* Bot Configuration */}
-      <div className="rounded-xl border border-border/60 bg-card/30 p-4 space-y-3">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <div className="flex size-6 items-center justify-center rounded-lg bg-muted/60">
-            <Bot className="size-3.5" />
-          </div>
-          <p className="text-xs font-semibold uppercase tracking-wider">Bot Configuration</p>
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Create a bot on <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-0.5 hover:text-primary/80">@BotFather <ArrowUpRight className="size-2.5" /></a>
-            , paste the token below, and save to activate.
-          </p>
-
-          <div className={cn(
-            "flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 transition-colors",
-            "focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20",
-            botStatus === 'success' && "border-emerald-500/40",
-            botStatus === 'error' && "border-destructive/40"
-          )}>
-            <KeyRound className="size-4 shrink-0 text-muted-foreground" />
-            <input
-              type={showToken ? "text" : "password"}
-              value={botToken}
-              onChange={(e) => { setBotToken(e.target.value); setBotStatus('idle') }}
-              onFocus={() => { if (botToken === '••••••••••••••••') { setBotToken(''); setShowToken(true) } }}
-              placeholder="Enter bot token from @BotFather..."
-              className="flex-1 h-8 border-0 bg-transparent px-0.5 text-sm shadow-none focus-visible:outline-none placeholder:text-muted-foreground/40"
-            />
-            <button type="button" onClick={() => setShowToken(!showToken)} className="p-1 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
-              {showToken ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              onClick={handleSaveBot}
-              disabled={savingBot || !botToken.trim()}
-              className="gap-1.5 h-8 text-xs"
-            >
-              {savingBot ? <Loader2 className="size-3.5 animate-spin" /> : <Globe className="size-3.5" />}
-              {savingBot ? 'Configuring...' : 'Save & Activate'}
-            </Button>
-            {botStatus === 'success' && (
-              <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
-                <CheckCircle2 className="size-3.5" /> {botMsg}
-              </span>
-            )}
-            {botStatus === 'error' && (
-              <span className="inline-flex items-center gap-1 text-xs text-destructive">
-                <XCircle className="size-3.5" /> {botMsg}
-              </span>
-            )}
-          </div>
-
-          {botUsername && webhookSet && (
-            <div className="flex items-center gap-2 rounded-lg bg-emerald-500/5 px-3 py-2.5 border border-emerald-500/10">
-              <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
-              <div className="text-xs">
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">@{botUsername}</span>
-                <span className="text-muted-foreground ml-1">— Webhook active, ready for connections</span>
+      {connection?.isConnected ? (
+        <div className="space-y-3 animate-fade-in-up">
+          <div className="relative overflow-hidden rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] via-card/60 to-card p-4 sm:p-5">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-bl-full pointer-events-none" />
+            <div className="relative flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-emerald-500/10 rounded-full blur-md animate-pulse" />
+                <div className="relative flex size-12 sm:size-14 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border-2 border-emerald-500/25 shadow-md shadow-emerald-500/10">
+                  <CheckCircle2 className="size-6 sm:size-7 text-emerald-500" />
+                </div>
               </div>
-            </div>
-          )}
-
-          {botUsername && !webhookSet && process.env.NODE_ENV !== 'production' && (
-            <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 space-y-2">
-              <button
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-2 text-xs font-medium text-amber-600 w-full"
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Connected</h4>
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] px-2 py-0 rounded-full font-medium" render={undefined}>
+                    <span className="inline-block size-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
+                    Active
+                  </Badge>
+                </div>
+                {connection.botUsername && (
+                  <p className="text-xs text-foreground/70 mt-1">@{connection.botUsername}</p>
+                )}
+              </div>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={handleDisconnect}
+                disabled={connecting}
+                className="h-8 px-3 rounded-lg shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-all"
               >
-                <XCircle className="size-3.5 shrink-0" />
-                <span>Local mode — set up ngrok to receive live messages</span>
-                {showAdvanced ? <ChevronUp className="size-3 ml-auto" /> : <ChevronDown className="size-3 ml-auto" />}
-              </button>
-              {showAdvanced && (
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <p>In development, the bot is saved but needs a public HTTPS URL to receive Telegram updates.</p>
-                  <div className="space-y-1.5">
-                    <p className="font-medium text-foreground/70">1. Start ngrok:</p>
-                    <pre className="text-[11px] bg-background/80 rounded px-2.5 py-1.5 font-mono select-all border border-border/30">ngrok http 3000</pre>
-                    <p className="font-medium text-foreground/70 mt-2">2. Copy the HTTPS URL and add to <code className="text-[11px] bg-background/80 px-1 rounded font-mono border border-border/30">.env.local</code>:</p>
-                    <pre className="text-[11px] bg-background/80 rounded px-2.5 py-1.5 font-mono select-all break-all border border-border/30">TELEGRAM_WEBHOOK_URL=https://abc123.ngrok-free.app/api/telegram/webhook</pre>
-                    <p className="font-medium text-foreground/70 mt-2">3. Restart server and click <strong>Save & Activate</strong> again.</p>
+                {connecting ? (
+                  <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <WifiOff className="size-3.5 mr-1.5" />
+                )}
+                Disconnect
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border/40 bg-card/50 overflow-hidden">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border/20">
+              {[
+                { label: "Bot Username", value: connection.botUsername && `@${connection.botUsername}`, icon: User },
+                { label: "Bot Token", value: connection.botToken ? "••••••••••••••••" : "—", icon: KeyRound, action: connection.botToken ? () => setShowToken(!showToken) : undefined },
+                { label: "Connected Since", value: formatDate(connection.connectedAt || connection.lastActiveAt || connection.connectedAt), icon: Clock },
+                { label: "Chat ID", value: connection.chatId || "—", icon: Server },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3 px-4 py-3.5 bg-card/30">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/50">
+                    <item.icon className="size-3.5 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">{item.label}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs font-medium truncate">
+                        {item.action && !showToken ? "••••••••••••••••" : item.value}
+                      </span>
+                      {item.action && (
+                        <button onClick={item.action} className="text-muted-foreground/30 hover:text-foreground transition-colors shrink-0">
+                          {showToken ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
-          )}
+          </div>
         </div>
-      </div>
-
-      {/* Connect Section (only if bot is configured but not connected) */}
-      {botUsername && !status?.isConnected && (
-        <>
-          <div className="rounded-xl border-2 border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.03] to-emerald-500/[0.01] p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10">
-                <Link2 className="size-3.5 text-emerald-500" />
-              </div>
-              <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Connect Your Account</p>
-            </div>
-
-            <div className="flex items-center justify-center py-2">
-              {codeLoading ? (
-                <Loader2 className="size-6 sm:size-8 animate-spin text-muted-foreground" />
-              ) : (
-                <div className="text-center w-full min-w-0">
-                  <p className="text-xs text-muted-foreground mb-2">Send this code to the bot:</p>
-                  <span className="inline-block text-lg sm:text-2xl lg:text-3xl font-mono font-bold tracking-[0.15em] sm:tracking-[0.25em] select-all px-4 sm:px-6 py-2 rounded-lg bg-background border border-emerald-500/20 shadow-sm truncate max-w-full">
-                    {connectCode}
-                  </span>
+      ) : (
+        <div className="space-y-4 animate-fade-in-up">
+          <div className="relative overflow-hidden rounded-xl border border-border/30 bg-gradient-to-br from-card/60 via-card/30 to-card/5 p-5 sm:p-6">
+            <div className="flex flex-col items-center text-center max-w-md mx-auto">
+              <div className="relative mb-4">
+                <div className="absolute inset-0 bg-sky-500/10 rounded-full blur-2xl" />
+                <div className="relative flex size-14 sm:size-16 items-center justify-center rounded-full bg-gradient-to-br from-sky-500/20 via-sky-500/10 to-transparent border-2 border-sky-500/15 shadow-inner">
+                  <WifiOff className="size-6 sm:size-7 text-sky-500" />
                 </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => { if (connectCode) { navigator.clipboard.writeText(connectCode); toast.success("Code copied!") } }} disabled={!connectCode} className="gap-1.5">
-                <Copy className="size-3.5" />
-                Copy Code
-              </Button>
-              <Button variant="outline" size="sm" onClick={async () => { setCodeLoading(true); try { const res = await fetch("/api/telegram/code", { method: "POST" }); const data = await res.json(); if (res.ok) { setConnectCode(data.code); toast.success("New code generated") } } catch { toast.error("Failed to regenerate code") } finally { setCodeLoading(false) } }} disabled={codeLoading} className="gap-1.5">
-                <RefreshCw className={cn("size-3.5", codeLoading && "animate-spin")} />
-                Regenerate
-              </Button>
-            </div>
-
-            <div className="rounded-lg bg-background/80 border border-border/30 p-2.5 sm:p-3 space-y-1.5 sm:space-y-2">
-              <p className="text-[11px] sm:text-xs font-medium text-foreground/70 flex items-center gap-1.5">
-                <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">1</span>
-                Open the bot
-                <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-0.5">
-                  @{botUsername} <ArrowUpRight className="size-2.5" />
-                </a>
-              </p>
-              <p className="text-[11px] sm:text-xs text-muted-foreground ml-7">Click above or search <strong>@{botUsername}</strong> in Telegram</p>
-              <p className="text-[11px] sm:text-xs font-medium text-foreground/70 flex items-center gap-1.5">
-                <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</span>
-                Send <strong className="font-mono text-primary">/start</strong>
-              </p>
-              <p className="text-[11px] sm:text-xs font-medium text-foreground/70 flex items-center gap-1.5">
-                <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">3</span>
-                Send the code: <strong className="font-mono text-primary break-all">{connectCode}</strong>
-              </p>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Connection Info (when connected) */}
-      {status?.isConnected && (
-        <div className="rounded-xl border border-border/60 bg-card/30 p-4 space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <div className="flex size-6 items-center justify-center rounded-lg bg-muted/60">
-              <ShieldCheck className="size-3.5" />
-            </div>
-            <p className="text-xs font-semibold uppercase tracking-wider">Connection Details</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-            <div className="rounded-lg bg-muted/30 p-2.5">
-              <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">Telegram User</p>
-              <div className="flex items-center gap-1.5">
-                <User className="size-3 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium truncate">@{status.telegramUsername || "—"}</span>
               </div>
-            </div>
-            <div className="rounded-lg bg-muted/30 p-2.5">
-              <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">Connected Since</p>
-              <div className="flex items-center gap-1.5">
-                <Clock className="size-3 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium">{status.connectedAt ? new Date(status.connectedAt).toLocaleDateString() : "—"}</span>
-              </div>
+              <h4 className="text-sm font-semibold text-foreground/80 mb-1">Not Connected</h4>
+              <p className="text-xs text-muted-foreground/60 mb-5 max-w-[280px]">
+                Connect your Telegram bot to chat with the AI assistant and receive notifications directly on Telegram.
+              </p>
+              <Button
+                size="sm"
+                onClick={handleConnect}
+                disabled={connecting}
+                className="h-9 px-4 rounded-xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 shadow-lg shadow-sky-500/20 hover:shadow-xl hover:shadow-sky-500/30 transition-all text-xs font-medium"
+              >
+                {connecting ? (
+                  <Loader2 className="size-3.5 animate-spin mr-2" />
+                ) : (
+                  <Wifi className="size-3.5 mr-2" />
+                )}
+                Connect Telegram Bot
+              </Button>
             </div>
           </div>
-          <div className="rounded-lg bg-gradient-to-r from-primary/5 to-primary/[0.02] border border-primary/10 p-3">
-            <p className="text-xs text-muted-foreground">
-              <strong className="text-primary">Tip:</strong> Send messages to <strong>@{botUsername}</strong> to manage projects on the go.
-              Try "Show my projects" or "Create a project called Nano ERP".
-            </p>
+
+          <div className="rounded-xl border border-border/20 bg-card/30 p-4 sm:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex size-6 items-center justify-center rounded-full bg-primary/10">
+                <Info className="size-3 text-primary" />
+              </div>
+              <h5 className="text-xs font-semibold">How to Connect</h5>
+            </div>
+            <ol className="space-y-2.5 ml-1">
+              {[
+                { icon: Bot, text: "Create a bot via @BotFather on Telegram and get your token." },
+                { icon: KeyRound, text: "Add the bot token to your environment variables (TELEGRAM_BOT_TOKEN)." },
+                { icon: Link, text: "Set up a webhook URL pointing to your deployment or use a tunnel like ngrok." },
+                { icon: Terminal, text: "Click 'Connect Telegram Bot' above to establish the connection." },
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground mt-0.5">
+                    {i + 1}
+                  </span>
+                  <div className="flex items-start gap-2 min-w-0">
+                    <step.icon className="size-3.5 text-muted-foreground/40 mt-0.5 shrink-0" />
+                    <span className="text-xs text-muted-foreground/70">{step.text}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       )}
