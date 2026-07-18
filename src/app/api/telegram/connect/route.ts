@@ -29,11 +29,6 @@ export async function POST(request: NextRequest) {
 
     await connectDB()
 
-    const existingConnection = await telegramRepo.findByTelegramId(telegramId)
-    if (existingConnection && existingConnection.userId.toString() !== session.user.id) {
-      return NextResponse.json({ error: 'Telegram account already connected to another user' }, { status: 409 })
-    }
-
     const connection = await telegramRepo.connect({
       userId: session.user.id,
       telegramId,

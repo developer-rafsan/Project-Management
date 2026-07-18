@@ -11,7 +11,6 @@ const telegramConnectionSchema = new mongoose.Schema({
   telegramId: {
     type: String,
     required: true,
-    unique: true,
     index: true,
   },
   username: { type: String, default: null },

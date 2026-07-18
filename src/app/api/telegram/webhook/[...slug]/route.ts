@@ -46,7 +46,7 @@ export async function POST(
       const telegramId = String(msg.from.id)
       const username = msg.from.username || msg.from.first_name || ''
 
-      const connection = await telegramRepo.findByTelegramId(telegramId)
+      const connection = await telegramRepo.findByUserId(botOwnerId)
 
       if (!text) {
         await tsService.sendMessage(chatId, 'Please send a text message.', 'HTML', botToken)
