@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Sliders, Cpu, Coins, Sparkles, Loader2, RefreshCw, Save, ChevronDown, FlaskConical, Gauge, Brain, Zap, Bot, Palette, Variable, ScrollText } from "lucide-react"
+import { Sliders, Cpu, Coins, Sparkles, Loader2, RefreshCw, Save, ChevronDown, FlaskConical, Gauge, Brain, Zap, Bot, Palette, Variable, ScrollText, KeyRound, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -22,11 +22,13 @@ interface Settings {
   maxHistory: number
   rateLimit: number
   tokenLimit: number
+  apiKey: string
+  hasApiKey?: boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
   provider: "openrouter",
-  model: "deepseek/deepseek-v4-flash-free",
+  model: "openrouter/free",
   temperature: 0.7,
   maxTokens: 4096,
   systemPrompt: "You are an expert project management assistant. Help users manage their team, projects, and tasks efficiently.",
@@ -37,14 +39,14 @@ const DEFAULT_SETTINGS: Settings = {
   maxHistory: 50,
   rateLimit: 60,
   tokenLimit: 7000000,
+  apiKey: "",
+  hasApiKey: false,
 }
 
 const MODEL_OPTIONS = [
-  { value: "deepseek/deepseek-v4-flash-free", label: "DeepSeek V4 Flash" },
-  { value: "openai/o3-mini", label: "OpenAI o3-mini" },
-  { value: "google/gemini-2.5-flash-preview", label: "Gemini 2.5 Flash" },
-  { value: "deepseek/deepseek-v3-free", label: "DeepSeek V3" },
-  { value: "qwen/qwen-2.5-72b-instruct", label: "Qwen 2.5 72B" },
+  { value: "openrouter/free", label: "Auto Free" },
+  { value: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+  { value: "deepseek/deepseek-v4-pro", label: "DeepSeek V4 Pro" },
 ]
 
 const PROMPT_PRESETS = [
@@ -90,7 +92,12 @@ export function AISettings() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [showKey, setShowKey] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [showGenerateInput, setShowGenerateInput] = useState(false)
+  const [generateDescription, setGenerateDescription] = useState('')
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -105,6 +112,8 @@ export function AISettings() {
         systemPrompt: data.systemPrompt || DEFAULT_SETTINGS.systemPrompt,
         totalTokensUsed: data.totalTokensUsed ?? prev.totalTokensUsed,
         totalTokensLimit: data.totalTokensLimit ?? prev.totalTokensLimit,
+        apiKey: data.apiKey ?? "",
+        hasApiKey: data.hasApiKey ?? false,
       }))
     } catch {
       // use defaults
@@ -117,13 +126,41 @@ export function AISettings() {
     fetchSettings()
   }, [fetchSettings])
 
+  const generatePrompt = async () => {
+    if (!generateDescription.trim()) return
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/ai/generate-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: generateDescription }),
+      })
+      const data = await res.json()
+      if (data.prompt) {
+        setSettings((s) => ({ ...s, systemPrompt: data.prompt }))
+        setShowGenerateInput(false)
+        setGenerateDescription('')
+        toast.success('System prompt generated')
+      } else {
+        toast.error(data.error || 'Failed to generate prompt')
+      }
+    } catch {
+      toast.error('Failed to generate prompt')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   const handleSave = async () => {
     setSaving(true)
     try {
       const res = await fetch("/api/ai/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({
+          ...settings,
+          apiKey: settings.apiKey || undefined,
+        }),
       })
       if (!res.ok) throw new Error("Failed to save")
       toast.success("Settings saved successfully")
@@ -131,6 +168,35 @@ export function AISettings() {
       toast.error(err.message || "Failed to save settings")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const testConnection = async () => {
+    setTesting(true)
+    try {
+      const saveRes = await fetch("/api/ai/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: settings.provider,
+          model: settings.model,
+          temperature: settings.temperature,
+          maxTokens: settings.maxTokens,
+          apiKey: settings.apiKey || undefined,
+        }),
+      })
+      if (!saveRes.ok) throw new Error("Failed to save before test")
+      const res = await fetch("/api/ai/test-key")
+      const data = await res.json()
+      if (data.success) {
+        toast.success("Connection successful! API key is working.")
+      } else {
+        toast.error(data.error || "Connection failed")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Connection failed")
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -149,17 +215,17 @@ export function AISettings() {
   }
 
   return (
-    <div className="space-y-5 max-w-2xl pb-4">
+    <div className="space-y-4 sm:space-y-6 pb-4 sm:pb-6">
       <div className="flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 rounded-full blur-lg" />
-            <div className="relative flex size-8 sm:size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary via-violet-500 to-emerald-500 opacity-30 rounded-full blur-xl animate-pulse" />
+            <div className="relative flex size-8 sm:size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary via-violet-500 to-emerald-500 shadow-lg shadow-primary/20">
               <Sliders className="size-4 sm:size-4.5 text-white" />
             </div>
           </div>
           <div>
-            <h3 className="text-sm font-semibold">AI Configuration</h3>
+            <h3 className="text-sm font-semibold bg-gradient-to-r from-primary via-violet-500 to-emerald-500 bg-clip-text text-transparent">AI Configuration</h3>
             <p className="text-[11px] text-muted-foreground/60">Customize your AI assistant behavior</p>
           </div>
         </div>
@@ -189,127 +255,32 @@ export function AISettings() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/30 bg-gradient-to-br from-card/60 via-card/30 to-card/5 p-4 sm:p-5 space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="flex size-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/5">
-            <Coins className="size-3 text-emerald-500" />
-          </div>
-          <h4 className="text-xs font-semibold">Token Usage</h4>
-        </div>
-        <UsageBar used={settings.totalTokensUsed ?? 0} limit={settings.totalTokensLimit ?? 7000000} />
-      </div>
-
-      <div className="rounded-xl border border-border/30 bg-gradient-to-br from-card/60 via-card/30 to-card/5 overflow-hidden">
-        <div className="p-4 sm:p-5 space-y-5">
-          <div className="flex items-center gap-2">
-            <div className="flex size-6 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5">
-              <Brain className="size-3 text-primary" />
-            </div>
-            <h4 className="text-xs font-semibold">Model Configuration</h4>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">Provider</label>
-              <Select
-                value={settings.provider}
-                onValueChange={(v) => setSettings((s) => ({ ...s, provider: v }))}
-              >
-                <SelectTrigger className="h-9 text-xs rounded-lg border-border/40 bg-card/50">
-                  <SelectValue className="flex text-xs" />
-                </SelectTrigger>
-                <SelectContent className="min-w-[180px]">
-                  <SelectItem className="text-xs" value="openrouter">
-                    <div className="flex items-center gap-2">
-                      <Cpu className="size-3.5" />
-                      OpenRouter
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">Model</label>
-              <Select
-                value={settings.model}
-                onValueChange={(v) => setSettings((s) => ({ ...s, model: v }))}
-              >
-                <SelectTrigger className="h-9 text-xs rounded-lg border-border/40 bg-card/50">
-                  <SelectValue className="flex text-xs" />
-                </SelectTrigger>
-                <SelectContent className="min-w-[200px]">
-                  {MODEL_OPTIONS.map((opt) => (
-                    <SelectItem className="text-xs" key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">Temperature</label>
-                <p className="text-[10px] text-muted-foreground/40 mt-0.5">Controls randomness in responses</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
+        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] via-card/60 to-card/5 overflow-hidden shadow-sm shadow-emerald-500/5 hover:shadow-md hover:shadow-emerald-500/10 transition-shadow duration-300">
+          <div className="p-3 sm:p-5 space-y-3 sm:space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="flex size-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/5">
+                <Coins className="size-3 text-emerald-500" />
               </div>
-              <Badge variant="outline" className="text-xs font-mono px-2 py-0.5 rounded-md border-border/40 bg-card/30 min-w-[48px] text-center" render={undefined}>
-                {settings.temperature.toFixed(2)}
-              </Badge>
+              <h4 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Token Usage</h4>
             </div>
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.01"
-              value={settings.temperature}
-              onChange={(e) => setSettings((s) => ({ ...s, temperature: parseFloat(e.target.value) }))}
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-muted/50 accent-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-primary/30 [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110"
-              aria-label="Temperature"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground/40">
-              <span>Precise</span>
-              <span>Balanced</span>
-              <span>Creative</span>
-            </div>
+            <UsageBar used={settings.totalTokensUsed ?? 0} limit={settings.totalTokensLimit ?? 7000000} />
           </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">Max Tokens</label>
-            <div className="flex gap-2 flex-wrap">
-              {MAX_TOKENS_PRESETS.map((val) => (
-                <button
-                  key={val}
-                  onClick={() => setSettings((s) => ({ ...s, maxTokens: val }))}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-all border",
-                    settings.maxTokens === val
-                      ? "bg-primary/10 text-primary border-primary/20 shadow-sm"
-                      : "bg-card/50 text-muted-foreground border-border/30 hover:border-border/60 hover:text-foreground"
-                  )}
-                >
-                  {formatNumber(val)}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-border/20">
-          <div
-            className="flex items-center justify-between px-4 sm:px-5 py-3 cursor-pointer select-none hover:bg-muted/20 transition-colors"
+          <div className="border-t border-emerald-500/10"
             onClick={() => setAdvancedOpen(!advancedOpen)}
           >
-            <div className="flex items-center gap-2">
-              <div className="flex size-6 items-center justify-center rounded-full bg-muted/50">
-                <Sliders className="size-3 text-muted-foreground" />
+            <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 cursor-pointer select-none hover:bg-emerald-500/[0.03] transition-colors">
+              <div className="flex items-center gap-2">
+                <div className="flex size-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-500/20 to-amber-500/5 ring-1 ring-amber-500/20">
+                  <Sliders className="size-3 text-amber-500" />
+                </div>
+                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Advanced Settings</span>
               </div>
-              <span className="text-xs font-semibold">Advanced Settings</span>
+              <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform duration-200", advancedOpen && "rotate-180")} />
             </div>
-            <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform duration-200", advancedOpen && "rotate-180")} />
           </div>
           {advancedOpen && (
-            <div className="px-4 sm:px-5 pb-5 space-y-4 animate-fade-in-up">
+            <div className="px-3 sm:px-5 pb-4 sm:pb-5 space-y-3 sm:space-y-4 animate-fade-in-up">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">Session Timeout (min)</label>
@@ -319,7 +290,7 @@ export function AISettings() {
                     max={1440}
                     value={settings.sessionTimeout ?? 30}
                     onChange={(e) => setSettings((s) => ({ ...s, sessionTimeout: parseInt(e.target.value) || 30 }))}
-                    className="h-9 text-xs rounded-lg border-border/30 bg-card/50"
+                    className="h-9 text-xs rounded-lg border-border/30 bg-card/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -330,7 +301,7 @@ export function AISettings() {
                     max={500}
                     value={settings.maxHistory ?? 50}
                     onChange={(e) => setSettings((s) => ({ ...s, maxHistory: parseInt(e.target.value) || 50 }))}
-                    className="h-9 text-xs rounded-lg border-border/30 bg-card/50"
+                    className="h-9 text-xs rounded-lg border-border/30 bg-card/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -341,7 +312,7 @@ export function AISettings() {
                     max={1000}
                     value={settings.rateLimit ?? 60}
                     onChange={(e) => setSettings((s) => ({ ...s, rateLimit: parseInt(e.target.value) || 60 }))}
-                    className="h-9 text-xs rounded-lg border-border/30 bg-card/50"
+                    className="h-9 text-xs rounded-lg border-border/30 bg-card/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -356,43 +327,218 @@ export function AISettings() {
                       const val = parseInt(e.target.value) || 7000000
                       setSettings((s) => ({ ...s, tokenLimit: val, totalTokensLimit: val }))
                     }}
-                    className="h-9 text-xs rounded-lg border-border/30 bg-card/50"
+                    className="h-9 text-xs rounded-lg border-border/30 bg-card/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                   />
                 </div>
               </div>
             </div>
           )}
         </div>
+
+        <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.03] via-card/60 to-card/5 shadow-sm shadow-primary/5 hover:shadow-md hover:shadow-primary/10 transition-shadow duration-300 overflow-hidden">
+          <div className="p-3 sm:p-5 space-y-3 sm:space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex size-6 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-blue-500/10 ring-1 ring-primary/20">
+                <Brain className="size-3 text-primary" />
+              </div>
+              <h4 className="text-xs font-semibold bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">Model Configuration</h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">Provider</label>
+                <Select
+                  value={settings.provider}
+                  onValueChange={(v) => setSettings((s) => ({ ...s, provider: v }))}
+                >
+                  <SelectTrigger className="h-9 text-xs rounded-lg border-border/40 bg-card/50 w-full">
+                    <SelectValue className="flex text-xs">
+                      <div className="flex items-center gap-2">
+                        <Bot className="size-3.5 shrink-0" />
+                        <span className="truncate">OpenRouter Free</span>
+                      </div>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="min-w-[180px]">
+                    <SelectItem className="text-xs" value="openrouter">
+                      <div className="flex items-center gap-2">
+                        <Bot className="size-3.5" />
+                        OpenRouter Free
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">Model</label>
+                <Select
+                  value={settings.model}
+                  onValueChange={(v) => setSettings((s) => ({ ...s, model: v }))}
+                >
+                  <SelectTrigger className="h-9 text-xs rounded-lg border-border/40 bg-card/50 w-full">
+                    <SelectValue className="flex text-xs" />
+                  </SelectTrigger>
+                  <SelectContent className="min-w-[200px]">
+                    {MODEL_OPTIONS.map((opt) => (
+                      <SelectItem className="text-xs" key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">Temperature</label>
+                <Select
+                  value={String(settings.temperature)}
+                  onValueChange={(v) => setSettings((s) => ({ ...s, temperature: parseFloat(v) }))}
+                >
+                  <SelectTrigger className="h-9 text-xs rounded-lg border-border/40 bg-card/50 w-full">
+                    <SelectValue className="flex text-xs">
+                      {settings.temperature === 0 ? "Low" : settings.temperature === 2 ? "High" : "Medium"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="min-w-[160px]">
+                    <SelectItem className="text-xs" value="0">
+                      <div className="flex items-center justify-between w-full gap-4">
+                        <span>Low</span>
+                        <span className="text-[10px] text-muted-foreground/40">Precise</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem className="text-xs" value="0.7">
+                      <div className="flex items-center justify-between w-full gap-4">
+                        <span>Medium</span>
+                        <span className="text-[10px] text-muted-foreground/40">Balanced</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem className="text-xs" value="2">
+                      <div className="flex items-center justify-between w-full gap-4">
+                        <span>High</span>
+                        <span className="text-[10px] text-muted-foreground/40">Creative</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">Max Tokens</label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                  {MAX_TOKENS_PRESETS.map((val) => (
+                    <button
+                      key={val}
+                      onClick={() => setSettings((s) => ({ ...s, maxTokens: val }))}
+                      className={cn(
+                        "py-2 rounded-lg text-[11px] font-medium transition-all border text-center",
+                        settings.maxTokens === val
+                          ? "bg-primary/10 text-primary border-primary/20 shadow-sm"
+                          : "bg-card/50 text-muted-foreground border-border/30 hover:border-border/60 hover:text-foreground"
+                      )}
+                    >
+                      {formatNumber(val)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">API Key</label>
+              <div className="relative">
+                <Input
+                  type={showKey ? "text" : "password"}
+                  value={settings.apiKey}
+                  onChange={(e) => setSettings((s) => ({ ...s, apiKey: e.target.value }))}
+                  placeholder={settings.hasApiKey ? "••••••••••••••••" : "Enter your API key..."}
+                  className="h-9 text-xs rounded-lg border-border/30 bg-card/50 pr-8 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors"
+                >
+                  {showKey ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </button>
+              </div>
+              <Button
+                size="xs"
+                onClick={testConnection}
+                disabled={testing}
+                className="h-7 px-3 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-sm shadow-emerald-500/15 text-xs font-medium w-full"
+              >
+                {testing ? (
+                  <Loader2 className="size-3 animate-spin mr-1.5" />
+                ) : (
+                  <Zap className="size-3 mr-1.5" />
+                )}
+                Test Connection
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-border/30 bg-gradient-to-br from-card/60 via-card/30 to-card/5 p-4 sm:p-5 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+      <div className="rounded-xl border border-violet-500/20 bg-gradient-to-br from-violet-500/[0.04] via-card/60 to-card/5 p-3 sm:p-5 space-y-3 shadow-sm shadow-violet-500/5 hover:shadow-md hover:shadow-violet-500/10 transition-shadow duration-300">
+        <div className="flex items-start sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="flex size-6 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/20 to-violet-500/5">
               <ScrollText className="size-3 text-violet-500" />
             </div>
-            <h4 className="text-xs font-semibold">System Prompt</h4>
+            <h4 className="text-xs font-semibold text-violet-600 dark:text-violet-400">System Prompt</h4>
           </div>
-          <Select
-            value={settings.systemPrompt}
-            onValueChange={(v) => setSettings((s) => ({ ...s, systemPrompt: v }))}
-          >
-            <SelectTrigger className="h-7 text-[10px] rounded-lg border-border/30 bg-card/50 w-[120px]">
-              <FlaskConical className="size-3 mr-1" />
-              <SelectValue className="flex text-[10px]" placeholder="Presets" />
-            </SelectTrigger>
-            <SelectContent className="min-w-[160px]">
-              {PROMPT_PRESETS.map((p) => (
-                <SelectItem className="text-xs" key={p.value} value={p.value}>{p.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => setShowGenerateInput(!showGenerateInput)}
+              className="h-7 px-2 rounded-lg text-[10px] font-medium text-violet-500 hover:text-violet-600 hover:bg-violet-500/10 gap-1"
+            >
+              <Sparkles className="size-3" />
+              <span className="hidden sm:inline">Generate</span>
+            </Button>
+            <Select
+              value={settings.systemPrompt}
+              onValueChange={(v) => setSettings((s) => ({ ...s, systemPrompt: v }))}
+            >
+              <SelectTrigger className="h-7 text-[10px] rounded-lg border-border/30 bg-card/50 w-[80px] sm:w-[100px]">
+                <FlaskConical className="size-3 mr-1 shrink-0" />
+                <SelectValue className="flex text-[10px]" placeholder="Presets" />
+              </SelectTrigger>
+              <SelectContent className="min-w-[160px]">
+                {PROMPT_PRESETS.map((p) => (
+                  <SelectItem className="text-xs" key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+        {showGenerateInput && (
+          <div className="flex gap-2 animate-fade-in-up">
+            <Input
+              type="text"
+              value={generateDescription}
+              onChange={(e) => setGenerateDescription(e.target.value)}
+              placeholder="Describe your assistant (e.g. 'a friendly coding tutor')..."
+              className="h-8 text-xs rounded-lg border-border/30 bg-card/50 flex-1 min-w-0"
+              onKeyDown={(e) => e.key === 'Enter' && generatePrompt()}
+            />
+            <Button
+              size="xs"
+              onClick={generatePrompt}
+              disabled={generating || !generateDescription.trim()}
+              className="h-8 px-3 rounded-lg bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 shadow-sm shadow-violet-500/15 text-xs font-medium shrink-0"
+            >
+              {generating ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+            </Button>
+          </div>
+        )}
+
         <textarea
           value={settings.systemPrompt}
           onChange={(e) => setSettings((s) => ({ ...s, systemPrompt: e.target.value }))}
-          rows={4}
-          className="w-full resize-y min-h-[80px] max-h-[200px] rounded-xl border border-border/30 bg-card/40 px-3.5 py-2.5 text-xs leading-relaxed shadow-inner focus-visible:outline-none focus-visible:border-primary/30 focus-visible:ring-1 focus-visible:ring-primary/15 transition-all placeholder:text-muted-foreground/30"
+          rows={3}
+          className="w-full resize-y min-h-[80px] sm:min-h-[100px] max-h-[200px] sm:max-h-[250px] rounded-xl border border-border/30 bg-card/40 px-4 py-3 text-xs leading-relaxed shadow-inner focus-visible:outline-none focus-visible:border-violet-500/30 focus-visible:ring-2 focus-visible:ring-violet-500/10 transition-all placeholder:text-muted-foreground/30 hover:border-border/50"
           placeholder="Enter system prompt..."
         />
       </div>

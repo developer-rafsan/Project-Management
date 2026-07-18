@@ -26,6 +26,7 @@ export async function GET() {
       model: settings.model,
       temperature: settings.temperature,
       maxTokens: settings.maxTokens,
+      systemPrompt: settings.systemPrompt || settings.promptTemplate || '',
       promptTemplate: settings.promptTemplate,
       totalTokensUsed: settings.totalTokensUsed || 0,
       totalTokensLimit: settings.totalTokensLimit || 7000000,
@@ -45,7 +46,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const allowed = ['enabled', 'provider', 'model', 'temperature', 'maxTokens', 'promptTemplate', 'apiKey']
+    const allowed = ['enabled', 'provider', 'model', 'temperature', 'maxTokens', 'systemPrompt', 'promptTemplate', 'apiKey']
     const updates: Record<string, unknown> = {}
 
     for (const key of allowed) {

@@ -124,7 +124,7 @@ export function Channels() {
       <div className="h-full flex flex-col">
         <button
           onClick={() => { setShowTelegramSettings(false); setExpandedChannel(null) }}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 w-fit"
+          className="flex items-center gap-1.5 text-xs text-sky-500 hover:text-sky-600 transition-colors mb-3 w-fit font-medium"
         >
           <ArrowRight className="size-3 rotate-180" /> Back to Channels
         </button>
@@ -134,35 +134,35 @@ export function Channels() {
   }
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
-      <div className="shrink-0">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-lg" />
-              <div className="relative flex size-8 sm:size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20">
-                <Radio className="size-4 sm:size-4.5 text-white" />
+      <div className="space-y-5 h-full flex flex-col">
+        <div className="shrink-0">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="relative">
+                <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-xl animate-pulse" />
+                <div className="relative flex size-8 sm:size-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 shadow-lg shadow-cyan-500/30">
+                  <Radio className="size-4 sm:size-4.5 text-white" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold bg-gradient-to-r from-cyan-500 to-teal-500 bg-clip-text text-transparent">Channels</h3>
+                <p className="text-[11px] text-muted-foreground/60">Connect external messaging platforms</p>
               </div>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold">Channels</h3>
-              <p className="text-[11px] text-muted-foreground/60">Connect external messaging platforms</p>
-            </div>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={fetchStatus}
+              disabled={loading}
+              className="text-muted-foreground/40 hover:text-foreground h-7 w-7 p-0 rounded-lg"
+              aria-label="Refresh status"
+            >
+              <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={fetchStatus}
-            disabled={loading}
-            className="text-muted-foreground/40 hover:text-foreground h-7 w-7 p-0 rounded-lg"
-            aria-label="Refresh status"
-          >
-            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-          </Button>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto hide-scrollbar">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-3">
@@ -174,7 +174,7 @@ export function Channels() {
             </div>
           </div>
         ) : (
-          <div className="grid gap-3 sm:gap-4 max-w-2xl">
+          <div className="grid gap-3 sm:gap-4">
             {channels.map((channel) => {
               const channelConns = connections.filter(
                 (c: any) => c.type === channel.type || c.channelType === channel.type
@@ -188,10 +188,10 @@ export function Channels() {
                   <div
                     className={cn(
                       "relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer",
-                      "hover:shadow-lg hover:shadow-primary/5",
+                      "hover:shadow-lg hover:shadow-cyan-500/10",
                       channel.status === "connected"
-                        ? "border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.04] via-card/80 to-card"
-                        : "border-border/40 bg-gradient-to-br from-card/80 to-card/40 hover:border-border/60",
+                        ? "border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.04] via-card/80 to-card shadow-sm shadow-emerald-500/5"
+                        : "border-border/40 bg-gradient-to-br from-card/80 to-card/40 hover:border-cyan-500/30 hover:shadow-sm hover:shadow-cyan-500/5",
                       expandedChannel === channel.id && "rounded-b-none border-b-0"
                     )}
                     onClick={() => setExpandedChannel(expandedChannel === channel.id ? null : channel.id)}
@@ -200,7 +200,7 @@ export function Channels() {
                       "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
                       channel.gradient
                     )} />
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-primary/[0.02] to-transparent rounded-bl-full pointer-events-none" />
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-cyan-500/[0.04] to-transparent rounded-bl-full pointer-events-none" />
 
                     <div className="relative p-4 sm:p-5">
                       <div className="flex items-start gap-4">
@@ -280,7 +280,7 @@ export function Channels() {
                                 e.stopPropagation()
                                 handleConnect(channel.id)
                               }}
-                              className="h-8 px-3 rounded-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/15 hover:shadow-lg hover:shadow-primary/20 transition-all"
+                              className="h-8 px-3 rounded-lg bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
                             >
                               <PlugZap className="size-3.5 mr-1.5" />
                               Connect
@@ -292,7 +292,7 @@ export function Channels() {
                   </div>
 
                   {expandedChannel === channel.id && (
-                    <div className="border border-t-0 border-border/40 rounded-b-xl bg-gradient-to-b from-muted/20 to-background p-4 sm:p-5 animate-fade-in-up">
+                    <div className="border border-t-0 border-cyan-500/20 rounded-b-xl bg-gradient-to-b from-cyan-500/[0.03] to-background p-4 sm:p-5 animate-fade-in-up shadow-inner shadow-cyan-500/5">
                       {channel.id === "telegram" && (
                         <TelegramSettings />
                       )}

@@ -10,7 +10,7 @@ const aiSettingsSchema = new mongoose.Schema({
   },
   enabled: { type: Boolean, default: true },
   provider: { type: String, default: 'openrouter', enum: ['openrouter'] },
-  model: { type: String, default: 'deepseek/deepseek-v4-flash' },
+  model: { type: String, default: 'openrouter/free' },
   temperature: { type: Number, default: 0.3, min: 0, max: 2 },
   maxTokens: { type: Number, default: 1024, min: 64, max: 16384 },
   promptTemplate: {
