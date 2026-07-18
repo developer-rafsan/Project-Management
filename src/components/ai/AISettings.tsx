@@ -292,7 +292,7 @@ export function AISettings() {
               max={16384}
               value={settings.maxTokens}
               onChange={(e) => setSettings((s) => ({ ...s, maxTokens: Number(e.target.value) }))}
-              className="w-full sm:w-40"
+              className="w-full sm:max-w-40"
             />
           </div>
         </div>

@@ -190,7 +190,7 @@ export function TelegramSettings() {
             )}
           </div>
           {status?.isConnected && (
-            <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={actionLoading} className="gap-1.5 shrink-0 border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive">
+            <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={actionLoading} className="gap-1.5 shrink-0 border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive px-2 sm:px-2.5">
               {actionLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Unlink className="size-3.5" />}
               <span className="hidden sm:inline">Disconnect</span>
             </Button>
@@ -305,11 +305,11 @@ export function TelegramSettings() {
 
             <div className="flex items-center justify-center py-2">
               {codeLoading ? (
-                <Loader2 className="size-8 animate-spin text-muted-foreground" />
+                <Loader2 className="size-6 sm:size-8 animate-spin text-muted-foreground" />
               ) : (
-                <div className="text-center">
+                <div className="text-center w-full min-w-0">
                   <p className="text-xs text-muted-foreground mb-2">Send this code to the bot:</p>
-                  <span className="inline-block text-2xl sm:text-3xl font-mono font-bold tracking-[0.25em] select-all px-6 py-2 rounded-lg bg-background border border-emerald-500/20 shadow-sm">
+                  <span className="inline-block text-lg sm:text-2xl lg:text-3xl font-mono font-bold tracking-[0.15em] sm:tracking-[0.25em] select-all px-4 sm:px-6 py-2 rounded-lg bg-background border border-emerald-500/20 shadow-sm truncate max-w-full">
                     {connectCode}
                   </span>
                 </div>
@@ -327,22 +327,22 @@ export function TelegramSettings() {
               </Button>
             </div>
 
-            <div className="rounded-lg bg-background/80 border border-border/30 p-3 space-y-2">
-              <p className="text-xs font-medium text-foreground/70 flex items-center gap-1.5">
-                <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">1</span>
+            <div className="rounded-lg bg-background/80 border border-border/30 p-2.5 sm:p-3 space-y-1.5 sm:space-y-2">
+              <p className="text-[11px] sm:text-xs font-medium text-foreground/70 flex items-center gap-1.5">
+                <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">1</span>
                 Open the bot
                 <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-0.5">
                   @{botUsername} <ArrowUpRight className="size-2.5" />
                 </a>
               </p>
-              <p className="text-xs text-muted-foreground ml-7">Click the button above or search <strong>@{botUsername}</strong> in Telegram</p>
-              <p className="text-xs font-medium text-foreground/70 flex items-center gap-1.5">
-                <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</span>
+              <p className="text-[11px] sm:text-xs text-muted-foreground ml-7">Click above or search <strong>@{botUsername}</strong> in Telegram</p>
+              <p className="text-[11px] sm:text-xs font-medium text-foreground/70 flex items-center gap-1.5">
+                <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">2</span>
                 Send <strong className="font-mono text-primary">/start</strong>
               </p>
-              <p className="text-xs font-medium text-foreground/70 flex items-center gap-1.5">
-                <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">3</span>
-                Send the code: <strong className="font-mono text-primary">{connectCode}</strong>
+              <p className="text-[11px] sm:text-xs font-medium text-foreground/70 flex items-center gap-1.5">
+                <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">3</span>
+                Send the code: <strong className="font-mono text-primary break-all">{connectCode}</strong>
               </p>
             </div>
           </div>
@@ -358,18 +358,18 @@ export function TelegramSettings() {
             </div>
             <p className="text-xs font-semibold uppercase tracking-wider">Connection Details</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
             <div className="rounded-lg bg-muted/30 p-2.5">
               <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">Telegram User</p>
               <div className="flex items-center gap-1.5">
-                <User className="size-3 text-muted-foreground" />
+                <User className="size-3 text-muted-foreground shrink-0" />
                 <span className="text-sm font-medium truncate">@{status.telegramUsername || "—"}</span>
               </div>
             </div>
             <div className="rounded-lg bg-muted/30 p-2.5">
               <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">Connected Since</p>
               <div className="flex items-center gap-1.5">
-                <Clock className="size-3 text-muted-foreground" />
+                <Clock className="size-3 text-muted-foreground shrink-0" />
                 <span className="text-sm font-medium">{status.connectedAt ? new Date(status.connectedAt).toLocaleDateString() : "—"}</span>
               </div>
             </div>

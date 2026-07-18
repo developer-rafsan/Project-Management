@@ -101,22 +101,18 @@ export function Channels() {
               onClick={() => ch.active && setSelected(ch.id)}
               disabled={!ch.active}
               className={cn(
-                "group relative flex items-center gap-4 rounded-xl border p-4 text-left w-full transition-all duration-200",
+                "group relative flex items-center gap-3 sm:gap-4 rounded-xl border p-3 sm:p-4 text-left w-full transition-all duration-200",
                 ch.active
                   ? "border-border/60 bg-card/30 hover:bg-accent hover:border-border cursor-pointer hover:shadow-sm hover:translate-y-[-1px] active:translate-y-0"
                   : "border-border/20 bg-muted/20 cursor-not-allowed opacity-40"
               )}
             >
               <div className={cn(
-                "flex size-11 shrink-0 items-center justify-center rounded-xl transition-all duration-300",
+                "flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-lg sm:rounded-xl transition-all duration-300",
                 channelStatus === "connected" ? "bg-emerald-500/10" : "bg-gradient-to-br from-primary/10 to-primary/5"
               )}>
-                <div className={cn(
-                  "absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300",
-                  channelStatus === "connected" && "bg-emerald-500/5"
-                )} />
                 <ch.icon className={cn(
-                  "size-5 relative z-10 transition-colors",
+                  "size-4.5 sm:size-5 transition-colors",
                   channelStatus === "connected" ? "text-emerald-500" : "text-primary"
                 )} />
               </div>
@@ -143,24 +139,24 @@ export function Channels() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                 {channelStatus === "loading" && (
-                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="size-3.5 sm:size-4 animate-spin text-muted-foreground" />
                 )}
                 {channelStatus === "connected" && (
-                  <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 border border-emerald-500/20">
-                    <CheckCircle2 className="size-3.5 text-emerald-500" />
-                    <span className="text-xs font-semibold text-emerald-500">Connected</span>
+                  <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 sm:px-3 py-0.5 sm:py-1 border border-emerald-500/20">
+                    <CheckCircle2 className="size-3 sm:size-3.5 text-emerald-500" />
+                    <span className="text-[10px] sm:text-xs font-semibold text-emerald-500">Connected</span>
                   </div>
                 )}
                 {channelStatus === "disconnected" && (
-                  <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 border border-primary/15">
-                    <Plug className="size-3.5 text-primary" />
-                    <span className="text-xs font-semibold text-primary">Connect</span>
+                  <div className="flex items-center gap-1 rounded-full bg-primary/10 px-2 sm:px-3 py-1 sm:py-1.5 border border-primary/15">
+                    <Plug className="size-3 sm:size-3.5 text-primary" />
+                    <span className="text-[10px] sm:text-xs font-semibold text-primary">Connect</span>
                   </div>
                 )}
                 {channelStatus === "soon" && (
-                  <ChevronRight className="size-4 text-muted-foreground/20" />
+                  <ChevronRight className="size-3.5 sm:size-4 text-muted-foreground/20" />
                 )}
               </div>
             </button>
@@ -169,27 +165,27 @@ export function Channels() {
       </div>
 
       {status?.isConnected && (
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-start gap-3">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 sm:p-4 flex items-start gap-2.5 sm:gap-3">
+          <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
             <Bot className="size-4 text-emerald-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Telegram Connected</p>
-            <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">
-              Your AI Assistant is connected to Telegram. Send messages to @{status.botUsername} to manage projects on the go.
+            <p className="text-xs sm:text-sm font-medium text-emerald-600 dark:text-emerald-400">Telegram Connected</p>
+            <p className="text-[11px] sm:text-xs text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">
+              Connected to @{status.botUsername}. Send messages to manage projects on the go.
             </p>
           </div>
         </div>
       )}
 
       {!status?.isConnected && !loading && (
-        <div className="rounded-xl border border-dashed border-muted-foreground/20 bg-muted/20 p-4 flex items-start gap-3">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/60">
+        <div className="rounded-xl border border-dashed border-muted-foreground/20 bg-muted/20 p-3 sm:p-4 flex items-start gap-2.5 sm:gap-3">
+          <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/60">
             <Plug className="size-4 text-muted-foreground" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-muted-foreground">No Channels Connected</p>
-            <p className="text-xs text-muted-foreground/60 mt-0.5">
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground">No Channels Connected</p>
+            <p className="text-[11px] sm:text-xs text-muted-foreground/60 mt-0.5">
               Connect a messaging platform to manage your projects from anywhere.
             </p>
           </div>

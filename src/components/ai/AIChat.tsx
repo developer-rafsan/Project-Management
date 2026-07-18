@@ -224,10 +224,14 @@ export function AIChat() {
   }
 
   return (
-    <div className="flex gap-0 sm:gap-3 h-full">
+    <div className="flex gap-0 sm:gap-3 h-full relative">
+      {sessionsOpen && (
+        <div className="fixed inset-0 bg-black/20 z-10 sm:hidden" onClick={() => setSessionsOpen(false)} />
+      )}
       <div className={cn(
-        "flex flex-col shrink-0 border-r sm:border-r-0 sm:border sm:bg-card/30 sm:rounded-xl overflow-hidden transition-all duration-300 ease-out",
-        sessionsOpen ? "w-60 sm:w-56" : "w-0 sm:w-0 overflow-hidden"
+        "flex flex-col shrink-0 border-r sm:border-r-0 sm:border sm:bg-card/30 sm:rounded-xl overflow-hidden transition-all duration-300 ease-out z-20",
+        "fixed sm:static inset-y-0 left-0 bg-background sm:bg-transparent",
+        sessionsOpen ? "w-72 sm:w-56 translate-x-0" : "w-72 sm:w-56 -translate-x-full sm:translate-x-0 sm:w-0 sm:overflow-hidden"
       )}>
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/40 shrink-0">
           <span className="text-xs font-semibold text-muted-foreground">History</span>
@@ -307,9 +311,10 @@ export function AIChat() {
               <p className="text-sm font-semibold">AI Chat</p>
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 {settings && (
-                  <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-primary/8 px-2 py-0.5 text-[10px] font-medium text-primary border border-primary/15">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/8 px-2 py-0.5 text-[10px] font-medium text-primary border border-primary/15">
                     <Cpu className="size-2.5" />
-                    {MODEL_LABELS[settings.provider] || settings.provider} · {settings.model}
+                    <span className="hidden xs:inline">{MODEL_LABELS[settings.provider] || settings.provider} · </span>
+                    {settings.model}
                   </span>
                 )}
                 {tokenLimit > 0 && (
@@ -320,8 +325,8 @@ export function AIChat() {
                       : "bg-emerald-500/8 text-emerald-600 dark:text-emerald-400 border-emerald-500/15"
                   )}>
                     <Coins className="size-2.5" />
-                    <span className="hidden sm:inline">{formatNumber(tokenUsed)} / </span>
-                    {formatNumber(tokenLimit)} <span className="hidden sm:inline">tokens</span>
+                    <span>{formatNumber(tokenUsed)}/</span>
+                    {formatNumber(tokenLimit)}
                   </span>
                 )}
               </div>
@@ -353,15 +358,15 @@ export function AIChat() {
 
         <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 pr-0.5 mb-3 sm:mb-4">
           {messages.length === 1 && !loading && (
-            <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center px-2 animate-fade-in-up">
-              <div className="relative mb-4 sm:mb-5">
+            <div className="flex flex-col items-center justify-center py-6 sm:py-12 text-center px-2 animate-fade-in-up">
+              <div className="relative mb-3 sm:mb-5">
                 <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl" />
-                <div className="relative flex size-14 sm:size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10">
-                  <Sparkles className="size-6 sm:size-7 text-primary" />
+                <div className="relative flex size-12 sm:size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10">
+                  <Sparkles className="size-5 sm:size-7 text-primary" />
                 </div>
               </div>
               <p className="text-sm font-medium text-foreground/80 mb-1">How can I help you today?</p>
-              <p className="text-xs text-muted-foreground/60 max-w-[260px] sm:max-w-xs">
+              <p className="text-xs text-muted-foreground/60 max-w-[220px] sm:max-w-xs">
                 Ask me to create projects, update status, assign developers, or get summaries.
               </p>
             </div>
@@ -414,12 +419,12 @@ export function AIChat() {
         </div>
 
         {messages.length === 1 && !loading && (
-          <div className="flex flex-wrap gap-2 mb-3 sm:mb-4 shrink-0">
+          <div className="flex gap-2 mb-3 sm:mb-4 shrink-0 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => { setInput(s); inputRef.current?.focus() }}
-                className="rounded-full border border-border/50 bg-card/50 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border hover:bg-card transition-all duration-200 cursor-pointer shadow-xs"
+                className="snap-start shrink-0 rounded-full border border-border/50 bg-card/50 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border hover:bg-card transition-all duration-200 cursor-pointer shadow-xs whitespace-nowrap"
               >
                 {s}
               </button>
