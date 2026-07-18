@@ -351,7 +351,7 @@ export function AIChat() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 pr-0.5 mb-3 sm:mb-4 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 pr-0.5 mb-3 sm:mb-4">
           {messages.length === 1 && !loading && (
             <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center px-2 animate-fade-in-up">
               <div className="relative mb-4 sm:mb-5">
