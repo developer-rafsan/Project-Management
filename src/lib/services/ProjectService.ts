@@ -110,6 +110,6 @@ export class ProjectService {
     for (const p of projects) {
       byStatus[p.status] = (byStatus[p.status] || 0) + 1
     }
-    return { total, byStatus, projects }
+    return { total, byStatus }
   }
 }

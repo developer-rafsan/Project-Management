@@ -35,6 +35,7 @@ export class AIConversationRepository extends BaseRepository<any> {
       ...message,
       timestamp: new Date(),
     })
+    conversation.messageCount = (conversation.messageCount || 0) + 1
     if (conversation.messages.length > config.ai.maxHistoryLength) {
       conversation.messages = conversation.messages.slice(-config.ai.maxHistoryLength)
     }
@@ -43,9 +44,26 @@ export class AIConversationRepository extends BaseRepository<any> {
     return conversation
   }
 
+  async getSummary(userId: string, sessionId: string): Promise<string> {
+    const conversation = await this.getOrCreateSession(userId, sessionId)
+    return conversation.summary || ''
+  }
+
+  async updateSummary(userId: string, sessionId: string, summary: string) {
+    return this.updateOne({ userId, sessionId }, { summary })
+  }
+
   async getHistory(userId: string, sessionId: string, limit = 20) {
     const conversation = await this.getOrCreateSession(userId, sessionId)
     return conversation.messages.slice(-limit)
+  }
+
+  async getCasualHistory(userId: string, sessionId: string, exchanges = 2) {
+    const conversation = await this.getOrCreateSession(userId, sessionId)
+    const casual = conversation.messages.filter(
+      (m: any) => (m.role === 'user' || m.role === 'assistant') && !m.toolCalls && !m.toolCallId
+    )
+    return casual.slice(-(exchanges * 2))
   }
 
   async getUserSessions(userId: string, page = 1, limit = 20) {

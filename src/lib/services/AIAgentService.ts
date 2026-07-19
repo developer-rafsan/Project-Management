@@ -21,7 +21,15 @@ export class AIAgentService {
         type: 'function' as const,
         function: {
           name: 'getProjects',
-          description: 'Get a list of all projects for the current user. Supports optional status and priority filters.',
+          description: `List all projects for the current user with optional status/priority filters.
+
+USE THIS ONLY FOR:
+- listing/showing all projects
+- filtering projects by status or priority
+- checking how many projects exist
+
+NEVER USE FOR:
+- greetings, casual conversation, jokes, naming, programming questions, translations, math, writing, opinions, general knowledge`,
           parameters: {
             type: 'object',
             properties: {
@@ -35,7 +43,14 @@ export class AIAgentService {
         type: 'function' as const,
         function: {
           name: 'getProject',
-          description: 'Get detailed information about a specific project by ID or name.',
+          description: `Get detailed information about a specific project by ID or name.
+
+USE THIS ONLY FOR:
+- viewing details of a specific project
+- checking a project's status, priority, price
+
+NEVER USE FOR:
+- greetings, casual conversation, jokes, naming, programming questions, translations, math, writing, opinions, general knowledge`,
           parameters: {
             type: 'object',
             properties: {
@@ -49,7 +64,14 @@ export class AIAgentService {
         type: 'function' as const,
         function: {
           name: 'createProject',
-          description: 'Create a new project with the given details.',
+          description: `Create a new project with the given details.
+
+USE THIS ONLY FOR:
+- creating a new project
+- adding/starting/making a project
+
+NEVER USE FOR:
+- greetings, casual conversation, jokes, naming, programming questions, translations, math, writing, opinions, general knowledge`,
           parameters: {
             type: 'object',
             properties: {
@@ -68,7 +90,14 @@ export class AIAgentService {
         type: 'function' as const,
         function: {
           name: 'updateProject',
-          description: 'Update an existing project by ID or name.',
+          description: `Update an existing project's fields by ID or name.
+
+USE THIS ONLY FOR:
+- updating/changing/modifying a project's name, status, priority, or price
+- renaming a project
+
+NEVER USE FOR:
+- greetings, casual conversation, jokes, naming (user naming YOU, not renaming a project), programming questions, translations, math, writing, opinions, general knowledge`,
           parameters: {
             type: 'object',
             properties: {
@@ -92,7 +121,14 @@ export class AIAgentService {
         type: 'function' as const,
         function: {
           name: 'deleteProject',
-          description: 'Delete a project by ID or name. Only the owner can delete.',
+          description: `Delete a project by ID or name. Only the owner can delete.
+
+USE THIS ONLY FOR:
+- deleting/removing a project
+- removing/destroying a project
+
+NEVER USE FOR:
+- greetings, casual conversation, jokes, naming, programming questions, translations, math, writing, opinions, general knowledge`,
           parameters: {
             type: 'object',
             properties: {
@@ -106,7 +142,13 @@ export class AIAgentService {
         type: 'function' as const,
         function: {
           name: 'assignDeveloper',
-          description: 'Assign a developer to a project.',
+          description: `Assign a developer to a project.
+
+USE THIS ONLY FOR:
+- assigning/adding a developer or team member to a project
+
+NEVER USE FOR:
+- greetings, casual conversation, jokes, naming, programming questions, translations, math, writing, opinions, general knowledge`,
           parameters: {
             type: 'object',
             properties: {
@@ -122,7 +164,14 @@ export class AIAgentService {
         type: 'function' as const,
         function: {
           name: 'getProjectSummary',
-          description: 'Get a summary of all projects including total count and status breakdown.',
+          description: `Get a summary of all projects including total count and status breakdown.
+
+USE THIS ONLY FOR:
+- project statistics, overview, summary, report
+- counting projects by status
+
+NEVER USE FOR:
+- greetings, casual conversation, jokes, naming, programming questions, translations, math, writing, opinions, general knowledge`,
           parameters: { type: 'object', properties: {} },
         },
       },
@@ -151,15 +200,15 @@ export class AIAgentService {
             if (args.status) filters.status = args.status
             if (args.priority) filters.priority = args.priority
             const projects = await this.projectService.getProjects(this.userId, filters)
-            result = projects.map((p: any) => ({
-              _id: p._id,
-              projectName: p.projectName,
-              status: p.status,
-              priority: p.priority,
-              orderId: p.orderId,
-              price: p.price,
-              createdAt: p.createdAt,
-            }))
+            if (projects.length === 0) {
+              result = 'No projects found.'
+            } else {
+              const lines = projects.map((p: any, i: number) => {
+                const priceStr = p.price ? ` ($${p.price})` : ''
+                return `${i + 1}. ${p.projectName} — ${p.status}, ${p.priority}${priceStr}`
+              })
+              result = `Found ${projects.length} project(s):\n${lines.join('\n')}`
+            }
             break
           }
           case 'getProject': {
@@ -169,7 +218,13 @@ export class AIAgentService {
                 p._id.toString() === args.query ||
                 p.projectName?.toLowerCase().includes(args.query.toLowerCase())
             )
-            result = project || null
+            if (!project) {
+              result = `No project found matching "${args.query}".`
+            } else {
+              const priceStr = project.price ? `$${project.price}` : 'Not set'
+              const orderStr = project.orderId || 'Not set'
+              result = `Project: ${project.projectName}\nStatus: ${project.status}\nPriority: ${project.priority}\nPrice: ${priceStr}\nOrder ID: ${orderStr}`
+            }
             break
           }
           case 'createProject': {
@@ -181,7 +236,7 @@ export class AIAgentService {
               orderId: args.orderId || '',
               cms: args.cms || '',
             })
-            result = { _id: project._id, projectName: project.projectName, status: project.status }
+            result = `Project "${project.projectName}" created successfully (Status: ${project.status}).`
             break
           }
           case 'updateProject': {
@@ -197,7 +252,7 @@ export class AIAgentService {
               this.userId,
               args.updates || {}
             )
-            result = { _id: updated._id, projectName: updated.projectName, status: updated.status }
+            result = `Project "${updated.projectName}" updated successfully. Current status: ${updated.status}.`
             break
           }
           case 'deleteProject': {
@@ -209,7 +264,7 @@ export class AIAgentService {
             )
             if (!target) throw new Error('Project not found')
             await this.projectService.deleteProject(target._id.toString(), this.userId)
-            result = { deleted: true, projectName: target.projectName }
+            result = `Project "${target.projectName}" has been deleted.`
             break
           }
           case 'assignDeveloper': {
@@ -225,11 +280,15 @@ export class AIAgentService {
               this.userId,
               { name: args.developerName, email: args.developerEmail }
             )
-            result = { projectName: updated.projectName, developer: args.developerName }
+            result = `${args.developerName} has been assigned to "${updated.projectName}".`
             break
           }
           case 'getProjectSummary': {
-            result = await this.projectService.getProjectSummary(this.userId)
+            const summary = await this.projectService.getProjectSummary(this.userId)
+            const statusBreakdown = Object.entries(summary.byStatus)
+              .map(([s, c]) => `${s}: ${c}`)
+              .join('\n')
+            result = `Total projects: ${summary.total}\n\nBreakdown by status:\n${statusBreakdown}`
             break
           }
           default:

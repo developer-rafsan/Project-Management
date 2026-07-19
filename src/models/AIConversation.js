@@ -23,6 +23,8 @@ const aiConversationSchema = new mongoose.Schema({
   telegramId: { type: String, default: null, index: true },
   messages: [messageSchema],
   sessionId: { type: String, required: true, index: true },
+  summary: { type: String, default: '' },
+  messageCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true })

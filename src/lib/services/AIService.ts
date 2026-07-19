@@ -3,10 +3,15 @@ import { config } from '@/lib/config'
 import { AISettingsRepository } from '@/lib/repositories/AISettingsRepository'
 import { AIConversationRepository } from '@/lib/repositories/AIConversationRepository'
 import { AIAgentService } from '@/lib/services/AIAgentService'
+import { AIMemoryService } from '@/lib/services/AIMemoryService'
+import { IntentDetector } from '@/lib/services/IntentDetector'
+import { plan } from '@/lib/services/PlannerService'
 import { logger } from '@/lib/utils/logger'
 
 const settingsRepo = new AISettingsRepository()
 const conversationRepo = new AIConversationRepository()
+const memoryService = new AIMemoryService()
+const intentDetector = new IntentDetector()
 
 export class AIService {
   private getClient(provider: string, apiKey?: string | null) {
@@ -23,7 +28,7 @@ export class AIService {
     return ['openrouter'].includes(provider)
   }
 
-  private buildMessages(history: any[], systemPrompt: string, message: string, settings: any) {
+  private buildMessages(history: any[], systemPrompt: string, message: string) {
     const messages: any[] = [
       { role: 'system', content: systemPrompt },
       ...history.map((m: any) => ({
@@ -38,7 +43,7 @@ export class AIService {
     return messages
   }
 
-  private async callOpenAICompatible(client: any, messages: any[], tools: any[], settings: any) {
+  private async callProvider(client: any, messages: any[], tools: any[], settings: any) {
     return client.chat.completions.create({
       model: settings.model || config.ai.defaultModel,
       temperature: settings.temperature ?? config.ai.defaultTemperature,
@@ -49,7 +54,7 @@ export class AIService {
     })
   }
 
-  private async handleFollowUp(client: any, messages: any[], replyMessage: any, toolResults: any[], settings: any) {
+  private async handleToolCalls(client: any, messages: any[], replyMessage: any, toolResults: any[], settings: any) {
     const followUpMessages: any[] = [
       ...messages,
       replyMessage,
@@ -68,15 +73,35 @@ export class AIService {
     })
   }
 
-  private async callProvider(provider: string, messages: any[], tools: any[], settings: any) {
-    const p = this.isValidProvider(provider) ? provider : config.ai.defaultProvider
-    const client = this.getClient(p, settings.apiKey)
-    return this.callOpenAICompatible(client, messages, tools, settings)
-  }
+  private buildSystemPrompt(
+    basePrompt: string,
+    userName?: string,
+    memoryContext?: string,
+    conversationContext?: string,
+    isCasual?: boolean
+  ): string {
+    const now = new Date()
+    const parts: string[] = [basePrompt]
 
-  private async callFollowUp(provider: string, messages: any[], replyMessage: any, toolResults: any[], settings: any) {
-    const client = this.getClient(provider, settings.apiKey)
-    return this.handleFollowUp(client, messages, replyMessage, toolResults, settings)
+    parts.push(`\n\nCurrent date and time: ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`)
+
+    if (userName) {
+      if (isCasual) {
+        parts.push(`\n\nThe current user's name is: ${userName}.`)
+      } else {
+        parts.push(`\n\nThe current user's name is: ${userName}. Use this name as performedBy when creating projects or logging activities. Do NOT ask for the user's name.`)
+      }
+    }
+
+    if (memoryContext) {
+      parts.push(memoryContext)
+    }
+
+    if (conversationContext) {
+      parts.push(conversationContext)
+    }
+
+    return parts.join('')
   }
 
   async chat(userId: string, message: string, sessionId?: string, userName?: string) {
@@ -90,20 +115,41 @@ export class AIService {
     if (!this.isValidProvider(provider)) {
       provider = config.ai.defaultProvider
     }
-    const history = await conversationRepo.getHistory(userId, sid, 10)
+
+    const client = this.getClient(provider, settings.apiKey)
 
     await conversationRepo.addMessage(userId, sid, { role: 'user', content: message })
 
+    const intent = await intentDetector.detect(message)
+    const action = plan(intent)
+
+    logger.info(`Intent: ${intent}, useTools: ${action.useTools}`)
+
     const agent = new AIAgentService(userId)
     const basePrompt = settings.promptTemplate || ''
-    const userNameLine = userName ? `\n\nThe current user's name is: ${userName}. Use this name as performedBy when creating projects or logging activities. Do NOT ask for the user's name.` : ''
-    const systemPrompt = basePrompt + userNameLine
 
-    const messages = this.buildMessages(history, systemPrompt, message, settings)
-    const tools = agent.getToolDefinitions()
+    let history: any[]
+    let memoryContext: string
+    let conversationContext: string
+    let tools: any[]
+
+    if (action.useTools) {
+      history = await conversationRepo.getHistory(userId, sid, 10)
+      memoryContext = await memoryService.buildMemoryContext(userId)
+      conversationContext = await memoryService.buildConversationContext(userId, sid)
+      tools = agent.getToolDefinitions()
+    } else {
+      history = await conversationRepo.getCasualHistory(userId, sid, 2)
+      memoryContext = await memoryService.buildMemoryContext(userId, true)
+      conversationContext = ''
+      tools = []
+    }
+
+    const systemPrompt = this.buildSystemPrompt(basePrompt, userName, memoryContext, conversationContext, !action.useTools)
+    const messages = this.buildMessages(history, systemPrompt, message)
 
     try {
-      const response = await this.callProvider(provider, messages, tools, settings)
+      const response = await this.callProvider(client, messages, tools, settings)
 
       const choice = response.choices[0]
       const replyMessage = choice.message
@@ -133,9 +179,14 @@ export class AIService {
           })
         }
 
-        const followUp = await this.callFollowUp(provider, messages, replyMessage, toolResults, settings)
+        const followUp = await this.handleToolCalls(client, messages, replyMessage, toolResults, settings)
         const finalReply = followUp.choices[0].message.content || 'Done.'
         await conversationRepo.addMessage(userId, sid, { role: 'assistant', content: finalReply })
+
+        memoryService.extractMemories(userId, sid, message, finalReply).catch(() => {})
+        memoryService.shouldGenerateSummary(userId, sid).then((should) => {
+          if (should) memoryService.generateAndStoreSummary(userId, sid)
+        }).catch(() => {})
 
         return {
           reply: finalReply,
@@ -152,6 +203,11 @@ export class AIService {
 
       const reply = replyMessage.content || 'I understand. What would you like to do?'
       await conversationRepo.addMessage(userId, sid, { role: 'assistant', content: reply })
+
+      memoryService.extractMemories(userId, sid, message, reply).catch(() => {})
+      memoryService.shouldGenerateSummary(userId, sid).then((should) => {
+        if (should) memoryService.generateAndStoreSummary(userId, sid)
+      }).catch(() => {})
 
       return {
         reply,
