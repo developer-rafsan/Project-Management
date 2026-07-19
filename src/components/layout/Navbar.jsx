@@ -41,6 +41,7 @@ import {
   Hash,
   StickyNote,
   Settings,
+  Bot,
   Bell,
   Check,
   X,
@@ -55,6 +56,7 @@ const pageTitles = {
   "/dashboard/notes": "Notes",
   "/dashboard/settings": "Settings",
   "/dashboard/profile": "Profile",
+  "/dashboard/ai-assistant": "AI Assistant",
 }
 
 const menuItems = [
@@ -62,6 +64,7 @@ const menuItems = [
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/profile", label: "Profile", icon: User },
+  { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
   { href: null, label: "Logout", icon: LogOut, logout: true },
 ]
