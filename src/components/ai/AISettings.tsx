@@ -174,19 +174,11 @@ export function AISettings() {
   const testConnection = async () => {
     setTesting(true)
     try {
-      const saveRes = await fetch("/api/ai/settings", {
-        method: "PUT",
+      const res = await fetch("/api/ai/test-key", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: settings.provider,
-          model: settings.model,
-          temperature: settings.temperature,
-          maxTokens: settings.maxTokens,
-          apiKey: settings.apiKey || undefined,
-        }),
+        body: JSON.stringify({ apiKey: settings.apiKey || undefined }),
       })
-      if (!saveRes.ok) throw new Error("Failed to save before test")
-      const res = await fetch("/api/ai/test-key")
       const data = await res.json()
       if (data.success) {
         toast.success("Connection successful! API key is working.")
@@ -215,7 +207,7 @@ export function AISettings() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-4 sm:pb-6">
+    <div className="h-full overflow-y-auto space-y-4 sm:space-y-6 pb-4 sm:pb-6 hide-scrollbar">
       <div className="flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="relative">

@@ -452,23 +452,23 @@ export function AIChat() {
                 </div>
               )}
               <div className={cn(
-                "max-w-[92%] sm:max-w-[78%] lg:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm whitespace-pre-wrap leading-relaxed break-words relative shadow-sm",
+                "max-w-[92%] sm:max-w-[78%] lg:max-w-[70%] rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 text-sm whitespace-pre-wrap leading-relaxed break-words relative shadow-sm",
                 msg.role === "user"
-                  ? "bg-gradient-to-br from-primary to-primary/85 text-primary-foreground rounded-tr-md shadow-primary/15"
+                  ? "bg-card border border-border/30 text-foreground rounded-tr-md"
                   : "bg-card border border-border/30 text-foreground rounded-tl-md"
               )}>
                 <div className="text-[13px] sm:text-sm">{msg.text}</div>
                 <div className={cn(
-                  "flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-1.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200",
+                  "flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-1.5",
                   msg.role === "user" ? "justify-end" : "justify-start"
                 )}>
                   <span className="text-[10px] text-muted-foreground/40">{formatTime(msg.time || new Date())}</span>
                   <button
                     onClick={() => copyMessage(msg.text, i)}
                     className={cn(
-                      "text-[10px] transition-all flex items-center gap-0.5 px-1.5 py-0.5 rounded",
+                      "text-[10px] transition-all flex items-center gap-0.5 px-1.5 py-0.5 rounded sm:opacity-0 sm:group-hover:opacity-100",
                       copiedIndex === i
-                        ? "text-emerald-500 bg-emerald-500/10"
+                        ? "text-emerald-500 bg-emerald-500/10 sm:opacity-100"
                         : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50"
                     )}
                   >
@@ -489,7 +489,7 @@ export function AIChat() {
               <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 mt-0.5">
                 <Bot className="size-4 text-primary" />
               </div>
-              <div className="max-w-[92%] sm:max-w-[78%] rounded-2xl rounded-tl-md px-3 sm:px-4 py-2.5 sm:py-3 bg-card border border-border/30 shadow-sm">
+              <div className="max-w-[92%] sm:max-w-[78%] rounded-2xl rounded-tl-md px-3 sm:px-4 py-1.5 sm:py-2 bg-card border border-border/30 shadow-sm">
                 <div className="flex items-center gap-2">
                   <Loader2 className="size-3.5 sm:size-4 animate-spin text-primary" />
                   <span className="text-[11px] sm:text-xs text-muted-foreground">Thinking<TypingDots /></span>

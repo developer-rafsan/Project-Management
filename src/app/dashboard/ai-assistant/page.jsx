@@ -35,7 +35,7 @@ export default function AIAssistantPage() {
   const colors = tabColors[activeTab] || tabColors["ai-chat"]
 
   return (
-    <div className="flex flex-col min-h-0 lg:min-h-[calc(100vh-10rem)] lg:max-h-[calc(100vh-10rem)]">
+    <div className="flex flex-col lg:h-[calc(100vh-10rem)]">
       <div className="mb-4 sm:mb-5 shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -53,7 +53,7 @@ export default function AIAssistantPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} orientation={orientation} className="flex-1 flex-col lg:flex-row gap-3 lg:gap-5 min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} orientation={orientation} className="flex-1 flex-col lg:flex-row gap-3 lg:gap-5 min-h-0 overflow-hidden">
         <TabsList variant="line" className="h-fit py-1.5 flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible lg:min-w-[180px] shrink-0 gap-1 hide-scrollbar">
           {TABS.map((tab) => {
             const c = tabColors[tab.id]
@@ -79,17 +79,17 @@ export default function AIAssistantPage() {
           <div className="absolute inset-0 rounded-2xl border border-border/30 bg-gradient-to-br from-card/60 via-card/30 to-card/5 pointer-events-none shadow-md" />
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br pointer-events-none transition-opacity duration-500" style={{ background: colors.bg }} />
           <div className="absolute top-0 right-0 w-56 h-56 rounded-bl-full pointer-events-none transition-opacity duration-500" style={{ background: `radial-gradient(circle at top right, ${colors.glow}, transparent 70%)` }} />
-          <div className="relative h-full p-4 sm:p-5 lg:p-6">
+          <div className="relative h-full p-4 sm:p-5 lg:p-6 overflow-hidden">
             <TabsContent value="ai-chat" className="h-full animate-fade-in-up">
               {activeTab === "ai-chat" && <AIChat />}
             </TabsContent>
-            <TabsContent value="channels" className="animate-fade-in-up">
-              <div className="w-full">
+            <TabsContent value="channels" className="h-full animate-fade-in-up">
+              <div className="w-full h-full overflow-y-auto">
                 {activeTab === "channels" && <Channels />}
               </div>
             </TabsContent>
-            <TabsContent value="settings" className="animate-fade-in-up">
-              <div className="w-full">
+            <TabsContent value="settings" className="h-full animate-fade-in-up">
+              <div className="w-full h-full overflow-y-auto">
                 {activeTab === "settings" && <AISettings />}
               </div>
             </TabsContent>

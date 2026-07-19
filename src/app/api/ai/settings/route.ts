@@ -55,6 +55,11 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    if (body.systemPrompt !== undefined) {
+      updates.promptTemplate = body.systemPrompt
+    }
+    delete updates.systemPrompt
+
     await connectDB()
     await settingsRepo.updateSettings(session.user.id, updates)
 

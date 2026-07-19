@@ -26,8 +26,8 @@ export function TelegramSettings() {
       const res = await fetch("/api/telegram/status")
       if (!res.ok) throw new Error("Failed to fetch")
       const data = await res.json()
-      if (data.isConnected && data.botConfig) {
-        setConnection(data.botConfig)
+      if (data.isConnected) {
+        setConnection(data)
       } else {
         setConnection(null)
       }
@@ -121,31 +121,33 @@ export function TelegramSettings() {
         <div className="space-y-3 animate-fade-in-up">
           <div className="relative overflow-hidden rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] via-card/60 to-card p-4 sm:p-5 shadow-sm shadow-emerald-500/5">
             <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-bl-full pointer-events-none" />
-            <div className="relative flex items-center gap-4">
-              <div className="relative">
-                <div className="absolute inset-0 bg-emerald-500/10 rounded-full blur-md animate-pulse" />
-                <div className="relative flex size-12 sm:size-14 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border-2 border-emerald-500/25 shadow-md shadow-emerald-500/10">
-                  <CheckCircle2 className="size-6 sm:size-7 text-emerald-500" />
+            <div className="relative flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                <div className="relative shrink-0">
+                  <div className="absolute inset-0 bg-emerald-500/10 rounded-full blur-md animate-pulse" />
+                  <div className="relative flex size-12 sm:size-14 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border-2 border-emerald-500/25 shadow-md shadow-emerald-500/10">
+                    <CheckCircle2 className="size-6 sm:size-7 text-emerald-500" />
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Connected</h4>
-                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] px-2 py-0 rounded-full font-medium" render={undefined}>
-                    <span className="inline-block size-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-                    Active
-                  </Badge>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Connected</h4>
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] px-2 py-0 rounded-full font-medium" render={undefined}>
+                      <span className="inline-block size-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
+                      Active
+                    </Badge>
+                  </div>
+                  {connection.botUsername && (
+                    <p className="text-xs text-foreground/70 mt-1 truncate">@{connection.botUsername}</p>
+                  )}
                 </div>
-                {connection.botUsername && (
-                  <p className="text-xs text-foreground/70 mt-1">@{connection.botUsername}</p>
-                )}
               </div>
               <Button
                 size="xs"
                 variant="outline"
                 onClick={handleDisconnect}
                 disabled={saving}
-                className="h-8 px-3 rounded-lg shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-all"
+                className="h-8 px-3 rounded-lg w-full sm:w-auto shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-all"
               >
                 {saving ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <WifiOff className="size-3.5 mr-1.5" />}
                 Disconnect

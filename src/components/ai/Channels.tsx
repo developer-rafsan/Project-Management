@@ -41,20 +41,16 @@ export function Channels() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/telegram/connections")
+      const res = await fetch("/api/telegram/status")
       if (!res.ok) throw new Error("Failed to fetch")
       const data = await res.json()
-      const list = Array.isArray(data.connections) ? data.connections : Array.isArray(data) ? data : []
 
-      setConnections(list)
+      setConnections(data.isConnected ? [data] : [])
 
       setChannels((prev) =>
         prev.map((ch) => {
           if (ch.type === "telegram") {
-            const hasActive = list.some(
-              (c: any) => c.isConnected || c.status === "active" || c.status === "connected"
-            )
-            return { ...ch, status: hasActive ? "connected" : "disconnected" }
+            return { ...ch, status: data.isConnected ? "connected" : "disconnected" }
           }
           return ch
         })
@@ -203,56 +199,58 @@ export function Channels() {
                     <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-cyan-500/[0.04] to-transparent rounded-bl-full pointer-events-none" />
 
                     <div className="relative p-4 sm:p-5">
-                      <div className="flex items-start gap-4">
-                        <div className={cn(
-                          "relative shrink-0",
-                          channel.status === "connected" && "after:absolute after:-top-0.5 after:-right-0.5 after:size-2.5 after:rounded-full after:bg-emerald-500 after:ring-2 after:ring-background after:animate-pulse"
-                        )}>
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                        <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
                           <div className={cn(
-                            "flex size-10 sm:size-11 items-center justify-center rounded-xl transition-all duration-300",
-                            channel.status === "connected"
-                              ? "bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/25 shadow-md shadow-emerald-500/10"
-                              : "bg-gradient-to-br from-muted/80 to-muted/30 border border-border/40 group-hover:from-muted group-hover:to-muted/50"
+                            "relative shrink-0",
+                            channel.status === "connected" && "after:absolute after:-top-0.5 after:-right-0.5 after:size-2.5 after:rounded-full after:bg-emerald-500 after:ring-2 after:ring-background after:animate-pulse"
                           )}>
-                            <channel.icon className={cn(
-                              "size-5 sm:size-5.5 transition-colors",
-                              channel.status === "connected" ? "text-emerald-500" : "text-muted-foreground group-hover:text-foreground"
-                            )} />
-                          </div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <h4 className="text-sm font-semibold">{channel.name}</h4>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px] px-2 py-0 rounded-full font-medium border pointer-events-none",
-                                channel.status === "connected"
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                  : "bg-muted/50 text-muted-foreground/60 border-border/40"
-                              )}
-                              render={undefined}
-                            >
-                              <span className={cn(
-                                "inline-block size-1.5 rounded-full mr-1.5",
-                                channel.status === "connected" ? "bg-emerald-500" : "bg-muted-foreground/30"
+                            <div className={cn(
+                              "flex size-10 sm:size-11 items-center justify-center rounded-xl transition-all duration-300",
+                              channel.status === "connected"
+                                ? "bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/25 shadow-md shadow-emerald-500/10"
+                                : "bg-gradient-to-br from-muted/80 to-muted/30 border border-border/40 group-hover:from-muted group-hover:to-muted/50"
+                            )}>
+                              <channel.icon className={cn(
+                                "size-5 sm:size-5.5 transition-colors",
+                                channel.status === "connected" ? "text-emerald-500" : "text-muted-foreground group-hover:text-foreground"
                               )} />
-                              {channel.status === "connected" ? "Connected" : "Disconnected"}
-                            </Badge>
-                            {activeConns.length > 0 && (
-                              <Badge variant="outline" className="text-[10px] px-2 py-0 rounded-full bg-primary/5 text-primary border-primary/15 font-medium pointer-events-none" render={undefined}>
-                                <Zap className="size-2.5 mr-1" />
-                                {activeConns.length} active
-                              </Badge>
-                            )}
+                            </div>
                           </div>
-                          <p className="text-xs text-muted-foreground/60 mt-1 line-clamp-1">{channel.description}</p>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm font-semibold">{channel.name}</h4>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px] px-2 py-0 rounded-full font-medium border pointer-events-none",
+                                  channel.status === "connected"
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                    : "bg-muted/50 text-muted-foreground/60 border-border/40"
+                                )}
+                                render={undefined}
+                              >
+                                <span className={cn(
+                                  "inline-block size-1.5 rounded-full mr-1.5",
+                                  channel.status === "connected" ? "bg-emerald-500" : "bg-muted-foreground/30"
+                                )} />
+                                {channel.status === "connected" ? "Connected" : "Disconnected"}
+                              </Badge>
+                              {activeConns.length > 0 && (
+                                <Badge variant="outline" className="text-[10px] px-2 py-0 rounded-full bg-primary/5 text-primary border-primary/15 font-medium pointer-events-none" render={undefined}>
+                                  <Zap className="size-2.5 mr-1" />
+                                  {activeConns.length} active
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground/60 mt-1 line-clamp-2 sm:line-clamp-1">{channel.description}</p>
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 sm:self-start">
                           {connecting === channel.id ? (
-                            <Button size="xs" disabled className="h-8 px-3 rounded-lg">
+                            <Button size="xs" disabled className="h-8 px-3 rounded-lg w-full sm:w-auto">
                               <Loader2 className="size-3.5 animate-spin mr-1.5" />
                               {channel.status === "connected" ? "Disconnecting..." : "Connecting..."}
                             </Button>
@@ -268,7 +266,7 @@ export function Channels() {
                                   handleDisconnect({ type: channel.type })
                                 }
                               }}
-                              className="h-8 px-3 rounded-lg text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-all"
+                              className="h-8 px-3 rounded-lg w-full sm:w-auto text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-all"
                             >
                               <WifiOff className="size-3.5 mr-1.5" />
                               Disconnect
@@ -280,7 +278,7 @@ export function Channels() {
                                 e.stopPropagation()
                                 handleConnect(channel.id)
                               }}
-                              className="h-8 px-3 rounded-lg bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
+                              className="h-8 px-3 rounded-lg w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-teal-600 hover:from-cyan-600 hover:to-teal-700 shadow-md shadow-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/30 transition-all"
                             >
                               <PlugZap className="size-3.5 mr-1.5" />
                               Connect
@@ -292,7 +290,7 @@ export function Channels() {
                   </div>
 
                   {expandedChannel === channel.id && (
-                    <div className="border border-t-0 border-cyan-500/20 rounded-b-xl bg-gradient-to-b from-cyan-500/[0.03] to-background p-4 sm:p-5 animate-fade-in-up shadow-inner shadow-cyan-500/5">
+                    <div className="border border-t-0 border-cyan-500/20 rounded-b-xl bg-gradient-to-b from-cyan-500/[0.03] to-background px-3 sm:px-5 py-4 sm:py-5 animate-fade-in-up shadow-inner shadow-cyan-500/5">
                       {channel.id === "telegram" && (
                         <TelegramSettings />
                       )}

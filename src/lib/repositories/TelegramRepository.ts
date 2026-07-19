@@ -66,7 +66,7 @@ export class TelegramRepository extends BaseRepository<any> {
   async saveBotConfig(userId: string, botToken: string, botUsername: string) {
     return this.model.findOneAndUpdate(
       { userId },
-      { $set: { botToken, botUsername } },
+      { $set: { botToken, botUsername, isConnected: true } },
       { returnDocument: 'after', upsert: true }
     ).exec()
   }
@@ -93,6 +93,7 @@ export class TelegramRepository extends BaseRepository<any> {
       telegramUsername: connection?.username || null,
       connectedAt: connection?.connectedAt || null,
       hasBotToken: !!connection?.botToken,
+      botToken: connection?.botToken || null,
       botUsername: connection?.botUsername || null,
     }
   }
