@@ -11,6 +11,9 @@ const conversationRepo = new AIConversationRepository()
 export class AIService {
   private getClient(provider: string, apiKey?: string | null) {
     const key = apiKey || config.openrouter.apiKey
+    if (!key) {
+      throw new Error('No API key configured. Add one in Settings > AI Configuration or set OPENROUTER_API_KEY in .env.local')
+    }
     switch (provider) {
       case 'openrouter':
         return new OpenAI({ apiKey: key, baseURL: config.openrouter.baseURL })
@@ -102,72 +105,112 @@ export class AIService {
     const messages = this.buildMessages(history, systemPrompt, message, settings)
     const tools = agent.getToolDefinitions()
 
-    try {
-      const response = await this.callProvider(provider, messages, tools, settings)
+    const fallbackModels = [
+      "google/gemma-4-31b-it:free",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "tencent/hy3:free",
+      "openai/gpt-oss-20b:free",
+    ]
 
-      const choice = response.choices[0]
-      const replyMessage = choice.message
+    let modelToUse = settings.model || config.ai.defaultModel
 
-      const totalTokens = response.usage?.total_tokens || 0
-      settingsRepo.addTokensUsed(userId, totalTokens).catch(() => {})
+    const tryCall = async (model: string) => {
+      const plain = typeof settings.toObject === 'function' ? settings.toObject() : settings
+      const trySettings = { ...plain, model }
+      return this.callProvider(provider, messages, tools, trySettings)
+    }
 
-      if (replyMessage.tool_calls && replyMessage.tool_calls.length > 0) {
-        await conversationRepo.addMessage(userId, sid, {
-          role: 'assistant',
-          content: replyMessage.content || '',
-          toolCalls: replyMessage.tool_calls.map((tc: any) => ({
-            id: tc.id,
-            type: 'function',
-            function: { name: tc.function.name, arguments: tc.function.arguments },
-          })),
-        })
+    let response
+    let lastError: any
+    const tryModels = [modelToUse, ...fallbackModels.filter(m => m !== modelToUse)]
 
-        const toolResults = await agent.executeToolCalls(replyMessage.tool_calls)
-
-        for (const tr of toolResults) {
-          await conversationRepo.addMessage(userId, sid, {
-            role: 'tool',
-            content: JSON.stringify(tr.result),
-            toolCallId: tr.toolCallId,
-            name: tr.name,
-          })
+    for (let i = 0; i < tryModels.length; i++) {
+      const m = tryModels[i]
+      try {
+        response = await tryCall(m)
+        if (response?.error) {
+          throw new Error(response.error.message || 'Model error')
         }
-
-        const followUp = await this.callFollowUp(provider, messages, replyMessage, toolResults, settings)
-        const finalReply = followUp.choices[0].message.content || 'Done.'
-        await conversationRepo.addMessage(userId, sid, { role: 'assistant', content: finalReply })
-
-        return {
-          reply: finalReply,
-          sessionId: sid,
-          provider,
-          model: settings.model || config.ai.defaultModel,
-          usage: {
-            promptTokens: response.usage?.prompt_tokens || 0,
-            completionTokens: response.usage?.completion_tokens || 0,
-            totalTokens,
-          },
+        if (!response?.choices?.length) {
+          throw new Error('Empty response')
+        }
+        modelToUse = m
+        if (m !== settings.model) {
+          await settingsRepo.updateSettings(userId, { model: m }).catch(() => {})
+        }
+        break
+      } catch (err: any) {
+        lastError = err
+        const isRateLimit = err?.status === 429 || err?.error?.code === 429
+        if (isRateLimit && i < tryModels.length - 1) {
+          await new Promise(r => setTimeout(r, 2000))
         }
       }
+    }
 
-      const reply = replyMessage.content || 'I understand. What would you like to do?'
-      await conversationRepo.addMessage(userId, sid, { role: 'assistant', content: reply })
+    if (!response) {
+      const msg = lastError?.error?.message || lastError?.message || 'AI service unavailable'
+      throw new Error(msg)
+    }
+
+    const choice = response.choices[0]
+    const replyMessage = choice.message
+
+    const totalTokens = response.usage?.total_tokens || 0
+    settingsRepo.addTokensUsed(userId, totalTokens).catch(() => {})
+
+    if (replyMessage.tool_calls && replyMessage.tool_calls.length > 0) {
+      await conversationRepo.addMessage(userId, sid, {
+        role: 'assistant',
+        content: replyMessage.content || '',
+        toolCalls: replyMessage.tool_calls.map((tc: any) => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.function.name, arguments: tc.function.arguments },
+        })),
+      })
+
+      const toolResults = await agent.executeToolCalls(replyMessage.tool_calls)
+
+      for (const tr of toolResults) {
+        await conversationRepo.addMessage(userId, sid, {
+          role: 'tool',
+          content: JSON.stringify(tr.result),
+          toolCallId: tr.toolCallId,
+          name: tr.name,
+        })
+      }
+
+      const followUp = await this.callFollowUp(provider, messages, replyMessage, toolResults, settings)
+      const finalReply = followUp.choices[0].message.content || 'Done.'
+      await conversationRepo.addMessage(userId, sid, { role: 'assistant', content: finalReply })
 
       return {
-        reply,
+        reply: finalReply,
         sessionId: sid,
         provider,
-        model: settings.model || config.ai.defaultModel,
+        model: modelToUse,
         usage: {
           promptTokens: response.usage?.prompt_tokens || 0,
           completionTokens: response.usage?.completion_tokens || 0,
           totalTokens,
         },
       }
-    } catch (error: any) {
-      logger.error(`${provider} API error`, error)
-      const msg = error?.error?.message || error?.message || 'AI service unavailable'
-      throw new Error(msg)
+    }
+
+    const reply = replyMessage.content || 'I understand. What would you like to do?'
+    await conversationRepo.addMessage(userId, sid, { role: 'assistant', content: reply })
+
+    return {
+      reply,
+      sessionId: sid,
+      provider,
+      model: modelToUse,
+      usage: {
+        promptTokens: response.usage?.prompt_tokens || 0,
+        completionTokens: response.usage?.completion_tokens || 0,
+        totalTokens,
+      },
     }
   }
 }

@@ -41,20 +41,17 @@ export function Channels() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/telegram/connections")
+      const res = await fetch("/api/telegram/status")
       if (!res.ok) throw new Error("Failed to fetch")
       const data = await res.json()
-      const list = Array.isArray(data.connections) ? data.connections : Array.isArray(data) ? data : []
+      const isConnected = data.isConnected === true
 
-      setConnections(list)
+      setConnections(isConnected ? [data.botConfig || {}] : [])
 
       setChannels((prev) =>
         prev.map((ch) => {
           if (ch.type === "telegram") {
-            const hasActive = list.some(
-              (c: any) => c.isConnected || c.status === "active" || c.status === "connected"
-            )
-            return { ...ch, status: hasActive ? "connected" : "disconnected" }
+            return { ...ch, status: isConnected ? "connected" : "disconnected" }
           }
           return ch
         })
@@ -71,6 +68,10 @@ export function Channels() {
     const interval = setInterval(fetchStatus, 15000)
     return () => clearInterval(interval)
   }, [fetchStatus])
+
+  useEffect(() => {
+    if (!showTelegramSettings) fetchStatus()
+  }, [showTelegramSettings, fetchStatus])
 
   const handleConnect = async (channelId: string) => {
     const channel = channels.find((c) => c.id === channelId)
@@ -104,10 +105,9 @@ export function Channels() {
     const channel = channels.find((c) => c.type === connection.type) || channels[0]
     setConnecting(channel.id)
     try {
-      const res = await fetch(`/api/telegram/connect`, {
-        method: "DELETE",
+      const res = await fetch(`/api/telegram/disconnect`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: connection._id || connection.id }),
       })
       if (!res.ok) throw new Error("Disconnect failed")
       toast.success(`Disconnected from ${channel.name}`)
@@ -134,7 +134,7 @@ export function Channels() {
   }
 
   return (
-      <div className="space-y-5 h-full flex flex-col">
+      <div className="max-w-6xl space-y-5 h-full flex flex-col">
         <div className="shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">

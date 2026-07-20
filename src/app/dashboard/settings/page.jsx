@@ -3,13 +3,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { useTheme } from "@/components/layout/ThemeProvider"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+
 import { getSettings, updateSettings } from "@/actions/settingsActions"
 import {
   Sun, Moon, Palette, List, LayoutGrid, CalendarDays,
@@ -42,27 +37,6 @@ function Toggle({ checked, onChange }) {
         }`}
       />
     </button>
-  )
-}
-
-function SettingRow({ icon: Icon, title, description, children }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-          <Icon className="size-4 text-primary" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium">{title}</p>
-          {description && (
-            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-          )}
-        </div>
-      </div>
-      <div className="shrink-0">
-        {children}
-      </div>
-    </div>
   )
 }
 
@@ -139,7 +113,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
-        <div className="flex flex-row lg:flex-col gap-0.5 overflow-x-auto lg:overflow-x-visible hide-scrollbar shrink-0 lg:w-40">
+        <div className="flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible hide-scrollbar shrink-0 lg:w-48">
           {TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -148,13 +122,13 @@ export default function SettingsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all whitespace-nowrap shrink-0",
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all whitespace-nowrap shrink-0",
                   isActive
-                    ? "bg-primary/10 text-primary lg:bg-transparent lg:text-primary lg:border-l-2 lg:border-primary lg:rounded-none lg:pl-[9px]"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent lg:hover:bg-transparent lg:border-l-2 lg:border-transparent lg:rounded-none lg:pl-[9px]"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 )}
               >
-                <Icon className="size-3.5 shrink-0" />
+                <Icon className="size-4 shrink-0" />
                 <span className="hidden lg:inline">{tab.label}</span>
                 <span className="lg:hidden">{tab.label}</span>
               </button>
@@ -164,56 +138,110 @@ export default function SettingsPage() {
 
         <div className="flex-1 min-w-0 overflow-y-auto">
           {activeTab === "general" && (
-            <div className="space-y-3">
-              <Card>
-                <CardContent className="p-3 divide-y divide-border/50">
-                  <SettingRow icon={theme === "dark" ? Moon : Sun} title="Theme" description={theme === "dark" ? "Dark mode" : "Light mode"}>
+            <div className="max-w-2xl space-y-6">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex size-6 items-center justify-center rounded-md bg-primary/10">
+                    <Palette className="size-3.5 text-primary" />
+                  </div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Appearance</h3>
+                </div>
+                <div className="rounded-xl border border-border/10 bg-card shadow-sm overflow-hidden">
+                  <div className="p-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400">
+                        {theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">Theme</p>
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">{theme === "dark" ? "Dark mode" : "Light mode"}</p>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-1.5">
-                      <Button variant="ghost" size="icon-sm" onClick={() => { if (theme !== "light") toggleTheme() }} className={`size-7 rounded-md ${theme === "light" ? "bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400" : "text-muted-foreground"}`}>
-                        <Sun className="size-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={() => { if (theme !== "dark") toggleTheme() }} className={`size-7 rounded-md ${theme === "dark" ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400" : "text-muted-foreground"}`}>
-                        <Moon className="size-3.5" />
-                      </Button>
+                      <button onClick={() => { if (theme !== "light") toggleTheme() }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${theme === "light" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+                        <Sun className="size-3.5" /> Light
+                      </button>
+                      <button onClick={() => { if (theme !== "dark") toggleTheme() }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${theme === "dark" ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+                        <Moon className="size-3.5" /> Dark
+                      </button>
                     </div>
-                  </SettingRow>
-                </CardContent>
-              </Card>
+                  </div>
+                </div>
+              </div>
 
-              <Card>
-                <CardContent className="p-3 divide-y divide-border/50">
-                  <SettingRow icon={Eye} title="Project View" description="List or grid">
-                    <div className="flex rounded-md border p-0.5 bg-muted/30">
-                      <button onClick={() => handleViewModeChange("list")} className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-all cursor-pointer ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}>
-                        <List className="size-3" /> List
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex size-6 items-center justify-center rounded-md bg-blue-500/10">
+                    <Monitor className="size-3.5 text-blue-500" />
+                  </div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Workspace</h3>
+                </div>
+                <div className="rounded-xl border border-border/10 bg-card shadow-sm overflow-hidden">
+                  <div className="p-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted/50">
+                        <Eye className="size-4 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">Project View</p>
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">List or grid layout</p>
+                      </div>
+                    </div>
+                    <div className="flex rounded-lg border p-0.5 bg-muted/20">
+                      <button onClick={() => handleViewModeChange("list")} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all cursor-pointer ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                        <List className="size-3.5" /> List
                       </button>
-                      <button onClick={() => handleViewModeChange("grid")} className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-all cursor-pointer ${viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}>
-                        <LayoutGrid className="size-3" /> Grid
+                      <button onClick={() => handleViewModeChange("grid")} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all cursor-pointer ${viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                        <LayoutGrid className="size-3.5" /> Grid
                       </button>
                     </div>
-                  </SettingRow>
-                  <Separator />
-                  <SettingRow icon={CalendarDays} title="Month Start" description="Day the month starts">
+                  </div>
+                  <div className="h-px bg-border/10 mx-4" />
+                  <div className="p-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted/50">
+                        <CalendarDays className="size-4 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">Month Start</p>
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">Day the month starts</p>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => handleMonthStartDayChange(-1)} className="size-7 rounded-md border border-input bg-background flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                      <button onClick={() => handleMonthStartDayChange(-1)} className="size-8 rounded-lg border border-input/50 bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-input transition-all cursor-pointer">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                       </button>
-                      <Input type="number" min={1} max={28} value={monthStartDay} onChange={handleMonthStartDayInput} className="h-7 w-12 text-center text-xs font-semibold tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                      <button onClick={() => handleMonthStartDayChange(1)} className="size-7 rounded-md border border-input bg-background flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                      <Input type="number" min={1} max={28} value={monthStartDay} onChange={handleMonthStartDayInput} className="h-8 w-14 text-center text-xs font-semibold tabular-nums rounded-lg border-input/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                      <button onClick={() => handleMonthStartDayChange(1)} className="size-8 rounded-lg border border-input/50 bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-input transition-all cursor-pointer">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                       </button>
                     </div>
-                  </SettingRow>
-                </CardContent>
-              </Card>
+                  </div>
+                </div>
+              </div>
 
-              <Card>
-                <CardContent className="p-3">
-                  <SettingRow icon={Percent} title="Fiverr Fee (20%)" description={fiverrFeeEnabled ? "Applied to revenue" : "Turned off"}>
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex size-6 items-center justify-center rounded-md bg-emerald-500/10">
+                    <DollarSign className="size-3.5 text-emerald-500" />
+                  </div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Finance</h3>
+                </div>
+                <div className="rounded-xl border border-border/10 bg-card shadow-sm overflow-hidden">
+                  <div className="p-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                        <Percent className="size-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">Fiverr Fee (20%)</p>
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">{fiverrFeeEnabled ? "Applied to revenue" : "Turned off"}</p>
+                      </div>
+                    </div>
                     <Toggle checked={fiverrFeeEnabled} onChange={handleFiverrFeeToggle} />
-                  </SettingRow>
-                </CardContent>
-              </Card>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

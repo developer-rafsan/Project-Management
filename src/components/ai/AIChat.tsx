@@ -14,9 +14,10 @@ const SUGGESTIONS = [
 ]
 
 const MODEL_OPTIONS = [
-  { value: "openrouter/free", label: "Auto Free" },
-  { value: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash" },
-  { value: "deepseek/deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+  { value: "google/gemma-4-31b-it:free", label: "google/gemma-4-31b-it:free" },
+  { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "nvidia/nemotron-3-ultra-550b-a55b:free" },
+  { value: "tencent/hy3:free", label: "tencent/hy3:free" },
+  { value: "openai/gpt-oss-20b:free", label: "openai/gpt-oss-20b:free" },
 ]
 
 function formatNumber(n: number) {
@@ -213,8 +214,9 @@ export function AIChat() {
         fetchSessions()
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to get response")
-      setMessages((prev) => [...prev, { role: "assistant", text: "Sorry, I encountered an error. Please try again.", time: new Date() }])
+      const errMsg = err.message || "Failed to get response"
+      toast.error(errMsg)
+      setMessages((prev) => [...prev, { role: "assistant", text: `Error: ${errMsg}`, time: new Date() }])
     } finally {
       setLoading(false)
     }
@@ -256,7 +258,7 @@ export function AIChat() {
     setTimeout(() => setCopiedIndex(null), 2000)
   }
 
-  const currentModel = settings?.model || "openrouter/free"
+  const currentModel = settings?.model || "google/gemma-4-31b-it:free"
   const currentModelLabel = MODEL_OPTIONS.find((m) => m.value === currentModel)?.label || currentModel
 
   if (settingsLoading) {

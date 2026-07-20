@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Bot, Loader2, CheckCircle2, Wifi, WifiOff, KeyRound, User, Server, Clock, Eye, EyeOff, Info, ArrowRight, ExternalLink } from "lucide-react"
+import { Bot, Loader2, CheckCircle2, Wifi, WifiOff, KeyRound, User, Server, Clock, Eye, EyeOff, Info, ArrowRight, ExternalLink, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -112,7 +112,7 @@ export function TelegramSettings() {
         </div>
         {connection && (
           <Button variant="ghost" size="xs" onClick={fetchStatus} className="text-muted-foreground/40 hover:text-foreground h-7 w-7 p-0 rounded-lg">
-            <Loader2 className="size-3.5" />
+            <RefreshCw className="size-3.5" />
           </Button>
         )}
       </div>

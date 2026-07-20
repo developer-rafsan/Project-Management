@@ -16,7 +16,7 @@ export const config = {
   },
   ai: {
     defaultProvider: "openrouter",
-    defaultModel: "openrouter/free",
+    defaultModel: "google/gemma-4-31b-it:free",
     defaultTemperature: 0.3,
     defaultMaxTokens: 1024,
     maxHistoryLength: 50,
@@ -28,14 +28,15 @@ export const config = {
 
 export const PROVIDER_MODELS: Record<string, { value: string; label: string }[]> = {
   openrouter: [
-    { value: "openrouter/free", label: "Auto Free" },
-    { value: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash" },
-    { value: "deepseek/deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+    { value: "google/gemma-4-31b-it:free", label: "google/gemma-4-31b-it:free" },
+    { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "nvidia/nemotron-3-ultra-550b-a55b:free" },
+    { value: "tencent/hy3:free", label: "tencent/hy3:free" },
+    { value: "openai/gpt-oss-20b:free", label: "openai/gpt-oss-20b:free" },
   ],
 }
 
 export const PROVIDER_LABELS: Record<string, string> = {
-  openrouter: "OpenRouter Free",
+  openrouter: "OpenRouter",
 }
 
 export function getProviderModels(provider: string): { value: string; label: string }[] {

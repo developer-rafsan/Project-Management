@@ -23,7 +23,7 @@ export async function GET() {
     const apiKey = settings.apiKey || config.openrouter.apiKey
 
     if (!apiKey) {
-      return NextResponse.json({ success: false, error: 'No API key found. Add one in settings or set OPENROUTER_API_KEY env variable.' })
+      return NextResponse.json({ success: false, error: 'No API key found. Add one in Settings > AI Configuration or set OPENROUTER_API_KEY in .env.local' })
     }
 
     const client = new OpenAI({
@@ -31,13 +31,39 @@ export async function GET() {
       baseURL: config.openrouter.baseURL,
     })
 
-    const completion = await client.chat.completions.create({
-      model: 'openrouter/free',
-      messages: [{ role: 'user', content: 'Say "ok" and nothing else.' }],
-      max_tokens: 10,
-    })
+    const testModels = [
+      settings.model || 'google/gemma-4-31b-it:free',
+      'nvidia/nemotron-3-ultra-550b-a55b:free',
+      'tencent/hy3:free',
+      'openai/gpt-oss-20b:free',
+    ]
 
-    const success = completion.choices?.[0]?.message?.content?.includes('ok')
+    let completion
+    let lastErr: any
+    for (let i = 0; i < testModels.length; i++) {
+      try {
+        completion = await client.chat.completions.create({
+          model: testModels[i],
+          messages: [{ role: 'user', content: 'Say "ok" and nothing else.' }],
+          max_tokens: 20,
+        })
+        if (completion?.choices?.length) break
+      } catch (e: any) {
+        lastErr = e
+        if (i < testModels.length - 1) {
+          await new Promise(r => setTimeout(r, 2000))
+        }
+      }
+    }
+
+    if (!completion) {
+      const msg = lastErr?.error?.message || lastErr?.message || 'All models failed'
+      const status = lastErr?.status || lastErr?.error?.code || ''
+      return NextResponse.json({ success: false, error: msg + (status ? ` (code: ${status})` : '') })
+    }
+
+    const content = completion.choices?.[0]?.message?.content || ''
+    const success = content.toLowerCase().includes('ok') || content.trim().length > 0
 
     return NextResponse.json({
       success: !!success,
