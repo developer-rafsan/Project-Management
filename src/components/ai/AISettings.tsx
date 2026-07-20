@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Sliders, Cpu, Coins, Sparkles, Loader2, RefreshCw, Save, ChevronDown, FlaskConical, Gauge, Brain, Zap, Bot, Palette, Variable, ScrollText, KeyRound, Eye, EyeOff } from "lucide-react"
+import { Sliders, Cpu, Coins, Sparkles, Loader2, RefreshCw, Save, ChevronDown, FlaskConical, Gauge, Brain, Bot, Palette, Variable, ScrollText, KeyRound, Eye, EyeOff, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -93,8 +93,8 @@ export function AISettings() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [testing, setTesting] = useState(false)
   const [showKey, setShowKey] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [showGenerateInput, setShowGenerateInput] = useState(false)
@@ -208,27 +208,15 @@ export function AISettings() {
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
       }
-      if (settings.apiKey) {
-        saveBody.apiKey = settings.apiKey
-      }
-      const saveRes = await fetch("/api/ai/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(saveBody),
-      })
-      if (!saveRes.ok) throw new Error("Failed to save before test")
+      if (settings.apiKey) { saveBody.apiKey = settings.apiKey }
+      await fetch("/api/ai/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saveBody) })
       const res = await fetch("/api/ai/test-key")
       const data = await res.json()
-      if (data.success) {
-        toast.success("Connection successful! API key is working.")
-      } else {
-        toast.error(data.error || "Connection failed")
-      }
+      if (data.success) toast.success("Connection successful!")
+      else toast.error(data.error || "Connection failed")
     } catch (err: any) {
       toast.error(err.message || "Connection failed")
-    } finally {
-      setTesting(false)
-    }
+    } finally { setTesting(false) }
   }
 
   if (loading) {
@@ -272,43 +260,6 @@ export function AISettings() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] via-card/60 to-card/5 overflow-hidden shadow-sm shadow-emerald-500/5">
-          <div className="p-3 space-y-2">
-            <UsageBar used={settings.totalTokensUsed ?? 0} limit={settings.totalTokensLimit ?? 7000000} />
-          </div>
-          <div className="border-t border-emerald-500/10 cursor-pointer select-none hover:bg-emerald-500/[0.03] transition-colors" onClick={() => setAdvancedOpen(!advancedOpen)}>
-            <div className="flex items-center justify-between px-3 py-2">
-              <div className="flex items-center gap-1.5">
-                <Sliders className="size-3 text-amber-500" />
-                <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">Advanced Settings</span>
-              </div>
-              <ChevronDown className={cn("size-3 text-muted-foreground transition-transform duration-200", advancedOpen && "rotate-180")} />
-            </div>
-          </div>
-          {advancedOpen && (
-            <div className="px-3 pb-3 space-y-2 animate-fade-in-up">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Session Timeout (min)</label>
-                  <Input type="number" min={5} max={1440} value={settings.sessionTimeout ?? 30} onChange={(e) => setSettings((s) => ({ ...s, sessionTimeout: parseInt(e.target.value) || 30 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Max History</label>
-                  <Input type="number" min={10} max={500} value={settings.maxHistory ?? 50} onChange={(e) => setSettings((s) => ({ ...s, maxHistory: parseInt(e.target.value) || 50 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Rate Limit (req/min)</label>
-                  <Input type="number" min={1} max={1000} value={settings.rateLimit ?? 60} onChange={(e) => setSettings((s) => ({ ...s, rateLimit: parseInt(e.target.value) || 60 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Token Limit</label>
-                  <Input type="number" min={1000} max={100000000} step={100000} value={settings.tokenLimit ?? 7000000} onChange={(e) => { const val = parseInt(e.target.value) || 7000000; setSettings((s) => ({ ...s, tokenLimit: val, totalTokensLimit: val })) }} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
         <div className="rounded-xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/[0.04] via-card/60 to-card/5 shadow-sm shadow-cyan-500/5 overflow-hidden">
           <div className="p-3 space-y-2">
             <div className="flex items-center gap-1.5">
@@ -375,7 +326,9 @@ export function AISettings() {
                 <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Temperature</label>
                 <Select value={String(settings.temperature)} onValueChange={(v) => setSettings((s) => ({ ...s, temperature: parseFloat(v) }))}>
                   <SelectTrigger className="h-7 text-[11px] rounded-lg border-border/40 bg-card/50 w-full">
-                    <SelectValue className="flex text-[11px]" />
+                    <SelectValue className="flex text-[11px]">
+                      {settings.temperature === 0 ? "Low" : settings.temperature === 0.7 ? "Medium" : "High"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="min-w-[160px]">
                     <SelectItem className="text-xs" value="0">Low</SelectItem>
@@ -400,17 +353,56 @@ export function AISettings() {
             <div className="space-y-1">
               <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">API Key</label>
               <div className="relative">
-                <Input type={showKey ? "text" : "password"} value={settings.apiKey} onChange={(e) => setSettings((s) => ({ ...s, apiKey: e.target.value }))} placeholder={settings.hasApiKey ? "••••••••••••••••" : "Enter your API key..."} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50 pr-7" />
-                <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground">
-                  {showKey ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-                </button>
+                <Input type={showKey ? "text" : "password"} value={settings.apiKey} onChange={(e) => setSettings((s) => ({ ...s, apiKey: e.target.value }))} placeholder={settings.hasApiKey ? "••••••••••••••••" : "Enter your API key..."} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50 pr-14" />
+                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                  <button type="button" onClick={testConnection} disabled={testing} className="text-muted-foreground/40 hover:text-foreground disabled:opacity-30 p-0.5" title="Test connection">
+                    {testing ? <Loader2 className="size-3 animate-spin" /> : <Zap className="size-3" />}
+                  </button>
+                  <button type="button" onClick={() => setShowKey(!showKey)} className="text-muted-foreground/40 hover:text-foreground p-0.5">
+                    {showKey ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                  </button>
+                </div>
               </div>
-              <Button size="xs" onClick={testConnection} disabled={testing} className="h-6 px-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-teal-600 text-[10px] font-medium w-full">
-                {testing ? <Loader2 className="size-2.5 animate-spin mr-1" /> : <Zap className="size-2.5 mr-1" />}
-                Test Connection
-              </Button>
+
             </div>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] via-card/60 to-card/5 overflow-hidden shadow-sm shadow-emerald-500/5">
+          <div className="p-3 space-y-2">
+            <UsageBar used={settings.totalTokensUsed ?? 0} limit={settings.totalTokensLimit ?? 7000000} />
+          </div>
+          <div className="border-t border-emerald-500/10 cursor-pointer select-none hover:bg-emerald-500/[0.03] transition-colors" onClick={() => setAdvancedOpen(!advancedOpen)}>
+            <div className="flex items-center justify-between px-3 py-2">
+              <div className="flex items-center gap-1.5">
+                <Sliders className="size-3 text-amber-500" />
+                <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">Advanced Settings</span>
+              </div>
+              <ChevronDown className={cn("size-3 text-muted-foreground transition-transform duration-200", advancedOpen && "rotate-180")} />
+            </div>
+          </div>
+          {advancedOpen && (
+            <div className="px-3 pb-3 space-y-2 animate-fade-in-up">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Session Timeout (min)</label>
+                  <Input type="number" min={5} max={1440} value={settings.sessionTimeout ?? 30} onChange={(e) => setSettings((s) => ({ ...s, sessionTimeout: parseInt(e.target.value) || 30 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Max History</label>
+                  <Input type="number" min={10} max={500} value={settings.maxHistory ?? 50} onChange={(e) => setSettings((s) => ({ ...s, maxHistory: parseInt(e.target.value) || 50 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Rate Limit (req/min)</label>
+                  <Input type="number" min={1} max={1000} value={settings.rateLimit ?? 60} onChange={(e) => setSettings((s) => ({ ...s, rateLimit: parseInt(e.target.value) || 60 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Token Limit</label>
+                  <Input type="number" min={1000} max={100000000} step={100000} value={settings.tokenLimit ?? 7000000} onChange={(e) => { const val = parseInt(e.target.value) || 7000000; setSettings((s) => ({ ...s, tokenLimit: val, totalTokensLimit: val })) }} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -448,7 +440,7 @@ export function AISettings() {
           </div>
         )}
 
-        <textarea value={settings.systemPrompt} onChange={(e) => setSettings((s) => ({ ...s, systemPrompt: e.target.value }))} rows={2} className="w-full min-h-[60px] max-h-[150px] rounded-xl border border-border/30 bg-card/40 px-3 py-2 text-[11px] leading-relaxed shadow-inner focus-visible:outline-none focus-visible:border-cyan-500/30 focus-visible:ring-2 focus-visible:ring-cyan-500/10 placeholder:text-muted-foreground/30" placeholder="Enter system prompt..." />
+        <textarea value={settings.systemPrompt} onChange={(e) => setSettings((s) => ({ ...s, systemPrompt: e.target.value }))} rows={5} className="w-full min-h-[120px] max-h-[300px] rounded-xl border border-border/30 bg-card/40 px-3 py-2 text-[11px] leading-relaxed shadow-inner focus-visible:outline-none focus-visible:border-cyan-500/30 focus-visible:ring-2 focus-visible:ring-cyan-500/10 placeholder:text-muted-foreground/30" placeholder="Enter system prompts..." />
       </div>
     </div>
   )

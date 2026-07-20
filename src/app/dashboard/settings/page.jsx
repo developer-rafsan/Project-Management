@@ -250,9 +250,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <p className="text-center text-[10px] text-muted-foreground mt-3 shrink-0">
-        Changes saved automatically
-      </p>
     </div>
   )
 }
