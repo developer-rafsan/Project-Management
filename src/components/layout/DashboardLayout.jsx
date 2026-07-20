@@ -56,19 +56,22 @@ export default function DashboardLayout({ children }) {
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar />
-        <main className="flex-1 overflow-y-auto hide-scrollbar p-4 sm:p-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-          <footer className="mt-8 border-t border-border pt-4 pb-2 text-center text-xs text-muted-foreground">
+        <main className="flex-1 flex flex-col overflow-hidden p-0 sm:p-0">
+          <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar p-4 sm:p-6">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pathname}
+                className="h-full"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <footer className="shrink-0 border-t border-border py-3 text-center text-[10px] text-muted-foreground">
             Crafted by{" "}
             <span className="font-medium text-primary">NanoPiCode</span>
           </footer>

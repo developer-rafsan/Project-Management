@@ -45,10 +45,10 @@ function getSessionTitle(s: Session): string {
 
 function TypingDots() {
   return (
-    <span className="inline-flex items-center gap-0.5 ml-1">
-      <span className="size-1.5 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "0ms" }} />
-      <span className="size-1.5 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "150ms" }} />
-      <span className="size-1.5 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+    <span className="inline-flex items-center gap-[3px] ml-1">
+      <span className="size-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "0ms" }} />
+      <span className="size-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+      <span className="size-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "300ms" }} />
     </span>
   )
 }
@@ -262,53 +262,216 @@ export function AIChat() {
   if (settingsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/10 rounded-full blur-lg animate-pulse" />
-            <Loader2 className="size-6 animate-spin text-primary relative" />
+            <div className="absolute inset-0 bg-primary/15 rounded-full blur-2xl animate-pulse" />
+            <Loader2 className="size-7 animate-spin text-primary relative" />
           </div>
-          <p className="text-xs text-muted-foreground/60">Loading chat...</p>
+          <p className="text-sm text-muted-foreground/60 font-medium">Loading chat...</p>
         </div>
       </div>
     )
   }
 
+  const renderMessages = () => (
+    <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-5 space-y-3 sm:space-y-4 hide-scrollbar">
+      {messages.length === 1 && !loading && (
+        <div className="flex flex-col items-center justify-center min-h-[calc(100%-2rem)] text-center px-4 animate-fade-in-up">
+          <div className="relative mb-5 sm:mb-7">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary via-violet-500 to-emerald-500 opacity-10 rounded-full blur-[80px]" />
+            <div className="relative flex size-16 sm:size-28 items-center justify-center rounded-full bg-gradient-to-br from-primary/[0.08] via-violet-500/[0.04] to-emerald-500/[0.06] border border-primary/[0.08] shadow-inner">
+              <Sparkles className="size-7 sm:size-11 text-primary" />
+            </div>
+          </div>
+          <p className="text-lg sm:text-2xl font-semibold bg-gradient-to-r from-foreground via-foreground/90 to-primary/70 bg-clip-text text-transparent mb-2 sm:mb-3">
+            How can I help you today?
+          </p>
+          <p className="text-xs sm:text-sm text-muted-foreground/60 max-w-[280px] sm:max-w-sm mb-5 sm:mb-7 leading-relaxed">
+            Ask me to create projects, update status, assign developers, or get summaries.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-xs sm:max-w-md">
+            {SUGGESTIONS.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => { setInput(s.text); inputRef.current?.focus() }}
+                className="flex items-center gap-2.5 rounded-xl border border-border/30 bg-card/50 hover:bg-card/80 px-4 py-2.5 sm:py-3 text-xs sm:text-[13px] text-left text-muted-foreground hover:text-foreground hover:border-primary/30 hover:shadow-sm hover:shadow-primary/5 transition-all cursor-pointer group"
+              >
+                <div className="flex size-7 sm:size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/[0.08] to-violet-500/[0.06] border border-primary/[0.06] group-hover:border-primary/[0.15] group-hover:from-primary/[0.12] transition-all">
+                  <s.icon className="size-3.5 sm:size-4 text-primary/70 group-hover:text-primary transition-colors" />
+                </div>
+                <span className="font-medium leading-snug">{s.text}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {messages.map((msg, i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex gap-2 sm:gap-3 animate-fade-in-up group",
+            msg.role === "user" ? "justify-end" : "justify-start"
+          )}
+          style={{ animationDelay: `${i * 30}ms` }}
+        >
+          {msg.role === "assistant" && (
+            <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/[0.12] to-violet-500/[0.08] border border-primary/[0.08] mt-1 shadow-sm">
+              <Bot className="size-4 text-primary" />
+            </div>
+          )}
+          <div className={cn(
+            "max-w-[88%] sm:max-w-[75%] lg:max-w-[68%] rounded-2xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm whitespace-pre-wrap leading-relaxed break-words relative shadow-sm",
+            msg.role === "user"
+              ? "bg-gradient-to-br from-primary to-primary/85 text-primary-foreground rounded-tr-md shadow-primary/20"
+              : "bg-card border border-border/20 text-foreground rounded-tl-md shadow-sm"
+          )}>
+            <div className="text-[13px] sm:text-sm leading-relaxed">{msg.text}</div>
+            <div className={cn(
+              "flex items-center gap-2 mt-1.5 sm:mt-2",
+              msg.role === "user" ? "justify-end" : "justify-start",
+              msg.role === "user" ? "opacity-70" : "sm:opacity-0 sm:group-hover:opacity-100",
+              "transition-opacity duration-200"
+            )}>
+              <span className="text-[10px] text-muted-foreground/40">{formatTime(msg.time || new Date())}</span>
+              <button
+                onClick={() => copyMessage(msg.text, i)}
+                className={cn(
+                  "text-[10px] transition-all flex items-center gap-1 px-1.5 py-0.5 rounded-md",
+                  copiedIndex === i
+                    ? "text-emerald-500 bg-emerald-500/10"
+                    : "text-muted-foreground/35 hover:text-muted-foreground/70 hover:bg-muted/50"
+                )}
+              >
+                {copiedIndex === i ? <CheckCircle2 className="size-2.5 sm:size-3" /> : <Copy className="size-2.5 sm:size-3" />}
+                <span className="hidden sm:inline">{copiedIndex === i ? "Copied" : "Copy"}</span>
+              </button>
+            </div>
+          </div>
+          {msg.role === "user" && (
+            <div className="flex size-7 sm:size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent/60 border border-border/20 mt-1 shadow-sm">
+              <User className="size-3.5 sm:size-4.5 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+      ))}
+
+      {loading && (
+        <div className="flex gap-2 sm:gap-3 animate-fade-in-up">
+          <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/[0.12] to-violet-500/[0.08] border border-primary/[0.08] mt-1">
+            <Bot className="size-4 text-primary" />
+          </div>
+          <div className="max-w-[88%] sm:max-w-[75%] rounded-2xl rounded-tl-md px-4 py-3 bg-card border border-border/20 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <Loader2 className="size-4 animate-spin text-primary" />
+              <span className="text-xs sm:text-[13px] text-muted-foreground font-medium">Thinking<TypingDots /></span>
+            </div>
+          </div>
+        </div>
+      )}
+      <div ref={chatEndRef} />
+    </div>
+  )
+
+  const renderInput = () => (
+    <div className="shrink-0 px-3 sm:px-5 pb-3 sm:pb-4 pt-2 sm:pt-3 border-t border-border/10">
+      <div className="flex items-center gap-2 rounded-2xl border border-border/20 bg-card/95 backdrop-blur-xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm transition-all duration-200 focus-within:border-primary/30 focus-within:shadow-md focus-within:shadow-primary/5 hover:border-border/40">
+        <div className="relative shrink-0" ref={modelRef}>
+          <button
+            onClick={() => setModelOpen(!modelOpen)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-2 py-1.5 sm:py-2 text-[10px] sm:text-[11px] font-medium transition-all border",
+              modelOpen
+                ? "text-primary bg-primary/5 border-primary/20"
+                : "text-muted-foreground/60 hover:text-foreground border-transparent hover:bg-muted/50 hover:border-border/30"
+            )}
+          >
+            <Bot className="size-3 sm:size-3.5 shrink-0" />
+            <span className="hidden sm:inline max-w-[80px] truncate">{currentModelLabel}</span>
+            <ChevronDown className={cn("size-2.5 sm:size-3 shrink-0 transition-transform duration-200", modelOpen && "rotate-180")} />
+          </button>
+          {modelOpen && (
+            <div className="absolute bottom-full left-0 mb-2 w-44 sm:w-52 rounded-xl border border-border/20 bg-popover shadow-xl backdrop-blur-2xl p-1.5 z-30 animate-fade-in-up origin-bottom-left">
+              <p className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider px-2.5 py-1.5">Models</p>
+              {MODEL_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => saveModel(opt.value)}
+                  className={cn(
+                    "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-xs text-left transition-all",
+                    currentModel === opt.value
+                      ? "bg-primary/8 text-primary font-semibold"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className={cn("size-1.5 rounded-full shrink-0 ring-1 ring-offset-1 ring-offset-transparent", currentModel === opt.value ? "bg-primary ring-primary/30" : "bg-muted-foreground/20 ring-transparent")} />
+                  <span className="truncate">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => { setInput(e.target.value); autoResize() }}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message..."
+            rows={1}
+            aria-label="Chat message input"
+            className="flex-1 resize-none h-9 sm:h-10 max-h-36 border-0 bg-transparent px-1 py-2 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/35 text-[13px] sm:text-sm outline-none"
+          />
+          <Button
+            size="icon"
+            onClick={handleSend}
+            disabled={!input.trim() || loading}
+            className="size-8 sm:size-10 shrink-0 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 hover:from-violet-600 hover:to-fuchsia-700 shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/35 transition-all duration-200 disabled:opacity-30 disabled:shadow-none disabled:hover:from-violet-500 disabled:hover:to-fuchsia-600"
+          >
+            <Send className="size-3.5 sm:size-4.5" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
-    <div className="flex gap-0 h-full relative overflow-hidden">
+    <div className="flex h-full relative overflow-hidden rounded-2xl">
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-10 sm:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/15 backdrop-blur-sm z-10 sm:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       <aside className={cn(
-        "flex flex-col shrink-0 border-r border-border/20 bg-gradient-to-b from-card/50 to-card/10 overflow-hidden transition-all duration-300 ease-out z-20",
+        "flex flex-col shrink-0 border-r border-border/10 bg-gradient-to-b from-card/60 to-card/5 overflow-hidden transition-all duration-300 ease-out z-20",
         "absolute sm:relative inset-y-0 left-0 sm:bg-transparent",
-        "shadow-xl sm:shadow-sm sm:shadow-violet-500/5",
+        "shadow-2xl sm:shadow-sm",
         sidebarOpen ? "w-72 translate-x-0" : "w-72 -translate-x-full sm:w-0 sm:overflow-hidden sm:border-r-0"
       )}>
-        <div className="flex items-center justify-between px-3 py-3 shrink-0 border-b border-violet-500/10 bg-gradient-to-r from-violet-500/[0.03] to-transparent">
-          <span className="text-xs font-semibold flex items-center gap-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">
-            <History className="size-3.5 text-violet-500" /> History
+        <div className="flex items-center justify-between px-4 py-3.5 shrink-0 border-b border-border/10">
+          <span className="text-xs font-semibold flex items-center gap-2 text-muted-foreground/80">
+            <History className="size-3.5" /> History
           </span>
           <div className="flex items-center gap-1">
             {sessions.length > 0 && (
-              <button onClick={handleClearAll} className="size-6 flex items-center justify-center rounded-md text-muted-foreground/30 hover:text-destructive hover:bg-destructive/5 transition-colors" title="Clear all">
+              <button onClick={handleClearAll} className="size-7 flex items-center justify-center rounded-lg text-muted-foreground/25 hover:text-destructive hover:bg-destructive/5 transition-colors" title="Clear all">
                 <Trash2 className="size-3" />
               </button>
             )}
-            <button onClick={() => setSidebarOpen(false)} className="size-6 flex items-center justify-center rounded-md sm:hidden text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors">
+            <button onClick={() => setSidebarOpen(false)} className="size-7 flex items-center justify-center rounded-lg sm:hidden text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors">
               <ChevronLeft className="size-3.5" />
             </button>
           </div>
         </div>
 
-        <div className="p-2">
+        <div className="p-2.5">
           <button
             onClick={newChat}
             className={cn(
-              "flex items-center gap-2 w-full rounded-lg px-3 py-2 text-xs font-medium transition-all text-left border",
+              "flex items-center gap-2 w-full rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all text-left border",
               !sessionId
-                ? "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/5 text-violet-600 dark:text-violet-400 border-violet-500/20 shadow-sm shadow-violet-500/10"
-                : "text-muted-foreground border-transparent hover:bg-muted/50 hover:text-foreground hover:border-border/30"
+                ? "bg-primary/8 text-primary border-primary/20 shadow-sm"
+                : "text-muted-foreground/60 border-transparent hover:bg-muted/50 hover:text-foreground hover:border-border/20"
             )}
           >
             <Plus className="size-3.5" />
@@ -316,15 +479,15 @@ export function AIChat() {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5 hide-scrollbar">
+        <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 space-y-0.5 hide-scrollbar">
           {sessionsLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-10">
+              <Loader2 className="size-4 animate-spin text-muted-foreground/40" />
             </div>
           ) : sessions.length === 0 ? (
-            <div className="text-center py-10">
-              <MessageSquare className="size-6 mx-auto text-muted-foreground/20 mb-2" />
-              <p className="text-[11px] text-muted-foreground/40">No conversations yet</p>
+            <div className="text-center py-12">
+              <MessageSquare className="size-7 mx-auto text-muted-foreground/15 mb-2.5" />
+              <p className="text-xs text-muted-foreground/35">No conversations yet</p>
             </div>
           ) : (
             sessions.map((s) => {
@@ -336,14 +499,14 @@ export function AIChat() {
                   key={s.sessionId}
                   onClick={() => { loadSession(s.sessionId); setSidebarOpen(false) }}
                   className={cn(
-                    "flex flex-col gap-0.5 w-full rounded-lg px-3 py-2.5 text-xs transition-all text-left group",
+                    "flex flex-col gap-1 w-full rounded-xl px-3.5 py-2.5 text-xs transition-all text-left group",
                     s.sessionId === sessionId
-                      ? "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/5 text-violet-600 dark:text-violet-400 ring-1 ring-violet-500/20 shadow-sm shadow-violet-500/5"
-                      : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                      ? "bg-primary/5 text-primary ring-1 ring-primary/15"
+                      : "text-muted-foreground/70 hover:bg-muted/30 hover:text-foreground"
                   )}
                 >
                   <span className="truncate font-medium leading-snug">{title}</span>
-                  <span className="text-[10px] text-muted-foreground/40 flex items-center gap-1 mt-0.5">
+                  <span className="text-[10px] text-muted-foreground/35 flex items-center gap-1.5">
                     <Clock className="size-2.5 shrink-0" />
                     {isToday ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : date.toLocaleDateString()}
                   </span>
@@ -354,16 +517,16 @@ export function AIChat() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-b from-background via-background to-card/30 rounded-xl sm:rounded-none">
-        <header className="flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 sm:py-3 shrink-0 border-b border-violet-500/10 bg-gradient-to-r from-violet-500/[0.02] to-transparent">
+      <div className="flex-1 flex flex-col min-w-0 bg-gradient-to-b from-background via-background to-card/20 rounded-2xl sm:rounded-none">
+        <header className="flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 sm:py-3 shrink-0 border-b border-border/10">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button onClick={() => setSidebarOpen((p) => !p)} className="sm:hidden p-1.5 -ml-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors">
               <PanelLeft className="size-4" />
             </button>
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
               <div className="relative shrink-0">
-                <div className="absolute inset-0 bg-primary/20 rounded-full blur-md" />
-                <div className="relative flex size-7 sm:size-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-sm shadow-primary/20">
+                <div className="absolute inset-0 bg-primary/15 rounded-full blur-md" />
+                <div className="relative flex size-7 sm:size-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-sm">
                   <Bot className="size-3.5 sm:size-4 text-white" />
                 </div>
               </div>
@@ -383,7 +546,7 @@ export function AIChat() {
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] sm:text-[11px] text-muted-foreground/50 mt-0.5">Ask anything about your projects</p>
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground/45 mt-0.5">Ask anything about your projects</p>
               </div>
             </div>
           </div>
@@ -391,7 +554,7 @@ export function AIChat() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => setSidebarOpen((p) => !p)}
-              className="hidden sm:flex size-7 items-center justify-center rounded-lg text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
+              className="hidden sm:flex size-7 items-center justify-center rounded-lg text-muted-foreground/35 hover:text-foreground hover:bg-muted/50 transition-colors"
               title={sidebarOpen ? "Close history" : "Open history"}
             >
               {sidebarOpen ? <PanelLeft className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
@@ -399,7 +562,7 @@ export function AIChat() {
             {messages.length > 1 && (
               <button
                 onClick={handleClear}
-                className="size-7 flex items-center justify-center rounded-lg text-muted-foreground/30 hover:text-destructive hover:bg-destructive/5 transition-colors"
+                className="size-7 flex items-center justify-center rounded-lg text-muted-foreground/25 hover:text-destructive hover:bg-destructive/5 transition-colors"
                 title="Clear conversation"
               >
                 <Trash2 className="size-3.5" />
@@ -408,156 +571,8 @@ export function AIChat() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 px-3 sm:px-5 py-3 sm:py-4 hide-scrollbar">
-          {messages.length === 1 && !loading && (
-            <div className="flex flex-col items-center justify-center py-10 sm:py-20 text-center px-3 sm:px-4 animate-fade-in-up">
-              <div className="relative mb-4 sm:mb-6">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary via-violet-500 to-emerald-500 opacity-15 rounded-full blur-3xl" />
-                <div className="relative flex size-14 sm:size-24 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 via-violet-500/5 to-emerald-500/5 border border-primary/10 shadow-inner">
-                  <Sparkles className="size-6 sm:size-10 text-primary" />
-                </div>
-              </div>
-              <p className="text-base sm:text-xl font-semibold bg-gradient-to-r from-foreground via-foreground/90 to-primary/70 bg-clip-text text-transparent mb-1.5 sm:mb-2">How can I help you today?</p>
-              <p className="text-[11px] sm:text-sm text-muted-foreground/60 max-w-[260px] sm:max-w-sm mb-4 sm:mb-6">
-                Ask me to create projects, update status, assign developers, or get summaries.
-              </p>
-              <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 max-w-xs sm:max-w-md">
-                {SUGGESTIONS.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { setInput(s.text); inputRef.current?.focus() }}
-                    className="inline-flex items-center gap-1 sm:gap-1.5 rounded-full border border-border/30 bg-card/50 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer whitespace-nowrap"
-                  >
-                    <s.icon className="size-2.5 sm:size-3" />
-                    <span className="hidden xs:inline">{s.text}</span>
-                    <span className="xs:hidden">{s.text.split(" ").slice(0, 3).join(" ")}…</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={cn(
-                "flex gap-1.5 sm:gap-3 animate-fade-in-up group",
-                msg.role === "user" ? "justify-end" : "justify-start"
-              )}
-              style={{ animationDelay: `${i * 30}ms` }}
-            >
-              {msg.role === "assistant" && (
-                <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 mt-0.5 shadow-sm">
-                  <Bot className="size-4 text-primary" />
-                </div>
-              )}
-              <div className={cn(
-                "max-w-[92%] sm:max-w-[78%] lg:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm whitespace-pre-wrap leading-relaxed break-words relative shadow-sm",
-                msg.role === "user"
-                  ? "bg-gradient-to-br from-primary to-primary/85 text-primary-foreground rounded-tr-md shadow-primary/15"
-                  : "bg-card border border-border/30 text-foreground rounded-tl-md"
-              )}>
-                <div className="text-[13px] sm:text-sm">{msg.text}</div>
-                <div className={cn(
-                  "flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-1.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200",
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                )}>
-                  <span className="text-[10px] text-muted-foreground/40">{formatTime(msg.time || new Date())}</span>
-                  <button
-                    onClick={() => copyMessage(msg.text, i)}
-                    className={cn(
-                      "text-[10px] transition-all flex items-center gap-0.5 px-1.5 py-0.5 rounded",
-                      copiedIndex === i
-                        ? "text-emerald-500 bg-emerald-500/10"
-                        : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50"
-                    )}
-                  >
-                    {copiedIndex === i ? <CheckCircle2 className="size-2.5 sm:size-3" /> : <Copy className="size-2.5 sm:size-3" />}
-                  </button>
-                </div>
-              </div>
-              {msg.role === "user" && (
-                <div className="flex size-6 sm:size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent/70 border border-border/30 mt-0.5 shadow-sm">
-                  <User className="size-3 sm:size-4 text-muted-foreground" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {loading && (
-            <div className="flex gap-1.5 sm:gap-3 animate-fade-in-up">
-              <div className="hidden sm:flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/10 mt-0.5">
-                <Bot className="size-4 text-primary" />
-              </div>
-              <div className="max-w-[92%] sm:max-w-[78%] rounded-2xl rounded-tl-md px-3 sm:px-4 py-2.5 sm:py-3 bg-card border border-border/30 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="size-3.5 sm:size-4 animate-spin text-primary" />
-                  <span className="text-[11px] sm:text-xs text-muted-foreground">Thinking<TypingDots /></span>
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
-
-        <div className="shrink-0 px-3 sm:px-5 pb-3 sm:pb-4 pt-2 border-t border-violet-500/10 bg-gradient-to-r from-violet-500/[0.02] to-transparent">
-          <div className="flex items-end gap-1.5 sm:gap-2 rounded-xl border border-violet-500/20 bg-card/90 backdrop-blur-md px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm shadow-violet-500/5 transition-all duration-200 focus-within:border-violet-500/40 focus-within:shadow-md focus-within:shadow-violet-500/10 hover:border-violet-500/30">
-            <div className="relative shrink-0" ref={modelRef}>
-              <button
-                onClick={() => setModelOpen(!modelOpen)}
-                className="flex items-center gap-1 rounded-lg px-1.5 sm:px-2 py-1.5 text-[10px] font-medium text-violet-600/70 dark:text-violet-400/70 hover:text-violet-700 dark:hover:text-violet-300 hover:bg-violet-500/10 transition-colors border border-transparent hover:border-violet-500/20"
-              >
-                <Bot className="size-3 shrink-0" />
-                <span className="hidden sm:inline max-w-[80px] truncate">{currentModelLabel}</span>
-                <ChevronDown className={cn("size-2.5 shrink-0 transition-transform", modelOpen && "rotate-180")} />
-              </button>
-              {modelOpen && (
-                <div className="absolute bottom-full left-0 mb-2 w-48 sm:w-52 rounded-xl border border-border/30 bg-popover shadow-xl backdrop-blur-xl p-1.5 z-30 animate-fade-in-up origin-bottom-left">
-                  <p className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider px-2 py-1.5">Switch Model</p>
-                  {MODEL_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => saveModel(opt.value)}
-                      className={cn(
-                        "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-xs text-left transition-colors",
-                        currentModel === opt.value
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                      )}
-                    >
-                      <div className={cn(
-                        "size-1.5 rounded-full shrink-0",
-                        currentModel === opt.value ? "bg-primary" : "bg-muted-foreground/30"
-                      )} />
-                      <span className="truncate">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0 flex items-end gap-1.5 sm:gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => { setInput(e.target.value); autoResize() }}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask anything..."
-                rows={1}
-                aria-label="Chat message input"
-                className="flex-1 resize-none h-8 sm:h-9 max-h-40 border-0 bg-transparent px-1 py-1.5 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/40 text-[13px] sm:text-sm outline-none"
-              />
-              <Button
-                size="icon"
-                onClick={handleSend}
-                disabled={!input.trim() || loading}
-                className="size-7 sm:size-9 shrink-0 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 hover:from-violet-600 hover:to-fuchsia-700 shadow-md shadow-violet-500/30 hover:shadow-lg hover:shadow-violet-500/40 transition-all disabled:opacity-40 disabled:shadow-none"
-              >
-                <Send className="size-3 sm:size-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+        {renderMessages()}
+        {renderInput()}
       </div>
     </div>
   )
