@@ -331,18 +331,23 @@ export function AIChat() {
             <div className="text-[13px] sm:text-sm leading-relaxed">{msg.text}</div>
             <div className={cn(
               "flex items-center gap-2 mt-1.5 sm:mt-2",
-              msg.role === "user" ? "justify-end" : "justify-start",
-              msg.role === "user" ? "opacity-70" : "sm:opacity-0 sm:group-hover:opacity-100",
-              "transition-opacity duration-200"
+              msg.role === "user" ? "justify-end" : "justify-start"
             )}>
-              <span className="text-[10px] text-muted-foreground/40">{formatTime(msg.time || new Date())}</span>
+              <span className={cn(
+                "text-[10px]",
+                msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground/40"
+              )}>
+                {formatTime(msg.time || new Date())}
+              </span>
               <button
                 onClick={() => copyMessage(msg.text, i)}
                 className={cn(
-                  "text-[10px] transition-all flex items-center gap-1 px-1.5 py-0.5 rounded-md",
+                  "text-[10px] transition-all flex items-center gap-1 px-1.5 py-0.5 rounded-md sm:opacity-0 sm:group-hover:opacity-100",
                   copiedIndex === i
                     ? "text-emerald-500 bg-emerald-500/10"
-                    : "text-muted-foreground/35 hover:text-muted-foreground/70 hover:bg-muted/50"
+                    : msg.role === "user"
+                      ? "text-primary-foreground/40 hover:text-primary-foreground/70 hover:bg-primary-foreground/10"
+                      : "text-muted-foreground/35 hover:text-muted-foreground/70 hover:bg-muted/50"
                 )}
               >
                 {copiedIndex === i ? <CheckCircle2 className="size-2.5 sm:size-3" /> : <Copy className="size-2.5 sm:size-3" />}
