@@ -29,13 +29,12 @@ import {
   Settings,
   User,
   Bot,
-  ListTodo,
 } from "lucide-react"
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
-  { href: "/dashboard/today-task", label: "Today's Task", icon: ListTodo },
+
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/profile", label: "Profile", icon: User, mobileOnly: true },
   { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot },

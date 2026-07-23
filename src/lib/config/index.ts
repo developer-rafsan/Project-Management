@@ -28,10 +28,11 @@ export const config = {
 
 export const PROVIDER_MODELS: Record<string, { value: string; label: string }[]> = {
   openrouter: [
-    { value: "google/gemma-4-31b-it:free", label: "google/gemma-4-31b-it:free" },
-    { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "nvidia/nemotron-3-ultra-550b-a55b:free" },
-    { value: "tencent/hy3:free", label: "tencent/hy3:free" },
-    { value: "openai/gpt-oss-20b:free", label: "openai/gpt-oss-20b:free" },
+    { value: "qwen/qwen3-coder:free", label: "Qwen3 Coder" },
+    { value: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+    { value: "google/gemini-2.5-flash-lite", label: "Gemini Flash" },
+    { value: "openai/gpt-oss-20b:free", label: "GPT-OSS" },
+    { value: "qwen/qwen3-235b-a22b", label: "Qwen3" },
   ],
 }
 

@@ -13,11 +13,12 @@ const SUGGESTIONS = [
   { icon: PieChart, text: "Show project status breakdown" },
 ]
 
-const MODEL_OPTIONS = [
-  { value: "google/gemma-4-31b-it:free", label: "google/gemma-4-31b-it:free" },
-  { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "nvidia/nemotron-3-ultra-550b-a55b:free" },
-  { value: "tencent/hy3:free", label: "tencent/hy3:free" },
-  { value: "openai/gpt-oss-20b:free", label: "openai/gpt-oss-20b:free" },
+const DEFAULT_MODELS = [
+  { value: "qwen/qwen3-coder:free", label: "Qwen3 Coder" },
+  { value: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+  { value: "google/gemini-2.5-flash-lite", label: "Gemini Flash" },
+  { value: "openai/gpt-oss-20b:free", label: "GPT-OSS" },
+  { value: "qwen/qwen3-235b-a22b", label: "Qwen3" },
 ]
 
 function formatNumber(n: number) {
@@ -258,8 +259,8 @@ export function AIChat() {
     setTimeout(() => setCopiedIndex(null), 2000)
   }
 
-  const currentModel = settings?.model || "google/gemma-4-31b-it:free"
-  const currentModelLabel = MODEL_OPTIONS.find((m) => m.value === currentModel)?.label || currentModel
+  const currentModel = settings?.model || DEFAULT_MODELS[0].value
+  const currentModelLabel = DEFAULT_MODELS.find((m) => m.value === currentModel)?.label || currentModel
 
   if (settingsLoading) {
     return (
@@ -398,9 +399,9 @@ export function AIChat() {
             <ChevronDown className={cn("size-2.5 sm:size-3 shrink-0 transition-transform duration-200", modelOpen && "rotate-180")} />
           </button>
           {modelOpen && (
-            <div className="absolute bottom-full left-0 mb-2 w-44 sm:w-52 rounded-xl border border-border/20 bg-popover shadow-xl backdrop-blur-2xl p-1.5 z-30 animate-fade-in-up origin-bottom-left">
+            <div className="absolute bottom-full left-0 mb-2 w-44 sm:w-56 rounded-xl border border-border/20 bg-popover shadow-xl backdrop-blur-2xl p-1.5 z-30 animate-fade-in-up origin-bottom-left max-h-72 overflow-y-auto">
               <p className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider px-2.5 py-1.5">Models</p>
-              {MODEL_OPTIONS.map((opt) => (
+              {DEFAULT_MODELS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => saveModel(opt.value)}

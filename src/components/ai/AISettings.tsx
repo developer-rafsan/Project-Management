@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Sliders, Cpu, Coins, Sparkles, Loader2, RefreshCw, Save, ChevronDown, FlaskConical, Gauge, Brain, Bot, Palette, Variable, ScrollText, KeyRound, Eye, EyeOff, Zap } from "lucide-react"
+import { Sliders, Sparkles, Loader2, RefreshCw, Save, ChevronDown, FlaskConical, Brain, Bot, ScrollText, Eye, EyeOff, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
@@ -18,10 +18,6 @@ interface Settings {
   enabled: boolean
   totalTokensUsed?: number
   totalTokensLimit?: number
-  sessionTimeout: number
-  maxHistory: number
-  rateLimit: number
-  tokenLimit: number
   apiKey: string
   hasApiKey?: boolean
 }
@@ -35,19 +31,16 @@ const DEFAULT_SETTINGS: Settings = {
   enabled: true,
   totalTokensUsed: 0,
   totalTokensLimit: 7000000,
-  sessionTimeout: 30,
-  maxHistory: 50,
-  rateLimit: 60,
-  tokenLimit: 7000000,
   apiKey: "",
   hasApiKey: false,
 }
 
-const MODEL_OPTIONS = [
-  { value: "google/gemma-4-31b-it:free", label: "google/gemma-4-31b-it:free" },
-  { value: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "nvidia/nemotron-3-ultra-550b-a55b:free" },
-  { value: "tencent/hy3:free", label: "tencent/hy3:free" },
-  { value: "openai/gpt-oss-20b:free", label: "openai/gpt-oss-20b:free" },
+const DEFAULT_MODELS = [
+  { value: "qwen/qwen3-coder:free", label: "Qwen3 Coder" },
+  { value: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+  { value: "google/gemini-2.5-flash-lite", label: "Gemini Flash" },
+  { value: "openai/gpt-oss-20b:free", label: "GPT-OSS" },
+  { value: "qwen/qwen3-235b-a22b", label: "Qwen3" },
 ]
 
 const PROMPT_PRESETS = [
@@ -99,14 +92,8 @@ export function AISettings() {
   const [generating, setGenerating] = useState(false)
   const [showGenerateInput, setShowGenerateInput] = useState(false)
   const [generateDescription, setGenerateDescription] = useState('')
-  const [providerOpen, setProviderOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
-  const [tempOpen, setTempOpen] = useState(false)
-  const [promptOpen, setPromptOpen] = useState(false)
-  const providerRef = useRef<HTMLDivElement>(null)
   const modelRef = useRef<HTMLDivElement>(null)
-  const tempRef = useRef<HTMLDivElement>(null)
-  const promptRef = useRef<HTMLDivElement>(null)
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -137,14 +124,11 @@ export function AISettings() {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (providerRef.current && !providerRef.current.contains(e.target as Node)) setProviderOpen(false)
       if (modelRef.current && !modelRef.current.contains(e.target as Node)) setModelOpen(false)
-      if (tempRef.current && !tempRef.current.contains(e.target as Node)) setTempOpen(false)
-      if (promptRef.current && !promptRef.current.contains(e.target as Node)) setPromptOpen(false)
     }
-    if (providerOpen || modelOpen || tempOpen || promptOpen) document.addEventListener("mousedown", handleClickOutside)
+    if (modelOpen) document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [providerOpen, modelOpen, tempOpen, promptOpen])
+  }, [modelOpen])
 
   const generatePrompt = async () => {
     if (!generateDescription.trim()) return
@@ -260,7 +244,7 @@ export function AISettings() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/[0.04] via-card/60 to-card/5 shadow-sm shadow-cyan-500/5 overflow-hidden">
+        <div className="rounded-xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/[0.04] via-card/60 to-card/5 shadow-sm shadow-cyan-500/5">
           <div className="p-3 space-y-2">
             <div className="flex items-center gap-1.5">
               <Brain className="size-3.5 text-cyan-500" />
@@ -270,19 +254,10 @@ export function AISettings() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
               <div className="space-y-1">
                 <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Provider</label>
-                <Select value={settings.provider} onValueChange={(v) => setSettings((s) => ({ ...s, provider: v }))}>
-                  <SelectTrigger className="h-7 text-[11px] rounded-lg border-border/40 bg-card/50 w-full">
-                    <SelectValue className="flex text-[11px]">
-                      <div className="flex items-center gap-1.5">
-                        <Bot className="size-3 shrink-0" />
-                        <span>OpenRouter</span>
-                      </div>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[180px]">
-                    <SelectItem className="text-xs" value="openrouter">OpenRouter</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-1.5 h-7 rounded-lg border border-border/40 bg-card/50 px-2.5 text-[11px] text-muted-foreground">
+                  <Bot className="size-3 shrink-0" />
+                  <span>OpenRouter</span>
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -301,8 +276,9 @@ export function AISettings() {
                     <ChevronDown className={cn("size-3 shrink-0 ml-1 transition-transform duration-200", modelOpen && "rotate-180")} />
                   </button>
                   {modelOpen && (
-                    <div className="absolute top-full left-0 mt-1.5 w-full min-w-[220px] rounded-xl border border-border/20 bg-popover shadow-xl backdrop-blur-2xl p-1.5 z-30 animate-fade-in-up origin-top-left">
-                      {MODEL_OPTIONS.map((opt) => (
+                    <div className="absolute top-full left-0 mt-1.5 w-full min-w-[240px] max-h-64 overflow-y-auto rounded-xl border border-border/20 bg-popover shadow-xl backdrop-blur-2xl p-1.5 z-30 animate-fade-in-up origin-top-left">
+                      <p className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider px-2.5 py-1.5">Models</p>
+                      {DEFAULT_MODELS.map((opt) => (
                         <button
                           key={opt.value}
                           onClick={() => { setSettings((s) => ({ ...s, model: opt.value })); setModelOpen(false) }}
@@ -382,24 +358,10 @@ export function AISettings() {
             </div>
           </div>
           {advancedOpen && (
-            <div className="px-3 pb-3 space-y-2 animate-fade-in-up">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Session Timeout (min)</label>
-                  <Input type="number" min={5} max={1440} value={settings.sessionTimeout ?? 30} onChange={(e) => setSettings((s) => ({ ...s, sessionTimeout: parseInt(e.target.value) || 30 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Max History</label>
-                  <Input type="number" min={10} max={500} value={settings.maxHistory ?? 50} onChange={(e) => setSettings((s) => ({ ...s, maxHistory: parseInt(e.target.value) || 50 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Rate Limit (req/min)</label>
-                  <Input type="number" min={1} max={1000} value={settings.rateLimit ?? 60} onChange={(e) => setSettings((s) => ({ ...s, rateLimit: parseInt(e.target.value) || 60 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Token Limit</label>
-                  <Input type="number" min={1000} max={100000000} step={100000} value={settings.tokenLimit ?? 7000000} onChange={(e) => { const val = parseInt(e.target.value) || 7000000; setSettings((s) => ({ ...s, tokenLimit: val, totalTokensLimit: val })) }} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
-                </div>
+            <div className="px-3 pb-3 animate-fade-in-up">
+              <div className="space-y-1">
+                <label className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Monthly Token Limit</label>
+                <Input type="number" min={1000} max={100000000} step={100000} value={settings.totalTokensLimit ?? 7000000} onChange={(e) => setSettings((s) => ({ ...s, totalTokensLimit: parseInt(e.target.value) || 7000000 }))} className="h-7 text-[11px] rounded-lg border-border/30 bg-card/50" />
               </div>
             </div>
           )}

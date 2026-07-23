@@ -31,42 +31,36 @@ export async function GET() {
       baseURL: config.openrouter.baseURL,
     })
 
-    const testModels = [
-      settings.model || 'google/gemma-4-31b-it:free',
-      'nvidia/nemotron-3-ultra-550b-a55b:free',
-      'tencent/hy3:free',
-      'openai/gpt-oss-20b:free',
-    ]
+    const userModel = settings.model || 'qwen/qwen3-coder:free'
+    const isPaid = userModel === 'deepseek/deepseek-v4-flash' || userModel === 'qwen/qwen3-235b-a22b'
+    const freeModels = ['qwen/qwen3-coder:free', 'openai/gpt-oss-20b:free', 'google/gemini-2.5-flash-lite']
+    const testModels = isPaid ? [...freeModels, userModel] : [...new Set([userModel, ...freeModels])]
 
     let completion
     let lastErr: any
-    for (let i = 0; i < testModels.length; i++) {
+    for (const model of testModels) {
       try {
         completion = await client.chat.completions.create({
-          model: testModels[i],
+          model,
           messages: [{ role: 'user', content: 'Say "ok" and nothing else.' }],
           max_tokens: 20,
         })
         if (completion?.choices?.length) break
       } catch (e: any) {
         lastErr = e
-        if (i < testModels.length - 1) {
-          await new Promise(r => setTimeout(r, 2000))
-        }
       }
     }
 
     if (!completion) {
       const msg = lastErr?.error?.message || lastErr?.message || 'All models failed'
-      const status = lastErr?.status || lastErr?.error?.code || ''
-      return NextResponse.json({ success: false, error: msg + (status ? ` (code: ${status})` : '') })
+      return NextResponse.json({ success: false, error: msg })
     }
 
     const content = completion.choices?.[0]?.message?.content || ''
     const success = content.toLowerCase().includes('ok') || content.trim().length > 0
 
     return NextResponse.json({
-      success: !!success,
+      success,
       message: success ? 'API key is valid and working' : 'API key responded but unexpectedly',
       model: completion.model,
       usedKey: apiKey ? apiKey.slice(0, 8) + '...' : 'none',

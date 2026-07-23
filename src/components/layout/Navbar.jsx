@@ -48,13 +48,12 @@ import {
   Mail,
   MailOpen,
   User,
-  ListTodo,
 } from "lucide-react"
 
 const pageTitles = {
   "/dashboard": "Dashboard",
   "/dashboard/projects": "Projects",
-  "/dashboard/today-task": "Today's Task",
+
   "/dashboard/notes": "Notes",
   "/dashboard/settings": "Settings",
   "/dashboard/profile": "Profile",
@@ -64,7 +63,7 @@ const pageTitles = {
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
-  { href: "/dashboard/today-task", label: "Today's Task", icon: ListTodo },
+
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot },
