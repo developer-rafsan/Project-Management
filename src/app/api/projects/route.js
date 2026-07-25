@@ -73,7 +73,7 @@ export async function GET(request) {
 
     const [projects, total] = await Promise.all([
       Project.find(filter)
-        .select('orderId projectName status priority cms price progress websites figmaLinks referenceLinks createdAt currentProjectDate assignee tags createdBy owner fiverrFeeEnabled')
+        .select('orderId projectName status priority cms price progress websites links createdAt currentProjectDate assignee tags createdBy owner fiverrFeeEnabled')
         .sort(sort).skip(skip).limit(limit).lean(),
       Project.countDocuments(filter),
     ]);
@@ -116,8 +116,7 @@ export async function POST(request) {
       price,
       progress,
       websites,
-      figmaLinks,
-      referenceLinks,
+      links,
       currentProjectDate,
       fiverrFeeEnabled,
     } = body;
@@ -175,8 +174,7 @@ export async function POST(request) {
         }
         return obj;
       }),
-      figmaLinks: figmaLinks || [],
-      referenceLinks: referenceLinks || [],
+      links: links || [],
       currentProjectDate: currentProjectDate ? new Date(currentProjectDate) : new Date(),
       createdBy: session.user.id,
       owner: session.user.id,

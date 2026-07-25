@@ -45,8 +45,6 @@ import {
   Eye,
   EyeOff,
   Copy,
-  Palette,
-  Link,
   Plus,
   Pencil,
   X,
@@ -122,7 +120,7 @@ function InfoRow({ icon: Icon, label, children }) {
   return (
     <div className="flex items-center gap-3 py-2">
       <div className="flex items-center gap-2 min-w-[120px] shrink-0">
-        <Icon className="size-3.5 text-muted-foreground" />
+        {Icon && <Icon className="size-3.5 text-muted-foreground" />}
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
       <div className="flex-1 min-w-0">{children}</div>
@@ -577,17 +575,14 @@ function AdditionalPasswordItem({ password }) {
 }
 
 export function ProjectLinksCard({ project, isOwner, onUpdate }) {
-  const hasFigma = project.figmaLinks?.length > 0
-  const hasRef = project.referenceLinks?.length > 0
+  const links = project.links || []
 
   const [editOpen, setEditOpen] = useState(false)
-  const [figmaInputs, setFigmaInputs] = useState([])
-  const [refInputs, setRefInputs] = useState([])
+  const [linkInputs, setLinkInputs] = useState([])
   const [saving, setSaving] = useState(false)
 
   const handleOpen = () => {
-    setFigmaInputs(project.figmaLinks?.map((l) => l.url || "") || [])
-    setRefInputs(project.referenceLinks?.map((l) => l.url || "") || [])
+    setLinkInputs(links.map((l) => ({ title: l.title || "", url: l.url || "" })))
     setEditOpen(true)
   }
 
@@ -595,8 +590,7 @@ export function ProjectLinksCard({ project, isOwner, onUpdate }) {
     setSaving(true)
     try {
       const updated = await updateProject(project._id, {
-        figmaLinks: figmaInputs.filter(Boolean).map((url) => ({ url })),
-        referenceLinks: refInputs.filter(Boolean).map((url) => ({ url })),
+        links: linkInputs.filter((l) => l.url).map((l) => ({ title: l.title, url: l.url })),
       })
       onUpdate?.(updated)
       setEditOpen(false)
@@ -618,38 +612,18 @@ export function ProjectLinksCard({ project, isOwner, onUpdate }) {
           </Button>
         )}
       </div>
-      {(hasFigma || hasRef) ? (
+      {links.length > 0 ? (
         <div className="divide-y divide-border/50">
-          {hasFigma && (
-            <InfoRow icon={Palette} label="Figma">
-              <div className="space-y-1 w-full">
-                {project.figmaLinks.map((link, i) => (
-                  link.url ? (
-                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1 truncate">
-                      <Palette className="size-3 shrink-0" />
-                      <span className="truncate">{link.url}</span>
-                      <ExternalLink className="size-3 shrink-0" />
-                    </a>
-                  ) : null
-                ))}
-              </div>
-            </InfoRow>
-          )}
-          {hasFigma && hasRef && <SectionDivider />}
-          {hasRef && (
-            <InfoRow icon={Link} label="Reference">
-              <div className="space-y-1 w-full">
-                {project.referenceLinks.map((link, i) => (
-                  link.url ? (
-                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1 truncate">
-                      <ExternalLink className="size-3 shrink-0" />
-                      <span className="truncate">{link.url}</span>
-                    </a>
-                  ) : null
-                ))}
-              </div>
-            </InfoRow>
-          )}
+          {links.map((link, i) => (
+            link.url ? (
+              <InfoRow key={i} label={link.title || `Link ${i + 1}`}>
+                <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1 truncate">
+                  <span className="truncate">{link.url}</span>
+                  <ExternalLink className="size-3 shrink-0" />
+                </a>
+              </InfoRow>
+            ) : null
+          ))}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">No links added yet</p>
@@ -659,51 +633,42 @@ export function ProjectLinksCard({ project, isOwner, onUpdate }) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Links</DialogTitle>
-            <DialogDescription>Update Figma &amp; reference links</DialogDescription>
+            <DialogDescription>Add or update project links</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2 max-h-80 overflow-y-auto">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Figma Links</label>
-                <Button variant="ghost" size="icon-xs" onClick={() => setFigmaInputs([...figmaInputs, ""])}>
-                  <Plus className="size-3" />
-                </Button>
-              </div>
-              {figmaInputs.length === 0 && (
-                <Button variant="outline" size="sm" className="w-full" onClick={() => setFigmaInputs([""])}>
-                  <Plus className="size-3 mr-2" /> Add Figma Link
-                </Button>
-              )}
-              {figmaInputs.map((url, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input value={url} onChange={(e) => { const n = [...figmaInputs]; n[i] = e.target.value; setFigmaInputs(n) }} placeholder="Figma URL" />
-                  <Button variant="ghost" size="icon-xs" onClick={() => setFigmaInputs(figmaInputs.filter((_, j) => j !== i))}>
+          <div className="space-y-3 py-2 max-h-80 overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Links</label>
+              <Button variant="ghost" size="icon-xs" onClick={() => setLinkInputs([...linkInputs, { title: "", url: "" }])}>
+                <Plus className="size-3" />
+              </Button>
+            </div>
+            {linkInputs.length === 0 && (
+              <Button variant="outline" size="sm" className="w-full" onClick={() => setLinkInputs([{ title: "", url: "" }])}>
+                <Plus className="size-3 mr-2" /> Add Link
+              </Button>
+            )}
+            {linkInputs.map((item, i) => (
+              <div key={i} className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Link #{i + 1}</span>
+                  <Button variant="ghost" size="icon-xs" onClick={() => setLinkInputs(linkInputs.filter((_, j) => j !== i))}>
                     <X className="size-3" />
                   </Button>
                 </div>
-              ))}
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Reference Links</label>
-                <Button variant="ghost" size="icon-xs" onClick={() => setRefInputs([...refInputs, ""])}>
-                  <Plus className="size-3" />
-                </Button>
+                <Input
+                  value={item.title}
+                  onChange={(e) => { const n = [...linkInputs]; n[i] = { ...n[i], title: e.target.value }; setLinkInputs(n) }}
+                  placeholder="Link title (e.g. Figma, Reference)"
+                  className="h-8 text-sm"
+                />
+                <Input
+                  value={item.url}
+                  onChange={(e) => { const n = [...linkInputs]; n[i] = { ...n[i], url: e.target.value }; setLinkInputs(n) }}
+                  placeholder="https://example.com"
+                  className="h-8 text-sm"
+                />
               </div>
-              {refInputs.length === 0 && (
-                <Button variant="outline" size="sm" className="w-full" onClick={() => setRefInputs([""])}>
-                  <Plus className="size-3 mr-2" /> Add Reference Link
-                </Button>
-              )}
-              {refInputs.map((url, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input value={url} onChange={(e) => { const n = [...refInputs]; n[i] = e.target.value; setRefInputs(n) }} placeholder="Reference URL" />
-                  <Button variant="ghost" size="icon-xs" onClick={() => setRefInputs(refInputs.filter((_, j) => j !== i))}>
-                    <X className="size-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>

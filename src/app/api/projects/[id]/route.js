@@ -98,7 +98,7 @@ export async function PATCH(request, { params }) {
     const fields = [
       'orderId', 'projectName', 'cms', 'priority', 'status',
       'assignee', 'tags', 'description', 'price',
-      'progress', 'websites', 'figmaLinks', 'referenceLinks',
+      'progress', 'websites', 'links',
       'currentProjectDate', 'fiverrFeeEnabled',
       'domainHosting',
     ];
@@ -256,7 +256,7 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    if (body.figmaLinks !== undefined || body.referenceLinks !== undefined) {
+    if (body.links !== undefined) {
       await Activity.create({
         project: id, type: 'link_updated', performedBy: session.user.id,
         description: `Updated project links`,
@@ -302,7 +302,7 @@ export async function PATCH(request, { params }) {
           orderId: 'Order ID', projectName: 'Name',
           cms: 'CMS', priority: 'Priority', assignee: 'Assignee',
           tags: 'Tags', description: 'Description', price: 'Price', progress: 'Progress',
-          websites: 'Websites', figmaLinks: 'Figma Links', referenceLinks: 'Reference Links',
+          websites: 'Websites', links: 'Links',
           fiverrFeeEnabled: 'Fiverr Fee',
         }[k] || k));
 

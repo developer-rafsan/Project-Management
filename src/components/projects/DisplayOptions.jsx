@@ -21,8 +21,7 @@ export const SCREEN_OPTIONS = [
   { id: "createdBy", label: "Created By", default: false, section: "data" },
   { id: "assignee", label: "Contributors", default: false, section: "data" },
   { id: "description", label: "Description", default: false, section: "data" },
-  { id: "figma", label: "Figma", default: false, section: "data" },
-  { id: "references", label: "References", default: false, section: "data" },
+  { id: "links", label: "Links", default: false, section: "data" },
   { id: "search", label: "Search", default: true, section: "filter" },
   { id: "filterPanel", label: "Filters", default: true, section: "filter" },
   { id: "monthFilter", label: "Month Filter", default: true, section: "filter" },
@@ -35,7 +34,7 @@ const DATA_GROUPS = [
   { label: "Info", ids: ["title", "status", "priority", "date", "serial"] },
   { label: "Details", ids: ["orderId", "cms", "tags", "description"] },
   { label: "People", ids: ["owner", "createdBy", "assignee"] },
-  { label: "Links", ids: ["website", "figma", "references"] },
+  { label: "Links", ids: ["website", "links"] },
   { label: "Finance", ids: ["price", "progress"] },
   { label: "Interface", ids: ["header", "bulkActionBar", "pagination"], section: "ui" },
 ]

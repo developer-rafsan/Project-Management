@@ -193,11 +193,10 @@ const WebsiteCell = memo(function WebsiteCell({ project, pwData, copied, onCopy,
           </>
         ) : <span className="text-xs text-muted-foreground">-</span>}
       </div>
-      {(totalSites > 1 || project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
+      {(totalSites > 1 || project.links?.length > 0) && (
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
           {totalSites > 1 && <span>{totalSites - 1} extra</span>}
-          {project.figmaLinks?.length > 0 && <span>{project.figmaLinks.length} figma</span>}
-          {project.referenceLinks?.length > 0 && <span>{project.referenceLinks.length} ref</span>}
+          {project.links?.length > 0 && <span>{project.links.length} links</span>}
         </div>
       )}
     </div>
@@ -325,8 +324,7 @@ const ProjectTable = memo(function ProjectTable({
       { id: "createdBy", label: "Created By", className: "hidden xl:table-cell w-[100px]", hide: "xl" },
       { id: "assignee", label: "Contributors", className: "hidden xl:table-cell min-w-[120px]", hide: "xl" },
       { id: "description", label: "Description", className: "hidden xl:table-cell min-w-[160px]", hide: "xl" },
-      { id: "figma", label: "Figma", className: "hidden lg:table-cell w-[70px] text-center", hide: "lg" },
-      { id: "references", label: "Refs", className: "hidden lg:table-cell w-[70px] text-center", hide: "lg" },
+      { id: "links", label: "Links", className: "hidden lg:table-cell w-[70px] text-center", hide: "lg" },
       { id: "actions", label: "", className: "w-[40px]", hide: "" },
     ]
     const colVisibility = {
@@ -344,8 +342,7 @@ const ProjectTable = memo(function ProjectTable({
       createdBy: visibility.createdBy !== false,
       assignee: visibility.assignee !== false,
       description: visibility.description !== false,
-      figma: visibility.figma !== false,
-      references: visibility.references !== false,
+      links: visibility.links !== false,
     }
     return cols.filter(col => col.id === "actions" || colVisibility[col.id] !== false)
   }, [visibility])
@@ -487,13 +484,9 @@ const ProjectTable = memo(function ProjectTable({
                     return project.description ? (
                       <span className="text-xs text-muted-foreground line-clamp-2 max-w-[160px]">{project.description}</span>
                     ) : <span className="text-sm text-muted-foreground">-</span>
-                  case "figma":
-                    return project.figmaLinks?.length > 0 ? (
-                      <span className="text-sm font-medium tabular-nums text-muted-foreground">{project.figmaLinks.length}</span>
-                    ) : <span className="text-sm text-muted-foreground">-</span>
-                  case "references":
-                    return project.referenceLinks?.length > 0 ? (
-                      <span className="text-sm font-medium tabular-nums text-muted-foreground">{project.referenceLinks.length}</span>
+                  case "links":
+                    return project.links?.length > 0 ? (
+                      <span className="text-sm font-medium tabular-nums text-muted-foreground">{project.links.length}</span>
                     ) : <span className="text-sm text-muted-foreground">-</span>
                   case "actions":
                     return <RowActions project={project} onAction={onAction} />
@@ -717,11 +710,10 @@ const ProjectTable = memo(function ProjectTable({
                         </button>
                       </div>
                     )}
-                    {(totalSites > 1 || project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
+                    {(totalSites > 1 || project.links?.length > 0) && (
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 pt-0.5">
                         {totalSites > 1 && <span>+{totalSites - 1} more sites</span>}
-                        {project.figmaLinks?.length > 0 && <span>{project.figmaLinks.length} figma</span>}
-                        {project.referenceLinks?.length > 0 && <span>{project.referenceLinks.length} ref</span>}
+                        {project.links?.length > 0 && <span>{project.links.length} links</span>}
                       </div>
                     )}
                   </div>
@@ -795,20 +787,13 @@ const ProjectTable = memo(function ProjectTable({
                   </div>
                 )}
 
-                {/* Figma + References */}
-                {(visibility.figma !== false || visibility.references !== false) && (project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
+                {/* Links */}
+                {(visibility.links !== false) && (project.links?.length > 0) && (
                   <div className="border-t border-border/40 pt-2 mt-1 space-y-1">
                     <div className="flex items-center gap-3 min-w-0">
-                      {visibility.figma !== false && project.figmaLinks?.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          <span className="text-muted-foreground/50">Figma:</span> {project.figmaLinks.length}
-                        </span>
-                      )}
-                      {visibility.references !== false && project.referenceLinks?.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          <span className="text-muted-foreground/50">Refs:</span> {project.referenceLinks.length}
-                        </span>
-                      )}
+                      <span className="text-xs text-muted-foreground">
+                        <span className="text-muted-foreground/50">Links:</span> {project.links.length}
+                      </span>
                     </div>
                   </div>
                 )}

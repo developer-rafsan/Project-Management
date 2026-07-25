@@ -38,8 +38,6 @@ import {
   AlertCircle,
   Plus,
   Trash2,
-  Link,
-  Palette,
 } from "lucide-react"
 import { createProject, updateProject, getProjectPassword } from "@/actions/projectActions"
 
@@ -58,12 +56,6 @@ const schema = z.object({
     url: z.string().optional(),
     username: z.string().optional(),
     password: z.string().optional(),
-  })).optional(),
-  figmaLinks: z.array(z.object({
-    url: z.string().optional(),
-  })).optional(),
-  referenceLinks: z.array(z.object({
-    url: z.string().optional(),
   })).optional(),
 })
 
@@ -206,16 +198,12 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
       price: initialData?.price ? String(initialData.price) : "",
 
       websites: getInitialWebsites(),
-      figmaLinks: initialData?.figmaLinks || [],
-      referenceLinks: initialData?.referenceLinks || [],
     },
   })
   const { register, handleSubmit, control, setValue, watch, trigger, formState } = form
   const errors = formState.errors
 
   const { fields: addSiteFields, append: appendSite, remove: removeSite } = useFieldArray({ control, name: "websites" })
-  const { fields: figmaFields, append: appendFigma, remove: removeFigma } = useFieldArray({ control, name: "figmaLinks" })
-  const { fields: refFields, append: appendRef, remove: removeRef } = useFieldArray({ control, name: "referenceLinks" })
 
   const stepFields = [
     ['orderId', 'projectName'],
@@ -707,52 +695,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 </div>
               </div>
             </div>
-            {/* Figma Links */}
-            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <Palette className="size-3.5 text-primary" />
-                  Figma Links
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendFigma({ url: "" })} className="gap-1 h-7 text-xs cursor-pointer">
-                  <Plus className="size-3" /> Add
-                </Button>
-              </div>
-              {figmaFields.length === 0 && (
-                <p className="text-xs text-muted-foreground/60">No Figma links</p>
-              )}
-              {figmaFields.map((field, idx) => (
-                <div key={field.id} className="flex items-center gap-2">
-                  <Input {...register(`figmaLinks.${idx}.url`)} placeholder="https://figma.com/file/..." className="h-8 text-sm bg-background flex-1" />
-                  <Button type="button" variant="ghost" size="icon-xs" onClick={() => removeFigma(idx)} className="text-destructive hover:text-destructive shrink-0 cursor-pointer">
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-            {/* Reference Links */}
-            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <Link className="size-3.5 text-primary" />
-                  Reference Sites
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendRef({ url: "" })} className="gap-1 h-7 text-xs cursor-pointer">
-                  <Plus className="size-3" /> Add
-                </Button>
-              </div>
-              {refFields.length === 0 && (
-                <p className="text-xs text-muted-foreground/60">No reference sites</p>
-              )}
-              {refFields.map((field, idx) => (
-                <div key={field.id} className="flex items-center gap-2">
-                  <Input {...register(`referenceLinks.${idx}.url`)} placeholder="https://example.com" className="h-8 text-sm bg-background flex-1" />
-                  <Button type="button" variant="ghost" size="icon-xs" onClick={() => removeRef(idx)} className="text-destructive hover:text-destructive shrink-0 cursor-pointer">
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+
           </div>
         )}
 
@@ -805,18 +748,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
                 <ReviewRow icon={FileText} label="Description" value={formValues.description || "—"} />
               </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                <div className="flex size-5 items-center justify-center rounded bg-primary/10">
-                  <Globe className="size-3 text-primary" />
-                </div>
-                Websites &amp; Links
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <ReviewRow icon={Palette} label="Figma Links" value={formValues.figmaLinks?.length ? `${formValues.figmaLinks.length} link(s)` : "—"} />
-                <ReviewRow icon={Link} label="Reference Sites" value={formValues.referenceLinks?.length ? `${formValues.referenceLinks.length} link(s)` : "—"} />
-              </div>
-            </div>
+
           </div>
         )}
       </div>

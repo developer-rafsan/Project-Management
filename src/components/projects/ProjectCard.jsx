@@ -254,11 +254,10 @@ const ProjectCard = memo(function ProjectCard({ project, index, onAction, select
                       </a>
                     </div>
                   </div>
-                  {(totalSites > 1 || project.figmaLinks?.length > 0 || project.referenceLinks?.length > 0) && (
+                  {(totalSites > 1 || project.links?.length > 0) && (
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       {totalSites > 1 && <span>{totalSites - 1} extra</span>}
-                      {project.figmaLinks?.length > 0 && <span>{project.figmaLinks.length} figma</span>}
-                      {project.referenceLinks?.length > 0 && <span>{project.referenceLinks.length} ref</span>}
+                      {project.links?.length > 0 && <span>{project.links.length} links</span>}
                     </div>
                   )}
                   <div className="flex items-center gap-2 flex-wrap">

@@ -216,7 +216,7 @@ export async function PATCH(request, { params }) {
           orderId: 'Order ID', projectName: 'Name',
           cms: 'CMS', priority: 'Priority', tags: 'Tags',
           description: 'Description', price: 'Price', progress: 'Progress',
-          websites: 'Websites', figmaLinks: 'Figma Links', referenceLinks: 'Reference Links',
+          websites: 'Websites', links: 'Links',
           fiverrFeeEnabled: 'Fiverr Fee',
         }[k] || k));
 
@@ -290,7 +290,7 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    if (body.figmaLinks !== undefined || body.referenceLinks !== undefined) {
+    if (body.links !== undefined) {
       await Activity.create({
         project: projectId, type: 'link_updated', performedBy: share.createdBy,
         description: `Updated project links`,

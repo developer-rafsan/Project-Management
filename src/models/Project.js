@@ -42,8 +42,7 @@ const projectSchema = new mongoose.Schema(
       hostingPassword: { type: { iv: String, encryptedData: String }, default: {} },
       sameAccount: { type: Boolean, default: false },
     }],
-    figmaLinks: [{ url: { type: String, default: '' } }],
-    referenceLinks: [{ url: { type: String, default: '' } }],
+    links: [{ title: { type: String, default: '' }, url: { type: String, default: '' } }],
     currentProjectDate: { type: Date },
     transferMonth: [{
       oldMonth: Number,
