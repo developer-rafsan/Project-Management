@@ -203,9 +203,6 @@ export function AIChat() {
       if (!res.ok) throw new Error(data.detail || data.error)
 
       setSessionId(data.sessionId)
-      if (data.provider && data.model) {
-        setSettings({ provider: data.provider, model: data.model })
-      }
       if (data.usage?.totalTokens) {
         setTokenUsed((prev) => prev + data.usage.totalTokens)
       }

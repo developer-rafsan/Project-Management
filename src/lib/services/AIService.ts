@@ -82,9 +82,6 @@ export class AIService {
         if (response?.error) throw new Error(response.error.message || 'Model error')
         if (!response?.choices?.length) throw new Error('Empty response')
         modelToUse = m
-        if (m !== settings.model) {
-          await settingsRepo.updateSettings(userId, { model: m }).catch(() => {})
-        }
         break
       } catch (err: any) {
         lastError = err
