@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
-import { getMonthRange } from '@/lib/dateUtils';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
 
@@ -72,18 +71,19 @@ export async function GET(request) {
       toDate = toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
     }
 
-    let dbFilter = { ...ownershipFilter };
-    if (selectedMonth) {
-      const { from, to } = getMonthRange(selectedYear, selectedMonth, monthStartDay)
-      dbFilter.currentProjectDate = { $gte: from, $lte: to }
-    }
+    const dbFilter = { ...ownershipFilter };
 
     const allProjects = await Project.find(dbFilter)
       .select('_id status price createdAt currentProjectDate fiverrFeeEnabled owner assignee orderId projectName websites')
       .lean();
 
     let filtered = allProjects;
-    if (allParam !== 'true' && !selectedMonth) {
+    if (selectedMonth) {
+      filtered = allProjects.filter(p => {
+        const eff = getEffectiveMonthYear(p, monthStartDay)
+        return eff.month === selectedMonth && eff.year === selectedYear
+      })
+    } else if (allParam !== 'true') {
       filtered = allProjects.filter(p => {
         const eff = getEffectiveMonthYear(p, monthStartDay)
         const pd = new Date(eff.year, eff.month - 1, 1)
