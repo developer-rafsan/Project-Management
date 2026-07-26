@@ -52,6 +52,10 @@ export async function GET(request) {
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
     const monthStartDay = parseInt(searchParams.get('monthStartDay')) || 1;
+    const statusFilter = searchParams.get('status');
+    const priorityFilter = searchParams.get('priority');
+    const cmsFilter = searchParams.get('cms');
+    const searchQuery = searchParams.get('search');
 
     const userId = session.user.id;
 
@@ -75,7 +79,7 @@ export async function GET(request) {
     }
 
     const allProjects = await Project.find(dbFilter)
-      .select('_id status price createdAt currentProjectDate fiverrFeeEnabled owner assignee')
+      .select('_id status price createdAt currentProjectDate fiverrFeeEnabled owner assignee orderId projectName websites')
       .lean();
 
     let filtered = allProjects;
@@ -88,6 +92,27 @@ export async function GET(request) {
         if (toDate && pd > toDate) return false
         return true
       })
+    }
+
+    if (searchQuery) {
+      const regex = new RegExp(searchQuery, 'i')
+      filtered = filtered.filter(p =>
+        (p.orderId && regex.test(p.orderId)) ||
+        (p.projectName && regex.test(p.projectName)) ||
+        (p.websites?.some(s => s.url && regex.test(s.url)))
+      )
+    }
+    if (statusFilter) {
+      const statuses = statusFilter.split(',')
+      filtered = filtered.filter(p => statuses.includes(p.status))
+    }
+    if (priorityFilter) {
+      const priorities = priorityFilter.split(',')
+      filtered = filtered.filter(p => priorities.includes(p.priority))
+    }
+    if (cmsFilter) {
+      const cmsList = cmsFilter.split(',')
+      filtered = filtered.filter(p => cmsList.includes(p.cms))
     }
 
     const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, revisionProjects, statusMap, priceMap, dayMap, myPriceMap, myFeeDelivered } = filtered.reduce((acc, p) => {

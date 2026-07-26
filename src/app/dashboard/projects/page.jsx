@@ -26,7 +26,7 @@ import { StatusChangeDialog } from "@/components/projects/StatusChangeDialog"
 import ShareDialog from "@/components/projects/ShareDialog"
 import ShareListDialog from "@/components/projects/ShareListDialog"
 import ProgressDialog from "@/components/projects/ProgressDialog"
-import { getMonthRange, getEffectiveMonthYear } from "@/lib/dateUtils"
+import { getMonthRange, getEffectiveMonthYear, getMonthFromDate } from "@/lib/dateUtils"
 import { createProject, deleteProject, getProjectPassword, updateProject } from "@/actions/projectActions"
 import {
   Dialog,
@@ -60,8 +60,20 @@ export default function ProjectsPage() {
     from: startOfMonth(now),
     to: endOfMonth(now),
   })
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    if (typeof window !== "undefined") {
+      const day = Number(localStorage.getItem("monthStartDay")) || 1
+      return getMonthFromDate(new Date(), day).month
+    }
+    return now.getMonth() + 1
+  })
+  const [selectedYear, setSelectedYear] = useState(() => {
+    if (typeof window !== "undefined") {
+      const day = Number(localStorage.getItem("monthStartDay")) || 1
+      return getMonthFromDate(new Date(), day).year
+    }
+    return now.getFullYear()
+  })
   const [page, setPage] = useState(1)
   const [viewMode, setViewMode] = useState("list")
   const [visibility, setVisibility] = useState(() => {

@@ -20,8 +20,9 @@ import RecentUpdates from "@/components/dashboard/RecentUpdates"
 import StatusChart from "@/components/dashboard/StatusChart"
 import MonthlyProgressChart from "@/components/dashboard/MonthlyProgressChart"
 import DashboardScreenOptions, { getDefaultDashboardVisibility, filterUpdatesByVisibility } from "@/components/dashboard/DashboardScreenOptions"
+import { Calendar, ArrowLeftRight, List } from "lucide-react"
 import { startOfMonth, endOfMonth, format, eachDayOfInterval } from "date-fns"
-import { getMonthRange } from "@/lib/dateUtils"
+import { getMonthRange, getMonthFromDate } from "@/lib/dateUtils"
 
 const statusColors = {
   Pending: "#eab308",
@@ -42,8 +43,20 @@ export default function DashboardPage() {
     from: startOfMonth(now),
     to: endOfMonth(now),
   })
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    if (typeof window !== "undefined") {
+      const day = Number(localStorage.getItem("monthStartDay")) || 1
+      return getMonthFromDate(new Date(), day).month
+    }
+    return now.getMonth() + 1
+  })
+  const [selectedYear, setSelectedYear] = useState(() => {
+    if (typeof window !== "undefined") {
+      const day = Number(localStorage.getItem("monthStartDay")) || 1
+      return getMonthFromDate(new Date(), day).year
+    }
+    return now.getFullYear()
+  })
   const [stats, setStats] = useState(null)
   const [chartData, setChartData] = useState([])
   const [monthlyData, setMonthlyData] = useState([])
@@ -162,91 +175,152 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {visibility.greeting !== false && (
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">
-            Welcome back, {session?.user?.name}
-          </h1>
-          <p className="text-sm text-muted-foreground">Dashboard overview</p>
-        </div>
-      )}
-      {visibility.filterBar !== false && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
-          <div className="flex flex-wrap items-center gap-2 w-full sm:flex-1">
-            <div className="flex rounded-lg border p-0.5 w-full sm:w-auto">
-              <Button
-                variant={filterMode === "month" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setFilterMode("month")}
-                className="flex-1 rounded-md px-2 sm:px-3 text-xs sm:text-sm"
-              >
-                Month
-              </Button>
-              <Button
-                variant={filterMode === "range" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setFilterMode("range")}
-                className="flex-1 rounded-md px-2 sm:px-3 text-xs sm:text-sm"
-              >
-                Range
-              </Button>
-              <Button
-                variant={filterMode === "all" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setFilterMode("all")}
-                className="flex-1 rounded-md px-2 sm:px-3 text-xs sm:text-sm"
-              >
-                All
-              </Button>
-            </div>
-            <div className="flex items-center gap-2 flex-1 sm:flex-none">
-              {filterMode === "month" && (
-                <div className="flex gap-2 flex-1 sm:flex-none">
-                  <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
-                    <SelectTrigger className="flex-1 sm:w-[150px]">
-                      <SelectValue placeholder={format(new Date(2024, selectedMonth - 1), "MMM")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                        <SelectItem key={m} value={String(m)}>
-                          {format(new Date(2024, m - 1), "MMMM")}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                    <SelectTrigger className="flex-1 sm:w-[100px]">
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: new Date().getFullYear() - 2021 + 1 }, (_, i) => 2022 + i).map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">
+              Welcome back, {session?.user?.name}
+            </h1>
+            <p className="text-sm text-muted-foreground">Dashboard overview</p>
+          </div>
+          <div className="hidden sm:flex sm:flex-row sm:items-center sm:gap-2">
+            <DashboardScreenOptions visibility={visibility} onChange={setVisibility} />
+            {visibility.filterBar !== false && (
+              <div className="flex rounded-lg border p-0.5 bg-muted/30">
+                <Button
+                  variant={filterMode === "month" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setFilterMode("month")}
+                  className="flex-1 sm:flex-none rounded-md px-2.5 text-xs"
+                >
+                  <span className="hidden sm:inline">Month</span>
+                </Button>
+                <Button
+                  variant={filterMode === "range" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setFilterMode("range")}
+                  className="flex-1 sm:flex-none rounded-md px-2.5 text-xs"
+                >
+                  <span className="hidden sm:inline">Range</span>
+                </Button>
+                <Button
+                  variant={filterMode === "all" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setFilterMode("all")}
+                  className="flex-1 sm:flex-none rounded-md px-2.5 text-xs"
+                >
+                  <span className="hidden sm:inline">All</span>
+                </Button>
+              </div>
+            )}
+            {visibility.filterBar !== false && filterMode === "month" && (
+              <div className="flex gap-1.5 sm:w-auto">
+                <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+                  <SelectTrigger className="sm:w-[100px] h-8">
+                    <SelectValue placeholder={format(new Date(2024, selectedMonth - 1), "MMM")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <SelectItem key={m} value={String(m)}>
+                        {format(new Date(2024, m - 1), "MMMM")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                  <SelectTrigger className="sm:w-[85px] h-8">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: new Date().getFullYear() - 2021 + 1 }, (_, i) => 2022 + i).map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {visibility.filterBar !== false && filterMode === "range" && (
+              <DateRangePicker value={dateRange} onChange={setDateRange} />
+            )}
+            <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">
+              {filterMode === "all"
+                ? "All projects"
+                : filterMode === "month"
+                  ? (() => {
+                      const { from, to } = getMonthRange(selectedYear, selectedMonth, startDay)
+                      return `${format(from, "MMM d")} — ${format(to, "MMM d, yyyy")}`
+                    })()
+                  : filterMode === "range" && dateRange?.from && dateRange?.to
+                    ? `${format(dateRange.from, "MMM d")} — ${format(dateRange.to, "MMM d, yyyy")}`
+                    : ""}
+            </span>
+          </div>
+          <div className="flex sm:hidden flex-col gap-2 w-full">
+            <div className="flex items-center gap-2 w-full">
+              <DashboardScreenOptions visibility={visibility} onChange={setVisibility} />
+              {visibility.filterBar !== false && (
+                <div className="flex flex-1 rounded-lg border p-0.5 bg-muted/30">
+                  <Button
+                    variant={filterMode === "month" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setFilterMode("month")}
+                    className="flex-1 rounded-md px-2.5 text-xs"
+                  >
+                    <Calendar className="size-4" />
+                  </Button>
+                  <Button
+                    variant={filterMode === "range" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setFilterMode("range")}
+                    className="flex-1 rounded-md px-2.5 text-xs"
+                  >
+                    <ArrowLeftRight className="size-4" />
+                  </Button>
+                  <Button
+                    variant={filterMode === "all" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setFilterMode("all")}
+                    className="flex-1 rounded-md px-2.5 text-xs"
+                  >
+                    <List className="size-4" />
+                  </Button>
                 </div>
               )}
-              {filterMode === "range" && (
-                <DateRangePicker value={dateRange} onChange={setDateRange} />
-              )}
-              <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
-                {filterMode === "all"
-                  ? "All projects"
-                  : filterMode === "month"
-                    ? (() => {
-                        const { from, to } = getMonthRange(selectedYear, selectedMonth, startDay)
-                        return `${format(from, "MMM d")} — ${format(to, "MMM d, yyyy")}`
-                      })()
-                    : filterMode === "range" && dateRange?.from && dateRange?.to
-                      ? `${format(dateRange.from, "MMM d")} — ${format(dateRange.to, "MMM d, yyyy")}`
-                      : ""}
-              </span>
-              <div className="sm:hidden"><DashboardScreenOptions visibility={visibility} onChange={setVisibility} /></div>
             </div>
+            {visibility.filterBar !== false && filterMode !== "all" && (
+              <div className="flex items-center gap-2">
+                {filterMode === "month" && (
+                  <div className="flex gap-1.5 w-full">
+                    <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+                      <SelectTrigger className="flex-1 h-8">
+                        <SelectValue placeholder={format(new Date(2024, selectedMonth - 1), "MMM")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                          <SelectItem key={m} value={String(m)}>
+                            {format(new Date(2024, m - 1), "MMMM")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                      <SelectTrigger className="flex-1 h-8">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: new Date().getFullYear() - 2021 + 1 }, (_, i) => 2022 + i).map((y) => (
+                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {filterMode === "range" && (
+                  <DateRangePicker value={dateRange} onChange={setDateRange} />
+                )}
+              </div>
+            )}
           </div>
-          <div className="hidden sm:block sm:ml-auto"><DashboardScreenOptions visibility={visibility} onChange={setVisibility} /></div>
         </div>
-      )}
 
       {loading ? (
         <div className="space-y-4 sm:space-y-6">

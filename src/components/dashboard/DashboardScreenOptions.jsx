@@ -10,7 +10,6 @@ const GROUPS = [
   {
     label: "Header",
     items: [
-      { id: "greeting", label: "Welcome Header", default: true },
       { id: "filterBar", label: "Filter Controls", default: true },
     ],
   },
@@ -133,7 +132,7 @@ export default function DashboardScreenOptions({ visibility, onChange }) {
     <Sheet>
       <SheetTrigger className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-muted-foreground/30 hover:bg-accent/50 transition-all select-none cursor-pointer group">
         <Monitor className="size-4" />
-        <span>Screen</span>
+        <span className="hidden sm:inline">Screen</span>
         <span className="flex size-4 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary leading-none">
           {activeCount}
         </span>

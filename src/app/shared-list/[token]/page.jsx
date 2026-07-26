@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import SharedEditForm from "@/components/shared/SharedEditForm"
-import { getEffectiveMonthYear } from "@/lib/dateUtils"
+import { getEffectiveMonthYear, getMonthFromDate } from "@/lib/dateUtils"
 import SharedMonthTransfer from "@/components/shared/SharedMonthTransfer"
 import SharedTransferAssignee from "@/components/shared/SharedTransferAssignee"
 import SharedDeleteConfirm from "@/components/shared/SharedDeleteConfirm"
@@ -93,8 +93,20 @@ export default function SharedListPage({ params: paramsPromise }) {
   })
 
   const now = new Date()
-  const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1)
-  const [filterYear, setFilterYear] = useState(now.getFullYear())
+  const [filterMonth, setFilterMonth] = useState(() => {
+    if (typeof window !== "undefined") {
+      const day = Number(localStorage.getItem("monthStartDay")) || 1
+      return getMonthFromDate(new Date(), day).month
+    }
+    return now.getMonth() + 1
+  })
+  const [filterYear, setFilterYear] = useState(() => {
+    if (typeof window !== "undefined") {
+      const day = Number(localStorage.getItem("monthStartDay")) || 1
+      return getMonthFromDate(new Date(), day).year
+    }
+    return now.getFullYear()
+  })
   const [filterStatus, setFilterStatus] = useState("All")
   const [filterPriority, setFilterPriority] = useState("All")
   const [filterCms, setFilterCms] = useState("All")
