@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { useSelector, useDispatch } from "react-redux"
+import { fetchProjects } from "@/lib/features/projectSlice"
 import { getStats } from "@/actions/projectActions"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { Button } from "@/components/ui/button"
@@ -22,7 +24,7 @@ import MonthlyProgressChart from "@/components/dashboard/MonthlyProgressChart"
 import DashboardScreenOptions, { getDefaultDashboardVisibility, filterUpdatesByVisibility } from "@/components/dashboard/DashboardScreenOptions"
 import { Calendar, ArrowLeftRight, List } from "lucide-react"
 import { startOfMonth, endOfMonth, format, eachDayOfInterval } from "date-fns"
-import { getMonthRange, getMonthFromDate } from "@/lib/dateUtils"
+import { getMonthRange, getMonthFromDate, getEffectiveMonthYear } from "@/lib/dateUtils"
 
 const statusColors = {
   Pending: "#eab308",
@@ -33,9 +35,21 @@ const statusColors = {
   Cancelled: "#ef4444",
 }
 
+function getUserSharePct(project, userId) {
+  const isOwner = project.owner === userId
+  if (isOwner) {
+    const t = (project.assignee || []).reduce((s, a) => s + (a.percentage || 0), 0)
+    return Math.max(0, 100 - t)
+  }
+  const entry = (project.assignee || []).find(a => a.user === userId)
+  return entry ? (entry.percentage || 0) : 0
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const dispatch = useDispatch()
+  const { items: allProjects, loading: projectsLoading, fetched } = useSelector((s) => s.projects)
 
   const now = new Date()
   const [filterMode, setFilterMode] = useState("month")
@@ -57,13 +71,8 @@ export default function DashboardPage() {
     }
     return now.getFullYear()
   })
-  const [stats, setStats] = useState(null)
-  const [chartData, setChartData] = useState([])
-  const [monthlyData, setMonthlyData] = useState([])
-  const [revenueData, setRevenueData] = useState(null)
-  const [recentProjects, setRecentProjects] = useState([])
-  const [recentUpdates, setRecentUpdates] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [allUpdates, setAllUpdates] = useState([])
+  const [dataLoading, setDataLoading] = useState(true)
   const [startDay] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("monthStartDay")
@@ -93,83 +102,147 @@ export default function DashboardPage() {
   }, [status, router])
 
   useEffect(() => {
-    const fetchStats = (params) => {
-      setLoading(true)
-      getStats(params)
-        .then((data) => {
-          setStats({
-            totalProjects: data.total,
-            runningProjects: data.running,
-            completedProjects: data.completed,
-            pendingProjects: data.pending,
-            onHoldProjects: data.onHold,
-            revisionProjects: data.revision || 0,
-          })
+    if (!fetched) dispatch(fetchProjects())
+  }, [fetched, dispatch])
 
-          const grouped = (data.chartData?.byStatus || [])
-            .filter((s) => s._id)
-            .map((s) => ({
-              status: s._id,
-              count: s.count,
-              color: statusColors[s._id] || "#6b7280",
-            }))
-          setChartData(grouped)
+  useEffect(() => {
+    getStats({})
+      .then((data) => {
+        setAllUpdates(data.recentUpdates || [])
+      })
+      .catch((err) => console.error("Failed to fetch updates:", err))
+  }, [])
 
-          const priceMap = {}
-          ;(data.myPriceByStatus || []).forEach((p) => {
-            priceMap[p._id] = p.total
-          })
-          const delivered = priceMap["Delivered"] || 0
-          const cancelled = priceMap["Cancelled"] || 0
-          const total = Object.values(priceMap).reduce((a, b) => a + b, 0)
-          const inProgress = total - delivered - cancelled
-          const myFeeDelivered = data.myFeeDelivered || 0
-          const globalFiverrFee = localStorage.getItem("fiverrFeeEnabled") !== "false"
-          const fee = globalFiverrFee ? myFeeDelivered * 0.2 : 0
+  useEffect(() => {
+    if (!projectsLoading && fetched) {
+      setDataLoading(false)
+    }
+  }, [projectsLoading, fetched])
 
-          setRevenueData({ total, delivered, inProgress, cancelled, fee, net: delivered - fee })
+  const userId = session?.user?.id
 
-          if (dateRange?.from && dateRange?.to) {
-            const progressMap = {}
-            ;(data.chartData?.monthlyProgress || []).forEach((d) => {
-              const key = `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`
-              progressMap[key] = d.count
-            })
-            const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
-            const monthly = days.map((day) => {
-              const key = format(day, "yyyy-MM-dd")
-              return { date: key, count: progressMap[key] || 0 }
-            })
-            setMonthlyData(monthly)
-          }
+  const filtered = useMemo(() => {
+    let list = [...allProjects]
 
-          setRecentProjects(data.recentProjects || [])
-          setRecentUpdates(data.recentUpdates || [])
-        })
-        .catch((err) => console.error("Dashboard stats error:", err))
-        .finally(() => setLoading(false))
+    if (filterMode === "month") {
+      list = list.filter((p) => {
+        const eff = getEffectiveMonthYear(p, startDay)
+        return eff.month === selectedMonth && eff.year === selectedYear
+      })
+    } else if (filterMode === "range" && (dateRange?.from || dateRange?.to)) {
+      list = list.filter((p) => {
+        const pd = p.currentProjectDate ? new Date(p.currentProjectDate) : (p.createdAt ? new Date(p.createdAt) : null)
+        if (!pd) return false
+        if (dateRange.from && pd < dateRange.from) return false
+        if (dateRange.to && pd > dateRange.to) return false
+        return true
+      })
     }
 
-    if (filterMode === "all") {
-      fetchStats({ all: true, monthStartDay: startDay })
+    list.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0)
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0)
+      return dateB - dateA
+    })
+
+    return list
+  }, [allProjects, filterMode, selectedMonth, selectedYear, dateRange, startDay])
+
+  const { stats, chartData, revenueData, monthlyData, recentProjects, filteredProjectIds } = useMemo(() => {
+    let running = 0, completed = 0, pending = 0, onHold = 0, revision = 0
+    const statusMap = {}
+    const priceMap = {}
+    const myPriceMap = {}
+    let myFeeDelivered = 0
+    const dayMap = {}
+
+    filtered.forEach((p) => {
+      if (p.status === 'In Progress') running++
+      else if (p.status === 'Delivered') completed++
+      else if (p.status === 'Pending') pending++
+      else if (p.status === 'On Hold') onHold++
+      else if (p.status === 'Revision') revision++
+
+      if (p.status) {
+        statusMap[p.status] = (statusMap[p.status] || 0) + 1
+        priceMap[p.status] = (priceMap[p.status] || 0) + (p.price || 0)
+      }
+      if (userId && p.status) {
+        const sharePct = getUserSharePct(p, userId)
+        const myPrice = p.price ? (p.price * sharePct / 100) : 0
+        myPriceMap[p.status] = (myPriceMap[p.status] || 0) + myPrice
+        if (p.status === 'Delivered' && p.fiverrFeeEnabled !== false) {
+          myFeeDelivered += myPrice
+        }
+      }
+      if (p.currentProjectDate) {
+        const d = new Date(p.currentProjectDate)
+        const key = format(d, "yyyy-MM-dd")
+        dayMap[key] = (dayMap[key] || 0) + 1
+      }
+    })
+
+    const chartData = Object.entries(statusMap).map(([status, count]) => ({
+      status,
+      count,
+      color: statusColors[status] || "#6b7280",
+    }))
+
+    const delivered = myPriceMap["Delivered"] || 0
+    const cancelled = myPriceMap["Cancelled"] || 0
+    const total = Object.values(myPriceMap).reduce((a, b) => a + b, 0)
+    const inProgress = total - delivered - cancelled
+    const globalFiverrFee = typeof window !== "undefined" ? localStorage.getItem("fiverrFeeEnabled") !== "false" : true
+    const fee = globalFiverrFee ? myFeeDelivered * 0.2 : 0
+
+    let monthlyData = []
+    if (filterMode === "range" && dateRange?.from && dateRange?.to) {
+      const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to })
+      monthlyData = days.map((day) => {
+        const key = format(day, "yyyy-MM-dd")
+        return { date: key, count: dayMap[key] || 0 }
+      })
     } else if (filterMode === "month") {
-      fetchStats({
-        selectedMonth,
-        selectedYear,
-        monthStartDay: startDay,
-      })
-    } else if (filterMode === "range" && dateRange?.from && dateRange?.to) {
-      const fromStart = new Date(dateRange.from)
-      fromStart.setHours(0, 0, 0, 0)
-      const toEnd = new Date(dateRange.to)
-      toEnd.setHours(23, 59, 59, 999)
-      fetchStats({
-        from: fromStart.toISOString(),
-        to: toEnd.toISOString(),
-        monthStartDay: startDay,
+      const { from, to } = getMonthRange(selectedYear, selectedMonth, startDay)
+      const days = eachDayOfInterval({ start: from, end: to })
+      monthlyData = days.map((day) => {
+        const key = format(day, "yyyy-MM-dd")
+        return { date: key, count: dayMap[key] || 0 }
       })
     }
-  }, [filterMode, selectedMonth, selectedYear, startDay, dateRange?.from, dateRange?.to])
+
+    const filteredProjectIds = new Set(filtered.map(p => p._id))
+
+    return {
+      stats: {
+        totalProjects: filtered.length,
+        runningProjects: running,
+        completedProjects: completed,
+        pendingProjects: pending,
+        onHoldProjects: onHold,
+        revisionProjects: revision,
+      },
+      chartData,
+      revenueData: {
+        total,
+        delivered,
+        inProgress,
+        cancelled,
+        fee,
+        net: delivered - fee,
+      },
+      monthlyData,
+      recentProjects: filtered.slice(0, 10),
+      filteredProjectIds,
+    }
+  }, [filtered, userId, filterMode, dateRange, selectedYear, selectedMonth, startDay])
+
+  const recentUpdates = useMemo(() => {
+    return allUpdates.filter(u => {
+      const pid = u.project?._id || u.project
+      return filteredProjectIds.has(pid)
+    })
+  }, [allUpdates, filteredProjectIds])
 
   if (status === "loading") return null
 
@@ -322,7 +395,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-      {loading ? (
+      {dataLoading ? (
         <div className="space-y-4 sm:space-y-6">
           <div className="grid grid-cols-3 gap-2 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {Array.from({ length: 6 }).map((_, i) => (

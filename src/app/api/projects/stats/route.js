@@ -5,25 +5,6 @@ import { authOptions } from '@/lib/auth';
 import Project from '@/models/Project';
 import Activity from '@/models/Activity';
 
-function getEffectiveMonthYear(project, startDay = 1) {
-  const d = project.currentProjectDate || project.createdAt
-  if (!d) return { month: null, year: null }
-  const date = new Date(d)
-  if (startDay <= 1) {
-    return { month: date.getMonth() + 1, year: date.getFullYear() }
-  }
-  const day = date.getDate()
-  let month = date.getMonth() + 1
-  let year = date.getFullYear()
-  if (day >= startDay) {
-    month += 1
-    if (month > 12) {
-      month = 1
-      year += 1
-    }
-  }
-  return { month, year }
-}
 
 function getUserSharePct(project, userId) {
   const isOwner = project.owner?.toString() === userId
@@ -44,18 +25,6 @@ export async function GET(request) {
 
     await connectDB();
 
-    const { searchParams } = new URL(request.url);
-    const allParam = searchParams.get('all');
-    const selectedMonth = parseInt(searchParams.get('selectedMonth'));
-    const selectedYear = parseInt(searchParams.get('selectedYear'));
-    const fromParam = searchParams.get('from');
-    const toParam = searchParams.get('to');
-    const monthStartDay = parseInt(searchParams.get('monthStartDay')) || 1;
-    const statusFilter = searchParams.get('status');
-    const priorityFilter = searchParams.get('priority');
-    const cmsFilter = searchParams.get('cms');
-    const searchQuery = searchParams.get('search');
-
     const userId = session.user.id;
 
     const ownershipFilter = {
@@ -65,57 +34,11 @@ export async function GET(request) {
       ],
     };
 
-    let fromDate, toDate;
-    if (allParam !== 'true' && !selectedMonth) {
-      fromDate = fromParam ? new Date(fromParam) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      toDate = toParam ? new Date(toParam) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59, 999);
-    }
-
-    const dbFilter = { ...ownershipFilter };
-
-    const allProjects = await Project.find(dbFilter)
+    const allProjects = await Project.find(ownershipFilter)
       .select('_id status price createdAt currentProjectDate fiverrFeeEnabled owner assignee orderId projectName websites')
       .lean();
 
-    let filtered = allProjects;
-    if (selectedMonth) {
-      filtered = allProjects.filter(p => {
-        const eff = getEffectiveMonthYear(p, monthStartDay)
-        return eff.month === selectedMonth && eff.year === selectedYear
-      })
-    } else if (allParam !== 'true') {
-      filtered = allProjects.filter(p => {
-        const eff = getEffectiveMonthYear(p, monthStartDay)
-        const pd = new Date(eff.year, eff.month - 1, 1)
-        const monthEnd = new Date(eff.year, eff.month, 0, 23, 59, 59, 999)
-        if (fromDate && monthEnd < fromDate) return false
-        if (toDate && pd > toDate) return false
-        return true
-      })
-    }
-
-    if (searchQuery) {
-      const regex = new RegExp(searchQuery, 'i')
-      filtered = filtered.filter(p =>
-        (p.orderId && regex.test(p.orderId)) ||
-        (p.projectName && regex.test(p.projectName)) ||
-        (p.websites?.some(s => s.url && regex.test(s.url)))
-      )
-    }
-    if (statusFilter) {
-      const statuses = statusFilter.split(',')
-      filtered = filtered.filter(p => statuses.includes(p.status))
-    }
-    if (priorityFilter) {
-      const priorities = priorityFilter.split(',')
-      filtered = filtered.filter(p => priorities.includes(p.priority))
-    }
-    if (cmsFilter) {
-      const cmsList = cmsFilter.split(',')
-      filtered = filtered.filter(p => cmsList.includes(p.cms))
-    }
-
-    const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, revisionProjects, statusMap, priceMap, dayMap, myPriceMap, myFeeDelivered } = filtered.reduce((acc, p) => {
+    const { totalProjects, runningProjects, completedProjects, pendingProjects, onHoldProjects, revisionProjects, statusMap, priceMap, dayMap, myPriceMap, myFeeDelivered } = allProjects.reduce((acc, p) => {
       const sharePct = getUserSharePct(p, userId)
       const myPrice = p.price ? (p.price * sharePct / 100) : 0
 
@@ -156,7 +79,7 @@ export async function GET(request) {
         return a._id.day - b._id.day
       })
 
-    const filteredIds = filtered.map(p => p._id)
+    const filteredIds = allProjects.map(p => p._id)
 
     const [recentProjects, recentUpdates] = await Promise.all([
       Project.find({ _id: { $in: filteredIds } })
