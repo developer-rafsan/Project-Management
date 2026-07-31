@@ -3,16 +3,27 @@
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { useSelector, useDispatch } from "react-redux"
 import { getProfile, updateProfile } from "@/actions/profileActions"
+import { fetchWorkspaces, setCurrentWorkspace, addWorkspace } from "@/lib/redux/slices/workspaceSlice"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
   Loader2, Pencil, Check, X, Building2, User, Mail, Phone, MapPin,
-  Globe, Briefcase, Save, Code, Palette, Image, ClipboardList,
-  TrendingUp, FileText, Search, Video, MoreHorizontal,
+  Briefcase, Save, Code, Palette, Image, ClipboardList,
+  TrendingUp, FileText, Search, Video, MoreHorizontal, Plus, Layers,
+  LayoutDashboard, ExternalLink,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -69,12 +80,18 @@ function EditField({ icon: Icon, label, value, onChange, placeholder, type = "te
 export default function ProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const dispatch = useDispatch()
+  const { workspaces, currentWorkspaceId, loading: wsLoading, fetched: wsFetched } = useSelector((s) => s.workspaces)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({})
   const [activeSection, setActiveSection] = useState("personal")
+  const [wsCreateOpen, setWsCreateOpen] = useState(false)
+  const [wsName, setWsName] = useState("")
+  const [wsType, setWsType] = useState("individual")
+  const [wsSubmitting, setWsSubmitting] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return }
@@ -87,12 +104,6 @@ export default function ProfilePage() {
           phone: user.phone || "",
           address: user.address || "",
           profession: user.profession || "",
-          organizationName: user.organizationName || "",
-          organizationEmail: user.organizationEmail || "",
-          organizationPhone: user.organizationPhone || "",
-          organizationAddress: user.organizationAddress || "",
-          organizationWebsite: user.organizationWebsite || "",
-          organizationRole: user.organizationRole || "",
         })
         setLoading(false)
       })
@@ -101,6 +112,39 @@ export default function ProfilePage() {
         setLoading(false)
       })
   }, [status, session, router])
+
+  useEffect(() => {
+    if (!wsFetched && !wsLoading) {
+      dispatch(fetchWorkspaces())
+    }
+  }, [dispatch, wsFetched, wsLoading])
+
+  const handleCreateWorkspace = async (e) => {
+    e.preventDefault()
+    if (!wsName.trim()) return
+    setWsSubmitting(true)
+    try {
+      const res = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: wsName.trim(), type: wsType }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Failed to create workspace")
+      }
+      const workspace = await res.json()
+      dispatch(addWorkspace(workspace))
+      dispatch(setCurrentWorkspace(workspace._id))
+      toast.success("Workspace created")
+      setWsCreateOpen(false)
+      setWsName("")
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setWsSubmitting(false)
+    }
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -132,8 +176,6 @@ export default function ProfilePage() {
   const userInitials = profile?.name
     ? profile.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U"
-
-  const isOrg = profile?.accountType === "organization"
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-10">
@@ -179,17 +221,6 @@ export default function ProfilePage() {
                 </p>
               </div>
               <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                {isOrg ? (
-                  <Badge variant="secondary" className="rounded-full gap-1">
-                    <Building2 className="size-3" />
-                    Organization
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="rounded-full gap-1">
-                    <User className="size-3" />
-                    Individual
-                  </Badge>
-                )}
                 {profile?.setupComplete && (
                   <Badge variant="outline" className="rounded-full text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 gap-1">
                     <Check className="size-3" />
@@ -201,6 +232,144 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Layers className="size-5 text-primary" />
+              <div>
+                <CardTitle className="text-lg">Workspaces</CardTitle>
+                <CardDescription>Your workspaces and their data are fully separated</CardDescription>
+              </div>
+            </div>
+            <Button size="sm" onClick={() => { setWsName(""); setWsCreateOpen(true) }} className="gap-2">
+              <Plus className="size-4" />
+              New Workspace
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {wsLoading && !wsFetched ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : workspaces.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <LayoutDashboard className="size-8 text-muted-foreground/30 mb-2" />
+              <p className="text-sm font-medium text-muted-foreground">No workspaces yet</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Create your first workspace to get started</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {workspaces.map((w) => (
+                <div
+                  key={w._id}
+                  className={`flex items-center justify-between gap-3 rounded-xl border p-4 transition-all ${
+                    w._id === currentWorkspaceId ? "border-primary/50 bg-primary/5" : "bg-card"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
+                      w._id === currentWorkspaceId ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                    }`}>
+                      <LayoutDashboard className="size-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">{w.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        <span className="inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">
+                          {w.type}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {w._id === currentWorkspaceId ? (
+                      <Badge variant="outline" className="rounded-full text-primary border-primary/40 gap-1">
+                        <Check className="size-3" />
+                        Active
+                      </Badge>
+                    ) : (
+                      <Button size="xs" variant="secondary" onClick={() => dispatch(setCurrentWorkspace(w._id))}>
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Switch
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={wsCreateOpen} onOpenChange={setWsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Workspace</DialogTitle>
+            <DialogDescription>Create a new workspace to organize your projects, notes, and settings</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateWorkspace}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="ws-name" className="text-sm font-medium">Workspace Name</label>
+                <Input
+                  id="ws-name"
+                  placeholder="My Workspace"
+                  value={wsName}
+                  onChange={(e) => setWsName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Workspace Type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setWsType("individual")}
+                    className={`flex items-center gap-2 rounded-lg border-2 p-3 text-left transition-all cursor-pointer ${
+                      wsType === "individual"
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-card hover:bg-muted/50"
+                    }`}
+                  >
+                    <User className="size-4 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Individual</p>
+                      <p className="text-[11px] text-muted-foreground">Freelancer or solo</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWsType("organization")}
+                    className={`flex items-center gap-2 rounded-lg border-2 p-3 text-left transition-all cursor-pointer ${
+                      wsType === "organization"
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-card hover:bg-muted/50"
+                    }`}
+                  >
+                    <Building2 className="size-4 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Organization</p>
+                      <p className="text-[11px] text-muted-foreground">Company or agency</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setWsCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={wsSubmitting || !wsName.trim()}>
+                {wsSubmitting && <Loader2 className="size-4 animate-spin mr-2" />}
+                Create
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {editing ? (
         <div className="space-y-6">
@@ -274,30 +443,6 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
-
-          {isOrg && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Building2 className="size-5 text-primary" />
-                  <div>
-                    <CardTitle className="text-lg">Organization</CardTitle>
-                    <CardDescription>Your organization details</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <EditField icon={Building2} label="Organization Name" value={form.organizationName} onChange={(v) => setForm({ ...form, organizationName: v })} />
-                  <EditField icon={Mail} label="Organization Email" value={form.organizationEmail} onChange={(v) => setForm({ ...form, organizationEmail: v })} type="email" />
-                  <EditField icon={Phone} label="Organization Phone" value={form.organizationPhone} onChange={(v) => setForm({ ...form, organizationPhone: v })} type="tel" />
-                  <EditField icon={MapPin} label="Organization Address" value={form.organizationAddress} onChange={(v) => setForm({ ...form, organizationAddress: v })} />
-                  <EditField icon={Globe} label="Website" value={form.organizationWebsite} onChange={(v) => setForm({ ...form, organizationWebsite: v })} />
-                  <EditField icon={Briefcase} label="Your Role" value={form.organizationRole} onChange={(v) => setForm({ ...form, organizationRole: v })} />
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -322,47 +467,22 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {isOrg ? (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Building2 className="size-5 text-primary" />
-                  <div>
-                    <CardTitle className="text-lg">Organization</CardTitle>
-                    <CardDescription>Your organization details</CardDescription>
-                  </div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Building2 className="size-5 text-primary" />
+                <div>
+                  <CardTitle className="text-lg">Account</CardTitle>
+                  <CardDescription>Your account status</CardDescription>
                 </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="px-(--card-spacing)">
-                  <InfoRow icon={Building2} label="Name" value={profile?.organizationName} />
-                  <InfoRow icon={Mail} label="Email" value={profile?.organizationEmail} />
-                  <InfoRow icon={Phone} label="Phone" value={profile?.organizationPhone} />
-                  <InfoRow icon={MapPin} label="Address" value={profile?.organizationAddress} />
-                  <InfoRow icon={Globe} label="Website" value={profile?.organizationWebsite} href={profile?.organizationWebsite} />
-                  <InfoRow icon={Briefcase} label="Role" value={profile?.organizationRole} />
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Building2 className="size-5 text-primary" />
-                  <div>
-                    <CardTitle className="text-lg">Account</CardTitle>
-                    <CardDescription>Account type and status</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="px-(--card-spacing)">
-                  <InfoRow icon={User} label="Account Type" value={profile?.accountType === "organization" ? "Organization" : "Individual"} />
-                  <InfoRow icon={Check} label="Status" value={profile?.setupComplete ? "Active" : "Incomplete"} />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="px-(--card-spacing)">
+                <InfoRow icon={Check} label="Status" value={profile?.setupComplete ? "Active" : "Incomplete"} />
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

@@ -9,10 +9,19 @@ interface ToolCallItem {
 export class AIAgentService {
   private projectService: ProjectService
   private userId: string
+  private workspaceId: string | null
 
-  constructor(userId: string) {
+  constructor(userId: string, workspaceId?: string | null) {
     this.projectService = new ProjectService()
     this.userId = userId
+    this.workspaceId = workspaceId || null
+  }
+
+  private addWorkspaceFilter(filters: Record<string, unknown>): Record<string, unknown> {
+    if (this.workspaceId) {
+      filters.workspaceId = this.workspaceId
+    }
+    return filters
   }
 
   getToolDefinitions() {
@@ -150,7 +159,7 @@ export class AIAgentService {
             const filters: Record<string, unknown> = {}
             if (args.status) filters.status = args.status
             if (args.priority) filters.priority = args.priority
-            const projects = await this.projectService.getProjects(this.userId, filters)
+            const projects = await this.projectService.getProjects(this.userId, this.addWorkspaceFilter(filters))
             result = projects.map((p: any) => ({
               _id: p._id,
               projectName: p.projectName,
@@ -173,14 +182,16 @@ export class AIAgentService {
             break
           }
           case 'createProject': {
-            const project = await this.projectService.createProject(this.userId, {
+            const createData: Record<string, unknown> = {
               projectName: args.projectName,
               status: args.status || 'Pending',
               priority: args.priority || 'Medium',
               price: args.price || 0,
               orderId: args.orderId || '',
               cms: args.cms || '',
-            })
+            }
+            if (this.workspaceId) createData.workspaceId = this.workspaceId
+            const project = await this.projectService.createProject(this.userId, createData)
             result = { _id: project._id, projectName: project.projectName, status: project.status }
             break
           }

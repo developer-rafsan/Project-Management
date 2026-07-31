@@ -27,12 +27,17 @@ export async function GET(request) {
 
     const userId = session.user.id;
 
+    const { searchParams } = new URL(request.url);
+    const workspaceId = searchParams.get('workspaceId');
+
     const ownershipFilter = {
       $or: [
         { owner: userId },
         { 'assignee.user': userId },
       ],
     };
+
+    if (workspaceId) ownershipFilter.workspace = workspaceId;
 
     const allProjects = await Project.find(ownershipFilter)
       .select('_id status price createdAt currentProjectDate fiverrFeeEnabled owner assignee orderId projectName websites')

@@ -3,15 +3,20 @@
 import { useSession } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
 import { useEffect, useState, useRef } from "react"
+import { useSelector, useDispatch } from "react-redux"
 import { AnimatePresence, motion } from "framer-motion"
 import Sidebar from "@/components/layout/Sidebar"
 import Navbar from "@/components/layout/Navbar"
 import { getSettings, syncSettingsToLocalStorage } from "@/actions/settingsActions"
+import { fetchWorkspaces, setCurrentWorkspace, restoreWorkspace } from "@/lib/redux/slices/workspaceSlice"
 
 export default function DashboardLayout({ children }) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const dispatch = useDispatch()
+  const workspaceId = useSelector((s) => s.workspaces?.currentWorkspaceId)
+  const { workspaces, fetched, loading } = useSelector((s) => s.workspaces)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const setupChecked = useRef(false)
 
@@ -23,10 +28,24 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     if (status !== "authenticated") return
-    getSettings()
-      .then((data) => syncSettingsToLocalStorage(data))
+    dispatch(restoreWorkspace())
+    if (!fetched && !loading) {
+      dispatch(fetchWorkspaces())
+    }
+  }, [status, dispatch, fetched, loading])
+
+  useEffect(() => {
+    if (status !== "authenticated" || !fetched) return
+    if (workspaces.length === 0) return
+    const valid = workspaceId && workspaces.some((w) => w._id === workspaceId)
+    if (!valid) {
+      dispatch(setCurrentWorkspace(workspaces[0]._id))
+      return
+    }
+    getSettings(workspaceId)
+      .then((data) => syncSettingsToLocalStorage(data, workspaceId))
       .catch(() => {})
-  }, [status])
+  }, [status, fetched, workspaces, workspaceId, dispatch])
 
   useEffect(() => {
     if (status !== "authenticated" || setupChecked.current) return

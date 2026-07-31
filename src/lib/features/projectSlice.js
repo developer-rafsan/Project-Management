@@ -5,9 +5,13 @@ import { getProjects } from "@/actions/projectActions"
 
 export const fetchProjects = createAsyncThunk(
   "projects/fetchProjects",
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, getState }) => {
     try {
-      const data = await getProjects({ limit: 99999 })
+      const state = getState()
+      const workspaceId = state.workspaces?.currentWorkspaceId
+      const filters = { limit: 99999 }
+      if (workspaceId) filters.workspaceId = workspaceId
+      const data = await getProjects(filters)
       return data
     } catch (err) {
       return rejectWithValue(err.message || "Failed to fetch projects")

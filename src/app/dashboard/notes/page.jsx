@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSelector } from "react-redux"
 import { getNotes, createNote, updateNote, deleteNote } from "@/actions/noteActions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +17,7 @@ import { Plus, Pencil, Trash2, Copy, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 export default function NotesPage() {
+  const workspaceId = useSelector((s) => s.workspaces?.currentWorkspaceId)
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -26,7 +28,7 @@ export default function NotesPage() {
 
   const fetchNotes = async () => {
     try {
-      const data = await getNotes()
+      const data = await getNotes(workspaceId || undefined)
       setNotes(data.notes || [])
     } catch {
       toast.error("Failed to load notes")
@@ -36,8 +38,14 @@ export default function NotesPage() {
   }
 
   useEffect(() => {
-    fetchNotes()
-  }, [])
+    let active = true
+    Promise.resolve().then(() => {
+      if (!active) return
+      setLoading(true)
+      return fetchNotes()
+    })
+    return () => { active = false }
+  }, [workspaceId])
 
   const openCreate = () => {
     setEditNote(null)
@@ -62,7 +70,7 @@ export default function NotesPage() {
         await updateNote(editNote._id, form)
         toast.success("Note updated")
       } else {
-        await createNote(form)
+        await createNote({ ...form, workspaceId: workspaceId || undefined })
         toast.success("Note created")
       }
       setOpen(false)

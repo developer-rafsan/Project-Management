@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useTheme } from "@/components/layout/ThemeProvider"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
+import { useSelector } from "react-redux"
 
-import { getSettings, updateSettings } from "@/actions/settingsActions"
+import { getSettings, updateSettings, syncSettingsToLocalStorage } from "@/actions/settingsActions"
 import {
   Sun, Moon, Palette, List, LayoutGrid, CalendarDays,
   DollarSign, Percent, Monitor, Eye, Radio, Cpu,
@@ -42,42 +43,49 @@ function Toggle({ checked, onChange }) {
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
+  const workspaceId = useSelector((s) => s.workspaces?.currentWorkspaceId)
   const [viewMode, setViewMode] = useState("list")
   const [monthStartDay, setMonthStartDay] = useState(1)
   const [fiverrFeeEnabled, setFiverrFeeEnabled] = useState(true)
   const [activeTab, setActiveTab] = useState("general")
 
+  const lsKey = useMemo(() => (key) => (workspaceId ? `${key}_${workspaceId}` : key), [workspaceId])
+
+  const persistLocal = useCallback((data) => {
+    syncSettingsToLocalStorage(data, workspaceId || undefined)
+  }, [workspaceId])
+
   useEffect(() => {
-    getSettings()
+    if (!workspaceId) return
+    getSettings(workspaceId)
       .then((data) => {
         setViewMode(data.viewMode)
         setMonthStartDay(data.monthStartDay)
         setFiverrFeeEnabled(data.fiverrFeeEnabled)
-        localStorage.setItem("projectViewMode", data.viewMode)
-        localStorage.setItem("monthStartDay", String(data.monthStartDay))
-        localStorage.setItem("fiverrFeeEnabled", String(data.fiverrFeeEnabled))
+        persistLocal(data)
       })
       .catch(() => {
-        const savedView = localStorage.getItem("projectViewMode")
+        const savedView = localStorage.getItem(lsKey("projectViewMode"))
         if (savedView === "list" || savedView === "grid") setViewMode(savedView)
-        const savedDay = localStorage.getItem("monthStartDay")
+        const savedDay = localStorage.getItem(lsKey("monthStartDay"))
         if (savedDay) setMonthStartDay(Number(savedDay))
-        const savedFiverrFee = localStorage.getItem("fiverrFeeEnabled")
+        const savedFiverrFee = localStorage.getItem(lsKey("fiverrFeeEnabled"))
         if (savedFiverrFee !== null) setFiverrFeeEnabled(savedFiverrFee === "true")
       })
-  }, [])
+  }, [workspaceId, lsKey, persistLocal])
 
   const syncToApi = useCallback(async (data) => {
+    if (!workspaceId) return
     try {
-      await updateSettings(data)
+      await updateSettings(data, workspaceId)
     } catch {
       toast.error("Failed to save setting")
     }
-  }, [])
+  }, [workspaceId])
 
   const handleViewModeChange = (mode) => {
     setViewMode(mode)
-    localStorage.setItem("projectViewMode", mode)
+    persistLocal({ viewMode: mode, monthStartDay, fiverrFeeEnabled })
     syncToApi({ viewMode: mode })
   }
 
@@ -85,7 +93,7 @@ export default function SettingsPage() {
     const next = Math.min(28, Math.max(1, monthStartDay + delta))
     if (next === monthStartDay) return
     setMonthStartDay(next)
-    localStorage.setItem("monthStartDay", String(next))
+    persistLocal({ viewMode, monthStartDay: next, fiverrFeeEnabled })
     syncToApi({ monthStartDay: next })
   }
 
@@ -93,7 +101,7 @@ export default function SettingsPage() {
     const val = Number(e.target.value)
     if (val >= 1 && val <= 28) {
       setMonthStartDay(val)
-      localStorage.setItem("monthStartDay", String(val))
+      persistLocal({ viewMode, monthStartDay: val, fiverrFeeEnabled })
       syncToApi({ monthStartDay: val })
     }
   }
@@ -101,7 +109,7 @@ export default function SettingsPage() {
   const handleFiverrFeeToggle = () => {
     const next = !fiverrFeeEnabled
     setFiverrFeeEnabled(next)
-    localStorage.setItem("fiverrFeeEnabled", String(next))
+    persistLocal({ viewMode, monthStartDay, fiverrFeeEnabled: next })
     syncToApi({ fiverrFeeEnabled: next })
   }
 

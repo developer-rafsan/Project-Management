@@ -48,6 +48,8 @@ import {
   Mail,
   MailOpen,
   User,
+  Layers,
+  Building2,
 } from "lucide-react"
 
 const pageTitles = {
@@ -63,7 +65,7 @@ const pageTitles = {
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
-
+  { href: "/dashboard/organizations", label: "Organizations", icon: Building2 },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot },
@@ -75,6 +77,10 @@ export default function Navbar() {
   const router = useRouter()
   const pathname = usePathname()
   const { data: session } = useSession()
+  const { workspaces, currentWorkspaceId } = useSelector((s) => s.workspaces)
+  const currentWorkspace = workspaces.find((w) => w._id === currentWorkspaceId)
+  const isOrg = currentWorkspace?.type === "organization"
+  const visibleItems = isOrg ? menuItems : menuItems.filter((item) => item.href !== "/dashboard/organizations")
   const [searchOpen, setSearchOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [selectedNotif, setSelectedNotif] = useState(null)
@@ -167,7 +173,7 @@ export default function Navbar() {
                 Menu
               </p>
               <nav className="space-y-0.5">
-                {menuItems.map((item) => {
+                {visibleItems.map((item) => {
                   const Icon = item.icon
                   const isActive = pathname === item.href
 

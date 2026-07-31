@@ -1,9 +1,11 @@
-import { handleResponse } from '@/lib/fetchUtils';
+import { handleResponse, buildQueryString } from '@/lib/fetchUtils';
 
 const BASE_URL = '/api/notes';
 
-export async function getNotes() {
-  const response = await fetch(BASE_URL);
+export async function getNotes(workspaceId) {
+  const query = buildQueryString(workspaceId ? { workspaceId } : {});
+  const url = query ? `${BASE_URL}?${query}` : BASE_URL;
+  const response = await fetch(url);
   return handleResponse(response);
 }
 

@@ -40,6 +40,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { createProject, updateProject, getProjectPassword } from "@/actions/projectActions"
+import { useSelector } from "react-redux"
 
 const schema = z.object({
   orderId: z.string().optional(),
@@ -160,6 +161,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
   const [duplicateWarning, setDuplicateWarning] = useState(null)
   const [pendingPayload, setPendingPayload] = useState(null)
   const { data: session } = useSession()
+  const workspaceId = useSelector((s) => s.workspaces?.currentWorkspaceId)
 
   const isEditing = !!initialData
 
@@ -278,6 +280,7 @@ export default function ProjectForm({ initialData = null, onSuccess, onCancel })
         assignee: isEditing ? (initialData?.assignee || []) : [],
         orderId: data.orderId || undefined,
         fiverrFeeEnabled,
+        workspaceId: isEditing ? undefined : (workspaceId || undefined),
       }
 
       if (confirmDuplicate) {

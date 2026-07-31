@@ -4,7 +4,7 @@ import { connectDB } from '@/lib/mongodb';
 import { authOptions } from '@/lib/auth';
 import Note from '@/models/Note';
 
-export async function GET() {
+export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -13,7 +13,13 @@ export async function GET() {
 
     await connectDB();
 
-    const notes = await Note.find({ createdBy: session.user.id })
+    const { searchParams } = new URL(request.url);
+    const workspaceId = searchParams.get('workspaceId');
+
+    const filter = { createdBy: session.user.id };
+    if (workspaceId) filter.workspace = workspaceId;
+
+    const notes = await Note.find(filter)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -33,7 +39,7 @@ export async function POST(request) {
 
     await connectDB();
 
-    const { title, content } = await request.json();
+    const { title, content, workspaceId } = await request.json();
 
     if (!content || !content.trim()) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
@@ -43,6 +49,7 @@ export async function POST(request) {
       title: title || '',
       content,
       createdBy: session.user.id,
+      workspace: workspaceId || null,
     });
 
     return NextResponse.json(note, { status: 201 });

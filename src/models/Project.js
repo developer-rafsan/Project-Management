@@ -56,6 +56,8 @@ const projectSchema = new mongoose.Schema(
       to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       transferDate: Date,
     }],
+    workspace: { type: mongoose.Schema.Types.ObjectId, ref: 'Workspace' },
+    team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

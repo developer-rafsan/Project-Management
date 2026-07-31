@@ -27,10 +27,6 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    accountType: {
-      type: String,
-      enum: ['single', 'organization'],
-    },
     phone: { type: String },
     address: { type: String },
     profession: { type: String },
@@ -42,6 +38,10 @@ const userSchema = new mongoose.Schema(
     organizationLogo: { type: String },
     organizationRole: { type: String },
     setupComplete: {
+      type: Boolean,
+      default: false,
+    },
+    defaultWorkspaceCreated: {
       type: Boolean,
       default: false,
     },

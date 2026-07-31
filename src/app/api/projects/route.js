@@ -30,6 +30,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 20;
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') === 'asc' ? 1 : -1;
+    const workspaceId = searchParams.get('workspaceId');
 
     const filter = {};
 
@@ -44,6 +45,7 @@ export async function GET(request) {
       filter.tags = { $in: tags.split(',').map((t) => t.trim()) };
     }
     if (assignee) filter.assignee = assignee;
+    if (workspaceId) filter.workspace = workspaceId;
 
     const ownershipFilter = {
       $or: [
@@ -119,6 +121,7 @@ export async function POST(request) {
       links,
       currentProjectDate,
       fiverrFeeEnabled,
+      workspaceId,
     } = body;
 
     let generatedOrderId = orderId;
@@ -179,6 +182,7 @@ export async function POST(request) {
       createdBy: session.user.id,
       owner: session.user.id,
       fiverrFeeEnabled: fiverrFeeEnabled !== undefined ? fiverrFeeEnabled : true,
+      workspace: workspaceId || undefined,
     };
 
     const project = await Project.create(projectData);

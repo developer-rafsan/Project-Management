@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import { clearProjects } from "@/lib/features/projectSlice"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -29,12 +29,13 @@ import {
   Settings,
   User,
   Bot,
+  Building2,
 } from "lucide-react"
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
-
+  { href: "/dashboard/organizations", label: "Organizations", icon: Building2 },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/profile", label: "Profile", icon: User, mobileOnly: true },
   { href: "/dashboard/ai-assistant", label: "AI Assistant", icon: Bot },
@@ -46,6 +47,10 @@ export default function Sidebar({ isOpen, onToggle }) {
   const [logoutOpen, setLogoutOpen] = useState(false)
   const pathname = usePathname()
   const dispatch = useDispatch()
+  const { workspaces, currentWorkspaceId } = useSelector((s) => s.workspaces)
+  const currentWorkspace = workspaces.find((w) => w._id === currentWorkspaceId)
+  const isOrg = currentWorkspace?.type === "organization"
+  const visibleItems = isOrg ? menuItems : menuItems.filter((item) => item.href !== "/dashboard/organizations")
 
   const content = (
     <>
@@ -72,7 +77,7 @@ export default function Sidebar({ isOpen, onToggle }) {
           Menu
         </p>
         <nav className="space-y-0.5">
-          {menuItems.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
 

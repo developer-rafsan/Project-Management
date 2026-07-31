@@ -169,9 +169,11 @@ export default function ProjectsPage() {
     toast.success("Project updated")
   }
 
+  const workspaceId = useSelector((s) => s.workspaces?.currentWorkspaceId)
+
   useEffect(() => {
-    if (!fetched) dispatch(fetchProjects())
-  }, [fetched, dispatch])
+    dispatch(fetchProjects())
+  }, [dispatch, workspaceId])
 
   useEffect(() => {
     try {

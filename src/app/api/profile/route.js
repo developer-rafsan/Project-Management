@@ -39,7 +39,7 @@ export async function PATCH(request) {
     const updateData = {};
 
     const allowedFields = [
-      'name', 'image', 'accountType', 'phone', 'address', 'profession',
+      'name', 'image', 'phone', 'address', 'profession',
       'organizationName', 'organizationEmail', 'organizationPhone',
       'organizationAddress', 'organizationWebsite', 'organizationLogo',
       'organizationRole', 'setupComplete',

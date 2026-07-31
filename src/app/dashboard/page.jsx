@@ -101,17 +101,19 @@ export default function DashboardPage() {
     if (status === "unauthenticated") router.replace("/login")
   }, [status, router])
 
-  useEffect(() => {
-    if (!fetched) dispatch(fetchProjects())
-  }, [fetched, dispatch])
+  const workspaceId = useSelector((s) => s.workspaces?.currentWorkspaceId)
 
   useEffect(() => {
-    getStats({})
+    dispatch(fetchProjects())
+  }, [dispatch, workspaceId])
+
+  useEffect(() => {
+    getStats({ workspaceId: workspaceId || undefined })
       .then((data) => {
         setAllUpdates(data.recentUpdates || [])
       })
       .catch((err) => console.error("Failed to fetch updates:", err))
-  }, [])
+  }, [workspaceId])
 
   useEffect(() => {
     if (!projectsLoading && fetched) {

@@ -15,8 +15,15 @@ const noteSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    workspace: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Workspace',
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
+noteSchema.index({ workspace: 1, createdBy: 1 });
 
 export default mongoose.models.Note || mongoose.model('Note', noteSchema);
